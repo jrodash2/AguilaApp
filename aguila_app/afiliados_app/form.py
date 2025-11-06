@@ -4,7 +4,7 @@ from django.forms import CheckboxInput, DateInput, inlineformset_factory, modelf
 from django.core.exceptions import ValidationError
 
 
-from .models import  Perfil,  Institucion
+from .models import  Perfil,  Institucion, Afiliado, LiderComunitario, Comunidad, CentroVotacion, Comision
 
 from django.db.models import Sum, F, Value
 from django.db.models.functions import Coalesce
@@ -195,3 +195,71 @@ class PerfilForm(forms.ModelForm):
             'foto': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
   
+# -------------------------------
+# Formulario Afiliado
+# -------------------------------
+class AfiliadoForm(forms.ModelForm):
+    class Meta:
+        model = Afiliado
+        fields = '__all__'
+        widgets = {
+            'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}),
+            'dpi': forms.TextInput(attrs={'class': 'form-control'}),
+            'fecha_nacimiento': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-control'}),
+            'direccion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'comunidad': forms.Select(attrs={'class': 'form-control'}),
+            'lider': forms.Select(attrs={'class': 'form-control'}),
+            'centro_votacion': forms.Select(attrs={'class': 'form-control'}),
+            'empadronado': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'comisiones': forms.SelectMultiple(attrs={'class': 'form-control'}),
+        }
+
+# -------------------------------
+# Formulario Líder Comunitario
+# -------------------------------
+class LiderForm(forms.ModelForm):
+    class Meta:
+        model = LiderComunitario
+        fields = '__all__'
+        widgets = {
+            'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-control'}),
+            'comisiones': forms.SelectMultiple(attrs={'class': 'form-control'}),
+        }
+
+# -------------------------------
+# Formulario Comunidad
+# -------------------------------
+class ComunidadForm(forms.ModelForm):
+    class Meta:
+        model = Comunidad
+        fields = ['nombre']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+        }
+
+# -------------------------------
+# Formulario Centro de Votación
+# -------------------------------
+class CentroVotacionForm(forms.ModelForm):
+    class Meta:
+        model = CentroVotacion
+        fields = ['nombre', 'ubicacion']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'ubicacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+# -------------------------------
+# Formulario Comisión
+# -------------------------------
+class ComisionForm(forms.ModelForm):
+    class Meta:
+        model = Comision
+        fields = ['nombre', 'descripcion']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }

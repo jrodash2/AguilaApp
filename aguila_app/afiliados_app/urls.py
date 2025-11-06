@@ -33,7 +33,11 @@ urlpatterns = [
     path('cambiar-contraseña/hecho/', auth_views.PasswordChangeDoneView.as_view(
         template_name='afiliados/password_change_done.html'
     ), name='password_change_done'),
-    
+    path('lista/', views.afiliado_lista, name='afiliado_lista'),
+    path('nuevo/', views.afiliado_nuevo, name='afiliado_nuevo'),
+    path('<int:pk>/editar/', views.afiliado_editar, name='afiliado_editar'),
+    path('<int:pk>/eliminar/', views.afiliado_eliminar, name='afiliado_eliminar'),
+    path('verificar_empadronamiento/', views.verificar_empadronamiento_ajax, name='verificar_empadronamiento'),
   
 
 

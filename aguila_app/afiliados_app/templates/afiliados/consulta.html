@@ -1,0 +1,10 @@
+<form method="post">
+    {% csrf_token %}
+    <input type="text" name="dpi" placeholder="DPI">
+    <input type="text" name="fecha_nacimiento" placeholder="Fecha de nacimiento">
+    <button type="submit">Consultar</button>
+</form>
+
+{% if estado %}
+    <p>Resultado: {{ estado }}</p>
+{% endif %}

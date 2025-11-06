@@ -10,7 +10,7 @@
     <meta name="author" content="pixelstrap">
     <link rel="icon" href="{% static 'assets/images/favicon.svg' %}" type="image/x-icon">
     <link rel="shortcut icon" href="{% static 'assets/images/favicon.svg' %}" type="image/x-icon">
-    <title>App Compras</title>
+    <title>Aguila App</title>
 
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -268,21 +268,21 @@
   {# Mostrar "Asignados" a Departamentos #}
   {% if es_departamento%}
    </li>
-                <li class="sidebar-list"><i class="fa fa-thumb-tack"></i><a class="sidebar-link " href="{% url 'afiliados:crear_requerimiento' %}">
+                <li class="sidebar-list"><i class="fa fa-thumb-tack"></i><a class="sidebar-link " href="">
                   <svg class="stroke-icon">
                     <use href="../assets/svg/icon-sprite.svg#stroke-gallery"></use>
                   </svg>
                   <svg class="fill-icon">
-                    <use href="{% url 'afiliados:crear_requerimiento' %}"></use>
+                    <use href=""></use>
                   </svg><span>Requerimientos</span></a>
 
               </li>
-               <li class="sidebar-list"><i class="fa fa-thumb-tack"></i><a class="sidebar-link " href="{% url 'afiliados:lista_departamentos' %}">
+               <li class="sidebar-list"><i class="fa fa-thumb-tack"></i><a class="sidebar-link " href="">
                   <svg class="stroke-icon">
                     <use href="../assets/svg/icon-sprite.svg#stroke-gallery"></use>
                   </svg>
                   <svg class="fill-icon">
-                    <use href="{% url 'afiliados:lista_departamentos' %}"></use>
+                    <use href=""></use>
                   </svg><span>Asignados</span></a>
 
               </li>
@@ -314,11 +314,11 @@
         <span>Departamentos</span>
       </a>
       <ul class="sidebar-submenu">
-                  <li><a href="{% url 'afiliados:crear_departamento' %}">Crear Departamentos</a></li>
+                  <li><a href="{% url 'afiliados:afiliado_lista'%}">Crear Departamentos</a></li>
            
-                   <li><a href="{% url 'afiliados:asignar_departamento' %}">Asignar Departamentos</a></li>
-           <li><a href="{% url 'afiliados:lista_departamentos' %}">Departamentos</a></li>
-                 <li><a href="{% url 'afiliados:importar_excel' %}">Importar Insumos</a></li>
+                   <li><a href="">Asignar Departamentos</a></li>
+           <li><a href="">Departamentos</a></li>
+                 <li><a href="">Importar Insumos</a></li>
           
       </ul>
     </li>
@@ -369,10 +369,10 @@
         <span>Departamentos</span>
       </a>
       <ul class="sidebar-submenu">
-                  <li><a href="{% url 'afiliados:crear_departamento' %}">Crear Departamentos</a></li>
+                  <li><a href="">Crear Departamentos</a></li>
            
-                   <li><a href="{% url 'afiliados:asignar_departamento' %}">Asignar Departamentos</a></li>
-           <li><a href="{% url 'afiliados:lista_departamentos' %}">Departamentos</a></li>
+                   <li><a href="">Asignar Departamentos</a></li>
+           <li><a href="">Departamentos</a></li>
       
           
       </ul>

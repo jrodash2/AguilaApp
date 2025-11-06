@@ -11,8 +11,9 @@ from django.urls import reverse
 import openpyxl
 from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
-from .form import  PerfilForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm
-from .models import   Perfil,  Institucion
+import requests
+from .form import  AfiliadoForm, PerfilForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm
+from .models import   Afiliado, Perfil,  Institucion
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
@@ -203,7 +204,7 @@ def signin(request):
                 elif g.name == 'afiliados':
                     return redirect('afiliados:dahsboard')
             # Si no se encuentra el grupo adecuado, se redirige a una página por defecto
-            return redirect('dahsboard')
+            return redirect('afiliados:dahsboard')
         else:
             # Si el formulario no es válido, se retorna con el error
             return render(request, 'afiliados/login.html', {
@@ -212,5 +213,97 @@ def signin(request):
                 'institucion': institucion,
             })
 
+
+@login_required
+@grupo_requerido('Administrador')
+def afiliado_lista(request):
+    afiliados = Afiliado.objects.all().select_related('comunidad', 'centro_votacion', 'lider')
+    form = AfiliadoForm()  # Instancia vacía para el modal
+
+    if request.method == 'POST':
+        form = AfiliadoForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('afiliados:afiliado_lista')
+
+    return render(request, 'afiliados/lista.html', {
+        'afiliados': afiliados,
+        'form': form  # Pasamos el formulario al template
+    })
+
+
+# -------------------------------
+# CREAR AFILIADO
+# -------------------------------
+@login_required
+@grupo_requerido('Administrador')
+def afiliado_nuevo(request):
+    if request.method == 'POST':
+        form = AfiliadoForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Afiliado agregado correctamente.")
+            return redirect('afiliados:afiliado_lista')
+    else:
+        form = AfiliadoForm()
+    return render(request, 'afiliados/form.html', {'form': form})
+
+
+# -------------------------------
+# EDITAR AFILIADO
+# -------------------------------
+@login_required
+@grupo_requerido('Administrador')
+def afiliado_editar(request, pk):
+    afiliado = get_object_or_404(Afiliado, pk=pk)
+    if request.method == 'POST':
+        form = AfiliadoForm(request.POST, instance=afiliado)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Afiliado actualizado correctamente.")
+            return redirect('afiliados:afiliado_lista')
+    else:
+        form = AfiliadoForm(instance=afiliado)
+    return render(request, 'afiliados/form.html', {'form': form, 'afiliado': afiliado})
+
+
+# -------------------------------
+# ELIMINAR AFILIADO
+# -------------------------------
+@login_required
+@grupo_requerido('Administrador')
+def afiliado_eliminar(request, pk):
+    afiliado = get_object_or_404(Afiliado, pk=pk)
+    if request.method == 'POST':
+        afiliado.delete()
+        messages.success(request, "Afiliado eliminado correctamente.")
+        return redirect('afiliados:afiliado_lista')
+    return render(request, 'afiliados/confirm_delete.html', {'afiliado': afiliado})
+
+
+# -------------------------------
+# ACCESO DENEGADO
+# -------------------------------
+@login_required
+def acceso_denegado(request):
+    return render(request, 'afiliados/acceso_denegado.html')
+
+from django.http import JsonResponse
+from .selenium_utils import verificar_empadronamiento
+
+def verificar_empadronamiento_ajax(request):
+    if request.method == "POST":
+        dpi = request.POST.get("dpi")
+        fecha_nacimiento = request.POST.get("fecha_nacimiento")
+        if not dpi or not fecha_nacimiento:
+            return JsonResponse({"exito": False, "mensaje": "Datos incompletos"}, status=400)
+
+        try:
+            resultado = verificar_empadronamiento(dpi, fecha_nacimiento)
+            return JsonResponse({"exito": True, "mensaje": resultado})
+        except Exception as e:
+            return JsonResponse({"exito": False, "mensaje": f"Error interno: {str(e)}"}, status=500)
+
+    return JsonResponse({"exito": False, "mensaje": "Método no permitido"}, status=405)
 
 

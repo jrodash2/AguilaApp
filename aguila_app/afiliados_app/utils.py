@@ -18,4 +18,3 @@ def grupo_requerido(*nombres_grupos):
             return redirect(reverse('afiliados:acceso_denegado'))
         return _wrapped_view
     return decorador
-

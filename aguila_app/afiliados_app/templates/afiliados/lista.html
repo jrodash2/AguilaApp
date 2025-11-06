@@ -1,0 +1,249 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+
+<!-- Cargar jQuery y DataTables -->
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
+
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0">Lista de Afiliados</h4>
+        </div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'afiliados:dahsboard' %}">
+                <svg class="stroke-icon">
+                  <use href="../assets/svg/icon-sprite.svg#stroke-home"></use>
+                </svg></a></li>
+            <li class="breadcrumb-item">Dashboard</li>
+            <li class="breadcrumb-item active">Afiliados</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Container-fluid starts-->
+  <div class="container-fluid">
+    <div class="edit-profile">
+      <div class="row">
+        <div class="col-xl-12">
+          <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+              <h5 class="mb-0">Afiliados Registrados</h5>
+              <!-- Botón para abrir modal -->
+              <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#nuevoAfiliadoModal">
+                + Nuevo Afiliado
+              </button>
+            </div>
+            <div class="card-body">
+              <!-- Mensajes de éxito o error -->
+              {% if messages %}
+              <ul>
+                {% for message in messages %}
+                <li class="message">{{ message }}</li>
+                {% endfor %}
+              </ul>
+              {% endif %}
+
+              <!-- Tabla de afiliados -->
+              <div class="table-responsive custom-scrollbar">
+                <table class="display" id="basic-9">
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>DPI</th>
+                      <th>Comunidad</th>
+                      <th>Líder</th>
+                      <th>Centro Votación</th>
+                      <th>Empadronado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for a in afiliados %}
+                    <tr>
+                      <td>{{ a.nombre_completo }}</td>
+                      <td>{{ a.dpi }}</td>
+                      <td>{{ a.comunidad }}</td>
+                      <td>{{ a.lider }}</td>
+                      <td>{{ a.centro_votacion }}</td>
+                      <td>{{ a.empadronado|yesno:"Sí,No" }}</td>
+                      <td>
+                        <a href="{% url 'afiliados:afiliado_editar' a.id %}" class="btn btn-sm btn-warning">Editar</a>
+                        <a href="{% url 'afiliados:afiliado_eliminar' a.id %}" class="btn btn-sm btn-danger">Eliminar</a>
+                      </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                      <td colspan="7" class="text-center text-muted">No hay afiliados registrados.</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>DPI</th>
+                      <th>Comunidad</th>
+                      <th>Líder</th>
+                      <th>Centro Votación</th>
+                      <th>Empadronado</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+              <!-- Fin de tabla -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Container-fluid Ends-->
+</div>
+
+
+<!-- Modal para Nuevo Afiliado con verificación de empadronamiento -->
+<div class="modal fade" id="nuevoAfiliadoModal" tabindex="-1" aria-labelledby="nuevoAfiliadoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content dark-sign-up">
+      <div class="modal-body social-profile text-start p-4">
+
+        <!-- Contenedor con imagen, título y formulario -->
+        <div class="Riho-demo-img">
+          <ul class="dot-group pb-3 pt-0">
+            <li></li>
+            <li></li>
+            <li></li>
+          </ul>
+
+          <div class="title-wrapper pb-3 modal-heading text-center">
+            <h5 class="theme-name mb-0"><span>Nuevo - </span>Afiliado</h5>
+            <p>Complete el formulario para registrar un nuevo afiliado.</p>
+          </div>
+
+          <div class="overflow-hidden text-center mb-4">
+            <a href="">
+    <img class="img-fluid small-logo" src="{{ institucion.logo2.url }}" alt="">
+</a>
+
+          </div>
+
+          <form method="POST" id="formNuevoAfiliado">
+            {% csrf_token %}
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="{{ form.nombre_completo.id_for_label }}" class="form-label">Nombre Completo</label>
+                {{ form.nombre_completo }}
+              </div>
+            </div>
+
+            <div class="row">
+                   <div class="col-md-6 mb-3">
+              <label for="id_dpi" class="form-label">DPI</label>
+              <input type="text" id="id_dpi" name="dpi" class="form-control" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="id_fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
+              <input type="date" id="id_fecha_nacimiento" name="fecha_nacimiento" class="form-control" required>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-12 d-flex justify-content-end">
+              <button type="button" class="btn btn-info" id="btnVerificarEmpadronamiento">
+                Verificar Empadronamiento
+              </button>
+            </div>
+          </div>
+            </div>
+
+            <div id="resultadoEmpadronamiento" class="mb-3"></div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="{{ form.telefono.id_for_label }}" class="form-label">Teléfono</label>
+                {{ form.telefono }}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="{{ form.comunidad.id_for_label }}" class="form-label">Comunidad</label>
+                {{ form.comunidad }}
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="{{ form.lider.id_for_label }}" class="form-label">Líder Comunitario</label>
+                {{ form.lider }}
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="{{ form.centro_votacion.id_for_label }}" class="form-label">Centro de Votación</label>
+                {{ form.centro_votacion }}
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="{{ form.empadronado.id_for_label }}" class="form-label">Empadronado</label>
+                {{ form.empadronado }}
+              </div>
+            </div>
+
+            <div class="text-end mt-3">
+              <button type="submit" class="btn btn-success">Guardar Afiliado</button>
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+$(document).ready(function() {
+    $('#btnVerificarEmpadronamiento').click(function() {
+        var dpi = $('#id_dpi').val();
+        var fecha = $('#id_fecha_nacimiento').val();
+
+        if(!dpi || !fecha){
+            $('#resultadoEmpadronamiento').html('<div class="alert alert-warning">Ingrese DPI y Fecha de Nacimiento</div>');
+            return;
+        }
+
+        $('#resultadoEmpadronamiento').html('<div class="alert alert-info">Verificando empadronamiento...</div>');
+
+        $.ajax({
+            url: "{% url 'afiliados:verificar_empadronamiento' %}", // URL correcta de la view
+            method: "POST",
+            data: {
+                'dpi': dpi,
+                'fecha_nacimiento': fecha,
+                'csrfmiddlewaretoken': '{{ csrf_token }}'
+            },
+            success: function(data) {
+                if(data.exito){
+                    $('#resultadoEmpadronamiento').html('<div class="alert alert-success" style="white-space: pre-wrap;">' + data.mensaje + '</div>');
+                } else {
+                    $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">' + data.mensaje + '</div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">Error al verificar: ' + error + '</div>');
+            }
+        });
+
+    });
+});
+</script>
+
+
+
+{% endblock %}

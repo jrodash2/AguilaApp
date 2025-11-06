@@ -52,3 +52,71 @@ class FraseMotivacional(models.Model):
 
     def __str__(self):
         return f'{self.personaje}: {self.frase}'
+    
+
+
+
+# -------------------------------
+# Comunidad
+# -------------------------------
+class Comunidad(models.Model):
+    nombre = models.CharField(max_length=150, unique=True)
+
+    def __str__(self):
+        return self.nombre
+
+
+# -------------------------------
+# Centro de Votación
+# -------------------------------
+class CentroVotacion(models.Model):
+    nombre = models.CharField(max_length=150)
+    ubicacion = models.TextField()
+
+    def __str__(self):
+        return f"{self.nombre} - {self.ubicacion}"
+
+
+# -------------------------------
+# Comisión
+# -------------------------------
+class Comision(models.Model):
+    nombre = models.CharField(max_length=100, unique=True)
+    descripcion = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.nombre
+
+
+# -------------------------------
+# Líder Comunitario
+# -------------------------------
+class LiderComunitario(models.Model):
+    nombre_completo = models.CharField(max_length=150)
+    telefono = models.CharField(max_length=20, blank=True, null=True)
+    comunidad = models.ForeignKey('Comunidad', on_delete=models.SET_NULL, null=True, blank=True, related_name="lideres")
+    comisiones = models.ManyToManyField('Comision', blank=True, related_name="lideres")
+
+    def __str__(self):
+        if self.comunidad:
+            return f"{self.nombre_completo} ({self.comunidad.nombre})"
+        return self.nombre_completo
+
+
+# -------------------------------
+# Afiliado
+# -------------------------------
+class Afiliado(models.Model):
+    nombre_completo = models.CharField(max_length=150)
+    dpi = models.CharField(max_length=20, unique=True)
+    fecha_nacimiento = models.DateField()
+    telefono = models.CharField(max_length=20, blank=True, null=True)
+    direccion = models.TextField()
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="afiliados")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="afiliados")
+    lider = models.ForeignKey(LiderComunitario, on_delete=models.SET_NULL, null=True, blank=True, related_name="afiliados")
+    empadronado = models.BooleanField(default=False)
+    comisiones = models.ManyToManyField(Comision, blank=True, related_name="afiliados")
+
+    def __str__(self):
+        return f"{self.nombre_completo} ({self.dpi})"
