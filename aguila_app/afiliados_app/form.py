@@ -209,7 +209,7 @@ class AfiliadoForm(forms.ModelForm):
                 format='%Y-%m-%d'  # 🔹 formato ISO compatible con <input type="date">
             ),
             'telefono': forms.TextInput(attrs={'class': 'form-control'}),
-            'direccion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'direccion': forms.TextInput(attrs={'class': 'form-control', 'rows': 3}),
             'comunidad': forms.Select(attrs={'class': 'form-control'}),
             'lider': forms.Select(attrs={'class': 'form-control'}),
             'centro_votacion': forms.Select(attrs={'class': 'form-control'}),

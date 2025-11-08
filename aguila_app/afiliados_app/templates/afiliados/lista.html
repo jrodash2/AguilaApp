@@ -139,7 +139,7 @@
 
           <div class="title-wrapper pb-3 modal-heading text-center">
             <h5 class="theme-name mb-0"><span>Nuevo - </span>Afiliado</h5>
-            <p>Complete el formulario para registrar un nuevo afiliado.</p>
+
           </div>
 
           <div class="overflow-hidden text-center mb-4">
@@ -153,31 +153,55 @@
             {% csrf_token %}
 
             <div class="row">
-              <div class="col-md-6 mb-3">
-                <label for="{{ form.nombre_completo.id_for_label }}" class="form-label">Nombre Completo</label>
-                {{ form.nombre_completo }}
-              </div>
-            </div>
-
-            <div class="row">
-                   <div class="col-md-6 mb-3">
+              
+                  <div class="col-md-6 mb-3">
               <label for="id_dpi" class="form-label">DPI</label>
               <input type="text" id="id_dpi" name="dpi" class="form-control" required>
             </div>
+
+            
             <div class="col-md-6 mb-3">
               <label for="id_fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
               <input type="date" id="id_fecha_nacimiento" name="fecha_nacimiento" class="form-control" required>
             </div>
           </div>
+            <div class="row"> 
+  <div class="col-md-6 mb-3">
+    <label for="{{ form.direccion.id_for_label }}" class="form-label">Municipio de Residencia</label>
+    {{ form.direccion }}
+  </div>
+            
+<div class="col-md-6 mb-3">
+                <label for="{{ form.nombre_completo.id_for_label }}" class="form-label">Nombre Completo</label>
+                {{ form.nombre_completo }}
+  </div>
+<div class="row mb-3 align-items-center">
+  <!-- Checkbox a la izquierda -->
+  <div class="col-md-6 d-flex align-items-center">
+    <label for="{{ form.empadronado.id_for_label }}" class="form-label me-3 mb-0">
+      Empadronado
+    </label>
+    <div class="checkbox-grande">
+      {{ form.empadronado }}
+    </div>
+  </div>
 
-          <div class="row mb-3">
-            <div class="col-12 d-flex justify-content-end">
-              <button type="button" class="btn btn-info" id="btnVerificarEmpadronamiento">
-                Verificar Empadronamiento
-              </button>
-            </div>
-          </div>
-            </div>
+  <!-- Botón a la derecha -->
+  <div class="col-md-6 d-flex justify-content-end">
+    <button type="button" class="btn btn-info" id="btnVerificarEmpadronamiento">
+      Verificar Empadronamiento
+    </button>
+  </div>
+</div>
+
+<style>
+.checkbox-grande input[type="checkbox"] {
+  transform: scale(1.8);
+  cursor: pointer;
+}
+</style>
+
+            
 
             <div id="resultadoEmpadronamiento" class="mb-3"></div>
 
@@ -203,18 +227,8 @@
               </div>
             </div>
 
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label for="{{ form.empadronado.id_for_label }}" class="form-label">Empadronado</label>
-                {{ form.empadronado }}
-              </div>
-              <div class="row">
-  <div class="col-md-12 mb-3">
-    <label for="{{ form.direccion.id_for_label }}" class="form-label">Municipio de Residencia</label>
-    {{ form.direccion }}
-  </div>
 
-            </div>
+         
 
             <div class="text-end mt-3">
               <button type="submit" class="btn btn-success">Guardar Afiliado</button>
@@ -254,34 +268,36 @@ $(document).ready(function() {
             'fecha_nacimiento': fecha,
             'csrfmiddlewaretoken': '{{ csrf_token }}'
         },
+// ... dentro de $('#btnVerificarEmpadronamiento').click(function() { ...
 success: function(data) {
     if(data.exito){
         $('#resultadoEmpadronamiento').html(
             '<div class="alert alert-success" style="white-space: pre-wrap;">' + data.mensaje + '</div>'
         );
 
-        // ✅ 1. Llenamos el campo de nombre
+        // ✅ 1. Llenamos el campo de nombre (ya implementado)
         if (data.nombre) {
             $('#id_nombre_completo').val(data.nombre); 
         }
 
-        // ✅ 2. 🎯 NUEVO: Llenamos el campo de dirección con el municipio
-        // Asume que el campo Dirección tiene el ID 'id_direccion'
+        // ✅ 2. Llenamos el campo de dirección/municipio (ya implementado)
         if (data.municipio) {
             $('#id_direccion').val(data.municipio); 
         }
         
-        // 3. Opcional: si la comunidad está en otro campo, puedes llenarla aquí
-        // if (data.municipio) {
-        //     // Ejemplo: si tu campo Comunidad tiene el ID 'id_comunidad'
-        //     $('#id_comunidad').val(data.municipio);
-        // }
-
+        // 🎯 3. NUEVA FUNCIONALIDAD: MARCAR CHECKBOX EMPADRONADO
+        // Si data.exito es True, el estado es Activo, por lo que marcamos el checkbox.
+        // Asumiendo que el ID del checkbox es 'id_empadronado'
+        $('#id_empadronado').prop('checked', true); // Marca el checkbox
+        
 
     } else {
+        // Si NO fue exitoso (INACTIVO o error), desmarcamos por si acaso.
+        $('#id_empadronado').prop('checked', false); 
         $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">' + data.mensaje + '</div>');
     }
 },
+// ...
         error: function(xhr, status, error) {
             $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">Error al verificar: ' + error + '</div>');
         }
