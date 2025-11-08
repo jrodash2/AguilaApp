@@ -4,120 +4,102 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
 from webdriver_manager.chrome import ChromeDriverManager
-from selenium.common.exceptions import TimeoutException, NoSuchElementException 
 
-def verificar_empadronamiento(num_boleta, fecha_nacimiento, tipo_doc='1'):
+def verificar_empadronamiento(num_boleta, fecha_nacimiento, tipo_doc='3'):
     options = webdriver.ChromeOptions()
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    # options.add_argument("--headless") 
+    # options.add_argument("--headless")  # puedes activarlo si no quieres ver el navegador
 
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
     try:
         driver.get("https://tse.org.gt/reg-ciudadanos/sistema-de-estadisticas/consulta-de-afiliacion")
 
-        # 1. Esperar el iframe e ingresar
+        # 1️⃣ Esperar iframe y acceder
         iframe = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "blockrandom"))
         )
         driver.switch_to.frame(iframe)
 
-        # 2. Seleccionar DPI y Llenar campos
+        # 2️⃣ Seleccionar tipo de documento (DPI)
         radio_dpi = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, 'input[name="tipo_doc"][value="3"]'))
+            EC.element_to_be_clickable((By.CSS_SELECTOR, f'input[name="tipo_doc"][value="{tipo_doc}"]'))
         )
         radio_dpi.click()
 
-        fecha_formateada = fecha_nacimiento
-        try:
-            if '-' in fecha_nacimiento:
-                partes = fecha_nacimiento.split('-')
-                if len(partes) == 3:
-                    fecha_formateada = f"{partes[2]}/{partes[1]}/{partes[0]}"
-        except Exception:
-             pass
+        # 3️⃣ Formatear fecha al formato dd/mm/yyyy
+        if "-" in fecha_nacimiento:
+            partes = fecha_nacimiento.split("-")
+            if len(partes) == 3:
+                fecha_nacimiento = f"{partes[2]}/{partes[1]}/{partes[0]}"
 
+        # 4️⃣ Llenar campos
         driver.find_element(By.ID, "num_doc").send_keys(num_boleta)
         fecha_input = driver.find_element(By.ID, "fecha")
         driver.execute_script(
             "arguments[0].value = arguments[1]; arguments[0].dispatchEvent(new Event('change'));",
-            fecha_input, fecha_formateada
+            fecha_input, fecha_nacimiento
         )
-        
 
+        # 5️⃣ Esperar unos segundos por posible mensaje de error
+        time.sleep(1)
 
-        # --- BLOQUE DE EXTRACCIÓN DE RESULTADOS ---
-        nombre_ciudadano = ""
-        estado_text = "DESCONOCIDO"
-        municipio_residencia = "" # 🎯 NUEVO: Variable para el municipio
-        
-        STATUS_FIELD_ID = "textfield" 
-        NAME_FIELD_ID = "textfield2" 
-        MUNICIPALITY_FIELD_ID = "textfield12" # 🎯 NUEVO: ID para el municipio
+        # 🔹 Buscar directamente si existe el texto de advertencia del TSE
+        if "Es posible que su empadronamiento sea muy reciente" in driver.page_source:
+            mensaje = "❌ El ciudadano no está empadronado o los datos son incorrectos."
+            print(mensaje)
+            # 🔥 Cierra navegador inmediatamente
+            driver.quit()
+            return (mensaje, "", "")
+
+        # 6️⃣ Extraer los campos de resultado
+        campos = {
+            "estado": "textfield",
+            "nombre": "textfield2",
+            "municipio": "textfield12"
+        }
 
         try:
-            # 1. Esperamos hasta que el campo de estado esté visible (CAPTHA resuelto)
-            WebDriverWait(driver, 600).until(
-                EC.visibility_of_element_located((By.ID, STATUS_FIELD_ID))
+            WebDriverWait(driver, 5).until(
+                EC.visibility_of_element_located((By.ID, campos["estado"]))
             )
-            
-            # 2. Inyectamos JavaScript para leer los valores (Añadimos la extracción del Municipio)
+
             script = f"""
-                var estado = document.getElementById('{STATUS_FIELD_ID}').value.trim().toUpperCase();
-                
-                var nombre = '';
-                var nombre_el = document.getElementById('{NAME_FIELD_ID}');
-                if (nombre_el) {{
-                    nombre = nombre_el.value.trim();
-                }}
-
-                var municipio = '';
-                var municipio_el = document.getElementById('{MUNICIPALITY_FIELD_ID}');
-                if (municipio_el) {{
-                    municipio = municipio_el.value.trim();
-                }}
-                
-                return [estado, nombre, municipio]; // 🎯 IMPORTANTE: Devolvemos 3 valores
+                var estado = document.getElementById('{campos["estado"]}')?.value.trim().toUpperCase() || '';
+                var nombre = document.getElementById('{campos["nombre"]}')?.value.trim() || '';
+                var municipio = document.getElementById('{campos["municipio"]}')?.value.trim() || '';
+                return [estado, nombre, municipio];
             """
-            
-            # 3. 🎯 Desempaquetamos los 3 valores devueltos por el script
             estado_text, nombre_ciudadano, municipio_residencia = driver.execute_script(script)
-            
+
         except TimeoutException:
-            estado_text = "DESCONOCIDO"
-            nombre_ciudadano = ""
-            municipio_residencia = ""
-        except Exception as e:
-            print(f"Error al obtener los campos de resultado: {e}")
-            estado_text = "DESCONOCIDO"
-            nombre_ciudadano = ""
-            municipio_residencia = ""
+            estado_text, nombre_ciudadano, municipio_residencia = "", "", ""
 
-
-        # Evaluar resultado
+        # 7️⃣ Evaluar resultado
         if estado_text == "ACTIVO":
-            mensaje = "✅ El ciudadano está EMPADRONADO (Estado: ACTIVO)"
+            mensaje = f"✅ El ciudadano está EMPADRONADO (Estado: ACTIVO)"
         elif estado_text == "INACTIVO":
-            mensaje = "❌ El ciudadano NO está empadronado (Estado: INACTIVO)"
+            mensaje = f"❌ El ciudadano NO está empadronado (Estado: INACTIVO)"
         else:
-            mensaje = "⚠️ No se pudo determinar el estado del ciudadano. Revise los datos y la resolución del CAPTCHA."
+            mensaje = f"⚠️ No se pudo obtener información del TSE."
 
-        print(mensaje)
-        
-        # Pausa de 5 segundos para visualización, solo si la extracción fue exitosa
-        if estado_text != "DESCONOCIDO":
-            print(f"La información se mostrará durante 5 segundos para confirmación.")
-            time.sleep(5)
-        
-        # 🎯 RETORNO CLAVE: Devolvemos la tupla (mensaje, nombre, municipio)
+        print("\n📋 Resultado del TSE:")
+        print(f" - Estado: {estado_text}")
+        print(f" - Nombre: {nombre_ciudadano}")
+        print(f" - Municipio: {municipio_residencia}")
+        print(f" - Mensaje: {mensaje}")
+
         return (mensaje, nombre_ciudadano, municipio_residencia)
 
     except Exception as e:
-        print(f"❌ Error Selenium General: {str(e)}")
-        # Aseguramos que la tupla de retorno siempre tenga 3 elementos
-        return (f"Error Selenium General: {str(e)}", "", "")
+        return (f"❌ Error en Selenium: {str(e)}", "", "")
 
     finally:
-        driver.quit()
+        # Garantiza que siempre se cierre, incluso si hay errores
+        try:
+            driver.quit()
+        except:
+            pass
