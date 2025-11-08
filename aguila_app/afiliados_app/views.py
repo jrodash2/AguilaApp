@@ -318,21 +318,34 @@ def acceso_denegado(request):
     return render(request, 'afiliados/acceso_denegado.html')
 
 from django.http import JsonResponse
-from .selenium_utils import verificar_empadronamiento
+from django.views.decorators.csrf import csrf_exempt
+# Asegúrate de importar la función de Selenium correctamente
+from .selenium_utils import verificar_empadronamiento # Reemplaza 'selenium_utils' si tu archivo se llama diferente
 
+@csrf_exempt
 def verificar_empadronamiento_ajax(request):
-    if request.method == "POST":
-        dpi = request.POST.get("dpi")
-        fecha_nacimiento = request.POST.get("fecha_nacimiento")
+    if request.method == 'POST':
+        dpi = request.POST.get('dpi')
+        fecha_nacimiento = request.POST.get('fecha_nacimiento')
+
         if not dpi or not fecha_nacimiento:
-            return JsonResponse({"exito": False, "mensaje": "Datos incompletos"}, status=400)
+            return JsonResponse({'exito': False, 'mensaje': 'Faltan datos.'})
 
-        try:
-            resultado = verificar_empadronamiento(dpi, fecha_nacimiento)
-            return JsonResponse({"exito": True, "mensaje": resultado})
-        except Exception as e:
-            return JsonResponse({"exito": False, "mensaje": f"Error interno: {str(e)}"}, status=500)
+        # 🎯 CAMBIO CLAVE: Capturamos la tupla (mensaje, nombre)
+        mensaje_resultado, nombre_ciudadano = verificar_empadronamiento(dpi, fecha_nacimiento)
 
-    return JsonResponse({"exito": False, "mensaje": "Método no permitido"}, status=405)
+        if "ACTIVO" in mensaje_resultado:
+            return JsonResponse({
+                'exito': True,
+                'mensaje': mensaje_resultado,
+                # 🎯 Enviamos el nombre REAL obtenido por Selenium
+                'nombre': nombre_ciudadano 
+            })
+        else:
+            return JsonResponse({
+                'exito': False, 
+                'mensaje': mensaje_resultado
+            })
 
+    return JsonResponse({'exito': False, 'mensaje': 'Método no permitido.'}, status=400)
 

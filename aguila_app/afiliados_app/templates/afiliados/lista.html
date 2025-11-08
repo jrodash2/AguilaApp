@@ -75,17 +75,23 @@
                       <td>{{ a.centro_votacion }}</td>
                       <td>{{ a.empadronado|yesno:"Sí,No" }}</td>
                       <td>
-                        <a href="{% url 'afiliados:afiliado_editar' a.id %}" class="btn btn-sm btn-warning">Editar</a>
-                        <a 
-    href="#" 
-    class="btn btn-sm btn-danger btn-eliminar" 
-    data-id="{{ a.id }}" 
-    data-url="{% url 'afiliados:afiliado_eliminar' a.id %}"
->
-    Eliminar
-</a>
+  <ul class="action">
+    <li class="edit">
+      <a href="{% url 'afiliados:afiliado_editar' a.id %}">
+        <i class="icon-pencil-alt"></i>
+      </a>
+    </li>
+    <li class="delete">
+      <a href="#" 
+         class="btn-eliminar" 
+         data-id="{{ a.id }}" 
+         data-url="{% url 'afiliados:afiliado_eliminar' a.id %}">
+        <i class="icon-trash"></i>
+      </a>
+    </li>
+  </ul>
+</td>
 
-                      </td>
                     </tr>
                     {% empty %}
                     <tr>
@@ -220,91 +226,117 @@
     </div>
   </div>
 </div>
-
 <script>
 $(document).ready(function() {
 
-    // --- VERIFICAR EMPADRONAMIENTO ---
-    $('#btnVerificarEmpadronamiento').click(function() {
-        var dpi = $('#id_dpi').val();
-        var fecha = $('#id_fecha_nacimiento').val();
-
-        if(!dpi || !fecha){
-            $('#resultadoEmpadronamiento').html('<div class="alert alert-warning">Ingrese DPI y Fecha de Nacimiento</div>');
-            return;
-        }
-
-        $('#resultadoEmpadronamiento').html('<div class="alert alert-info">Verificando empadronamiento...</div>');
-
-        $.ajax({
-            url: "{% url 'afiliados:verificar_empadronamiento' %}",
-            method: "POST",
-            data: {
-                'dpi': dpi,
-                'fecha_nacimiento': fecha,
-                'csrfmiddlewaretoken': '{{ csrf_token }}'
-            },
-            success: function(data) {
-                if(data.exito){
-                    $('#resultadoEmpadronamiento').html('<div class="alert alert-success" style="white-space: pre-wrap;">' + data.mensaje + '</div>');
-                } else {
-                    $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">' + data.mensaje + '</div>');
-                }
-            },
-            error: function(xhr, status, error) {
-                $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">Error al verificar: ' + error + '</div>');
-            }
-        });
+    // 🎯 CORRECCIÓN CLAVE: ASIGNAR EL ID AL ABRIR EL MODAL
+    $('#nuevoAfiliadoModal').on('shown.bs.modal', function () {
+        $('input[name="nombre_completo"]').attr('id', 'id_nombre_completo');
     });
 
-    // --- GUARDAR NUEVO AFILIADO CON AJAX ---
-    $('#formNuevoAfiliado').on('submit', function(e){
-        e.preventDefault();
+    // --- VERIFICAR EMPADRONAMIENTO ---
+   $('#btnVerificarEmpadronamiento').click(function() {
+    var dpi = $('#id_dpi').val();
+    var fecha = $('#id_fecha_nacimiento').val();
 
-        $.ajax({
-            url: "{% url 'afiliados:afiliado_nuevo' %}",  // usa tu URL de guardado
-            method: "POST",
-            data: $(this).serialize(),
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            success: function(response){
-                if (response.exito) {
-                    // Cerrar modal
-                    $('#nuevoAfiliadoModal').modal('hide');
+    if(!dpi || !fecha){
+        $('#resultadoEmpadronamiento').html('<div class="alert alert-warning">Ingrese DPI y Fecha de Nacimiento</div>');
+        return;
+    }
 
-                    // Limpiar formulario
-                    $('#formNuevoAfiliado')[0].reset();
+    $('#resultadoEmpadronamiento').html('<div class="alert alert-info">Verificando empadronamiento...</div>');
 
-                    // Mostrar alerta
-                    Swal.fire({
-                        icon: 'success',
-                        title: response.mensaje,
-                        showConfirmButton: false,
-                        timer: 2000,
-                        toast: true,
-                        position: 'top-end'
-                    });
-                    setTimeout(function() { 
-                       window.location.reload(); 
-                     }, 1500);
+    $.ajax({
+        url: "{% url 'afiliados:verificar_empadronamiento' %}",
+        method: "POST",
+        data: {
+            'dpi': dpi,
+            'fecha_nacimiento': fecha,
+            'csrfmiddlewaretoken': '{{ csrf_token }}'
+        },
+        success: function(data) {
+            if(data.exito){
+                $('#resultadoEmpadronamiento').html(
+                    '<div class="alert alert-success" style="white-space: pre-wrap;">' + data.mensaje + '</div>'
+                );
 
-                    $('table#basic-9 tbody').append(fila);
+                // ✅ Si está activo y viene el nombre, llenamos el campo de nombre
+                if (data.nombre) {
+                    $('#id_nombre_completo').val(data.nombre); 
+                }
+            } else {
+                $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">' + data.mensaje + '</div>');
+            }
+        },
+        error: function(xhr, status, error) {
+            $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">Error al verificar: ' + error + '</div>');
+        }
+    });
+});
 
-                } else {
-                    Swal.fire({
-                        icon: 'error',
-                        title: response.mensaje,
-                        showConfirmButton: true
-                    });
-                }
-            },
-            error: function(){
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Error al guardar el afiliado. Intente nuevamente.'
-                });
-            }
-        });
-    });
+
+    // --- GUARDAR NUEVO AFILIADO CON AJAX ---
+    $('#formNuevoAfiliado').on('submit', function(e){
+        e.preventDefault();
+
+        $.ajax({
+            url: "{% url 'afiliados:afiliado_nuevo' %}",  // usa tu URL de guardado
+            method: "POST",
+            data: $(this).serialize(),
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            success: function(response){
+                if (response.exito) {
+                    // Cerrar modal
+                    $('#nuevoAfiliadoModal').modal('hide');
+
+                    // Limpiar formulario
+                    $('#formNuevoAfiliado')[0].reset();
+
+                    // Mostrar alerta
+                    Swal.fire({
+                        icon: 'success',
+                        title: response.mensaje,
+                        showConfirmButton: false,
+                        timer: 2000,
+                        toast: true,
+                        position: 'top-end'
+                    });
+                    setTimeout(function() { 
+                       window.location.reload(); 
+                     }, 500);
+
+                    // Opcional: actualizar la tabla sin recargar
+                    var fila = `
+                        <tr>
+                            <td>${response.afiliado.nombre_completo}</td>
+                            <td>${response.afiliado.dpi}</td>
+                            <td>${response.afiliado.comunidad}</td>
+                            <td>${response.afiliado.lider}</td>
+                            <td>${response.afiliado.centro_votacion}</td>
+                            <td>${response.afiliado.empadronado}</td>
+                            <td>
+                                <a href="/afiliados/editar/${response.afiliado.id}/" class="icon-pencil-alt">Editar</a>
+                                <a href="/afiliados/eliminar/${response.afiliado.id}/" class="btn btn-sm btn-danger">Eliminar</a>
+                            </td>
+                        </tr>`;
+                    $('table#basic-9 tbody').append(fila);
+
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: response.mensaje,
+                        showConfirmButton: true
+                    });
+                }
+            },
+            error: function(){
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error al guardar el afiliado. Intente nuevamente.'
+                });
+            }
+        });
+    });
 
 });
 </script>
@@ -313,63 +345,67 @@ $(document).ready(function(){
 
 // --- ELIMINAR AFILIADO ---
 $(document).on('click', '.btn-eliminar', function(e){
-    e.preventDefault();
+    e.preventDefault();
 
-    const afiliadoId = $(this).data('id');
-    const fila = $(this).closest('tr');
+    const afiliadoId = $(this).data('id');
+    const fila = $(this).closest('tr');
 
-    Swal.fire({
-        title: '¿Seguro que deseas eliminar este afiliado?',
-        text: 'Esta acción no se puede deshacer',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: `/afiliados/eliminar/${afiliadoId}/`,
-                method: 'POST', // ⚠️ importante: debe ser POST
-                headers: {
-                    'X-CSRFToken': '{{ csrf_token }}', // ⚠️ importante: token CSRF
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                success: function(response){
-                    if (response.exito) {
-                        Swal.fire({
-                            icon: 'success',
-                            title: response.mensaje,
-                            toast: true,
-                            position: 'top-end',
-                            timer: 1500,
-                            showConfirmButton: false
-                        });
+    Swal.fire({
+        title: '¿Seguro que deseas eliminar este afiliado?',
+        text: 'Esta acción no se puede deshacer',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: `/afiliados/eliminar/${afiliadoId}/`,
+                method: 'POST', // ⚠️ importante: debe ser POST
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}', // ⚠️ importante: token CSRF
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                success: function(response){
+                    if (response.exito) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: response.mensaje,
+                            toast: true,
+                            position: 'top-end',
+                            timer: 1500,
+                            showConfirmButton: false
+                        });
 
-                        // eliminar la fila con animación
-                        fila.fadeOut(400, function(){
-                            $(this).remove();
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'error',
-                            title: response.mensaje
-                        });
-                    }
-                },
-                error: function(){
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error al intentar eliminar el afiliado.'
-                    });
-                }
-            });
-        }
-    });
+                        // eliminar la fila con animación
+                        fila.fadeOut(400, function(){
+                            $(this).remove();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: response.mensaje
+                        });
+                    }
+                },
+                error: function(){
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error al intentar eliminar el afiliado.'
+                    });
+                }
+            });
+        }
+    });
 });
 
 
 });
 </script>
+
+
+
+
 
 
 
