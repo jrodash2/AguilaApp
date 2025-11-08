@@ -36,7 +36,7 @@ urlpatterns = [
     path('lista/', views.afiliado_lista, name='afiliado_lista'),
     path('nuevo/', views.afiliado_nuevo, name='afiliado_nuevo'),
     path('<int:pk>/editar/', views.afiliado_editar, name='afiliado_editar'),
-    path('<int:pk>/eliminar/', views.afiliado_eliminar, name='afiliado_eliminar'),
+    path('eliminar/<int:pk>/', views.afiliado_eliminar, name='afiliado_eliminar'),
     path('verificar_empadronamiento/', views.verificar_empadronamiento_ajax, name='verificar_empadronamiento'),
   
 

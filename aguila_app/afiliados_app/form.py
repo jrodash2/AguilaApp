@@ -194,8 +194,7 @@ class PerfilForm(forms.ModelForm):
         widgets = {
             'foto': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
-  
-# -------------------------------
+  # -------------------------------
 # Formulario Afiliado
 # -------------------------------
 class AfiliadoForm(forms.ModelForm):
@@ -205,7 +204,10 @@ class AfiliadoForm(forms.ModelForm):
         widgets = {
             'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}),
             'dpi': forms.TextInput(attrs={'class': 'form-control'}),
-            'fecha_nacimiento': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'fecha_nacimiento': forms.DateInput(
+                attrs={'class': 'form-control', 'type': 'date'},
+                format='%Y-%m-%d'  # 🔹 formato ISO compatible con <input type="date">
+            ),
             'telefono': forms.TextInput(attrs={'class': 'form-control'}),
             'direccion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'comunidad': forms.Select(attrs={'class': 'form-control'}),
@@ -214,6 +216,12 @@ class AfiliadoForm(forms.ModelForm):
             'empadronado': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'comisiones': forms.SelectMultiple(attrs={'class': 'form-control'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # ✅ Forzar formato correcto de fecha al cargar el formulario (modo edición)
+        if self.instance and self.instance.fecha_nacimiento:
+            self.initial['fecha_nacimiento'] = self.instance.fecha_nacimiento.strftime('%Y-%m-%d')
 
 # -------------------------------
 # Formulario Líder Comunitario

@@ -241,13 +241,38 @@ def afiliado_nuevo(request):
     if request.method == 'POST':
         form = AfiliadoForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, "Afiliado agregado correctamente.")
-            return redirect('afiliados:afiliado_lista')
+            afiliado = form.save()
+
+            # Si la solicitud es AJAX, devolvemos JSON en lugar de redirigir
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                data = {
+                    'exito': True,
+                    'mensaje': "Afiliado agregado correctamente.",
+                    'afiliado': {
+                        'id': afiliado.id,
+                        'nombre_completo': afiliado.nombre_completo,
+                        'dpi': afiliado.dpi,
+                        'comunidad': str(afiliado.comunidad) if afiliado.comunidad else "",
+                        'lider': str(afiliado.lider) if afiliado.lider else "",
+                        'centro_votacion': str(afiliado.centro_votacion) if afiliado.centro_votacion else "",
+                        'empadronado': "Sí" if afiliado.empadronado else "No",
+                    }
+                }
+                return JsonResponse(data)
+            else:
+                messages.success(request, "Afiliado agregado correctamente.")
+                return redirect('afiliados:afiliado_lista')
+        else:
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'exito': False,
+                    'mensaje': "Datos inválidos. Verifique el formulario."
+                })
+
     else:
         form = AfiliadoForm()
-    return render(request, 'afiliados/form.html', {'form': form})
 
+    return render(request, 'afiliados/form.html', {'form': form})
 
 # -------------------------------
 # EDITAR AFILIADO
@@ -266,7 +291,6 @@ def afiliado_editar(request, pk):
         form = AfiliadoForm(instance=afiliado)
     return render(request, 'afiliados/form.html', {'form': form, 'afiliado': afiliado})
 
-
 # -------------------------------
 # ELIMINAR AFILIADO
 # -------------------------------
@@ -274,11 +298,16 @@ def afiliado_editar(request, pk):
 @grupo_requerido('Administrador')
 def afiliado_eliminar(request, pk):
     afiliado = get_object_or_404(Afiliado, pk=pk)
+
     if request.method == 'POST':
         afiliado.delete()
-        messages.success(request, "Afiliado eliminado correctamente.")
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({'exito': True, 'mensaje': 'Afiliado eliminado exitosamente.'})
         return redirect('afiliados:afiliado_lista')
-    return render(request, 'afiliados/confirm_delete.html', {'afiliado': afiliado})
+
+    return JsonResponse({'exito': False, 'mensaje': 'Método no permitido.'}, status=400)
+
+
 
 
 # -------------------------------
