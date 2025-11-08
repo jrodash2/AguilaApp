@@ -316,11 +316,13 @@ def afiliado_eliminar(request, pk):
 @login_required
 def acceso_denegado(request):
     return render(request, 'afiliados/acceso_denegado.html')
+# from django.http import JsonResponse
+# from django.views.decorators.csrf import csrf_exempt
+# from .selenium_utils import verificar_empadronamiento 
 
+from .selenium_utils import verificar_empadronamiento
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-# Asegúrate de importar la función de Selenium correctamente
-from .selenium_utils import verificar_empadronamiento # Reemplaza 'selenium_utils' si tu archivo se llama diferente
 
 @csrf_exempt
 def verificar_empadronamiento_ajax(request):
@@ -331,15 +333,16 @@ def verificar_empadronamiento_ajax(request):
         if not dpi or not fecha_nacimiento:
             return JsonResponse({'exito': False, 'mensaje': 'Faltan datos.'})
 
-        # 🎯 CAMBIO CLAVE: Capturamos la tupla (mensaje, nombre)
-        mensaje_resultado, nombre_ciudadano = verificar_empadronamiento(dpi, fecha_nacimiento)
+        # 🎯 CAMBIO CLAVE: Capturamos la tupla (mensaje, nombre, municipio)
+        mensaje_resultado, nombre_ciudadano, municipio_residencia = verificar_empadronamiento(dpi, fecha_nacimiento)
 
         if "ACTIVO" in mensaje_resultado:
             return JsonResponse({
                 'exito': True,
                 'mensaje': mensaje_resultado,
-                # 🎯 Enviamos el nombre REAL obtenido por Selenium
-                'nombre': nombre_ciudadano 
+                'nombre': nombre_ciudadano,
+                # 🎯 Enviamos el municipio REAL obtenido por Selenium
+                'municipio': municipio_residencia 
             })
         else:
             return JsonResponse({
@@ -348,4 +351,3 @@ def verificar_empadronamiento_ajax(request):
             })
 
     return JsonResponse({'exito': False, 'mensaje': 'Método no permitido.'}, status=400)
-

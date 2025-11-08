@@ -47,11 +47,15 @@ def verificar_empadronamiento(num_boleta, fecha_nacimiento, tipo_doc='1'):
         )
         
 
+
         # --- BLOQUE DE EXTRACCIÓN DE RESULTADOS ---
         nombre_ciudadano = ""
         estado_text = "DESCONOCIDO"
+        municipio_residencia = "" # 🎯 NUEVO: Variable para el municipio
+        
         STATUS_FIELD_ID = "textfield" 
         NAME_FIELD_ID = "textfield2" 
+        MUNICIPALITY_FIELD_ID = "textfield12" # 🎯 NUEVO: ID para el municipio
 
         try:
             # 1. Esperamos hasta que el campo de estado esté visible (CAPTHA resuelto)
@@ -59,26 +63,37 @@ def verificar_empadronamiento(num_boleta, fecha_nacimiento, tipo_doc='1'):
                 EC.visibility_of_element_located((By.ID, STATUS_FIELD_ID))
             )
             
-            # 2. Inyectamos JavaScript para leer los valores DIRECTAMENTE
+            # 2. Inyectamos JavaScript para leer los valores (Añadimos la extracción del Municipio)
             script = f"""
                 var estado = document.getElementById('{STATUS_FIELD_ID}').value.trim().toUpperCase();
+                
                 var nombre = '';
                 var nombre_el = document.getElementById('{NAME_FIELD_ID}');
                 if (nombre_el) {{
                     nombre = nombre_el.value.trim();
                 }}
-                return [estado, nombre];
+
+                var municipio = '';
+                var municipio_el = document.getElementById('{MUNICIPALITY_FIELD_ID}');
+                if (municipio_el) {{
+                    municipio = municipio_el.value.trim();
+                }}
+                
+                return [estado, nombre, municipio]; // 🎯 IMPORTANTE: Devolvemos 3 valores
             """
             
-            estado_text, nombre_ciudadano = driver.execute_script(script)
+            # 3. 🎯 Desempaquetamos los 3 valores devueltos por el script
+            estado_text, nombre_ciudadano, municipio_residencia = driver.execute_script(script)
             
         except TimeoutException:
             estado_text = "DESCONOCIDO"
             nombre_ciudadano = ""
+            municipio_residencia = ""
         except Exception as e:
             print(f"Error al obtener los campos de resultado: {e}")
             estado_text = "DESCONOCIDO"
             nombre_ciudadano = ""
+            municipio_residencia = ""
 
 
         # Evaluar resultado
@@ -91,17 +106,18 @@ def verificar_empadronamiento(num_boleta, fecha_nacimiento, tipo_doc='1'):
 
         print(mensaje)
         
-        # 🎯 NUEVO: Pausa de 10 segundos para visualización, solo si la extracción fue exitosa
+        # Pausa de 5 segundos para visualización, solo si la extracción fue exitosa
         if estado_text != "DESCONOCIDO":
-            print(f"La información se mostrará durante 10 segundos para confirmación.")
-            time.sleep(10)
+            print(f"La información se mostrará durante 5 segundos para confirmación.")
+            time.sleep(5)
         
-        return (mensaje, nombre_ciudadano)
+        # 🎯 RETORNO CLAVE: Devolvemos la tupla (mensaje, nombre, municipio)
+        return (mensaje, nombre_ciudadano, municipio_residencia)
 
     except Exception as e:
         print(f"❌ Error Selenium General: {str(e)}")
-        return (f"Error Selenium General: {str(e)}", "")
+        # Aseguramos que la tupla de retorno siempre tenga 3 elementos
+        return (f"Error Selenium General: {str(e)}", "", "")
 
     finally:
-        # 🎯 driver.quit() cierra la ventana
         driver.quit()

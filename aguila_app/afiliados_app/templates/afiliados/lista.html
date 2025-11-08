@@ -210,7 +210,7 @@
               </div>
               <div class="row">
   <div class="col-md-12 mb-3">
-    <label for="{{ form.direccion.id_for_label }}" class="form-label">Dirección</label>
+    <label for="{{ form.direccion.id_for_label }}" class="form-label">Municipio de Residencia</label>
     {{ form.direccion }}
   </div>
 
@@ -254,20 +254,34 @@ $(document).ready(function() {
             'fecha_nacimiento': fecha,
             'csrfmiddlewaretoken': '{{ csrf_token }}'
         },
-        success: function(data) {
-            if(data.exito){
-                $('#resultadoEmpadronamiento').html(
-                    '<div class="alert alert-success" style="white-space: pre-wrap;">' + data.mensaje + '</div>'
-                );
+success: function(data) {
+    if(data.exito){
+        $('#resultadoEmpadronamiento').html(
+            '<div class="alert alert-success" style="white-space: pre-wrap;">' + data.mensaje + '</div>'
+        );
 
-                // ✅ Si está activo y viene el nombre, llenamos el campo de nombre
-                if (data.nombre) {
-                    $('#id_nombre_completo').val(data.nombre); 
-                }
-            } else {
-                $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">' + data.mensaje + '</div>');
-            }
-        },
+        // ✅ 1. Llenamos el campo de nombre
+        if (data.nombre) {
+            $('#id_nombre_completo').val(data.nombre); 
+        }
+
+        // ✅ 2. 🎯 NUEVO: Llenamos el campo de dirección con el municipio
+        // Asume que el campo Dirección tiene el ID 'id_direccion'
+        if (data.municipio) {
+            $('#id_direccion').val(data.municipio); 
+        }
+        
+        // 3. Opcional: si la comunidad está en otro campo, puedes llenarla aquí
+        // if (data.municipio) {
+        //     // Ejemplo: si tu campo Comunidad tiene el ID 'id_comunidad'
+        //     $('#id_comunidad').val(data.municipio);
+        // }
+
+
+    } else {
+        $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">' + data.mensaje + '</div>');
+    }
+},
         error: function(xhr, status, error) {
             $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">Error al verificar: ' + error + '</div>');
         }
