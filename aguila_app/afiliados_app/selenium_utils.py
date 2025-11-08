@@ -18,19 +18,18 @@ def verificar_empadronamiento(num_boleta, fecha_nacimiento, tipo_doc='1'):
     try:
         driver.get("https://tse.org.gt/reg-ciudadanos/sistema-de-estadisticas/consulta-de-afiliacion")
 
-        # Esperar el iframe e ingresar
+        # 1. Esperar el iframe e ingresar
         iframe = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "blockrandom"))
         )
         driver.switch_to.frame(iframe)
 
-        # Seleccionar tipo de documento
-        tipo_radio = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, f'input[name="tipo_doc"][value="{tipo_doc}"]'))
+        # 2. Seleccionar DPI y Llenar campos
+        radio_dpi = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, 'input[name="tipo_doc"][value="3"]'))
         )
-        tipo_radio.click()
+        radio_dpi.click()
 
-        # --- 🔧 Convertir formato de fecha ---
         fecha_formateada = fecha_nacimiento
         try:
             if '-' in fecha_nacimiento:
@@ -40,33 +39,27 @@ def verificar_empadronamiento(num_boleta, fecha_nacimiento, tipo_doc='1'):
         except Exception:
              pass
 
-        # --- 🧾 Llenar número de documento y fecha ---
         driver.find_element(By.ID, "num_doc").send_keys(num_boleta)
         fecha_input = driver.find_element(By.ID, "fecha")
         driver.execute_script(
             "arguments[0].value = arguments[1]; arguments[0].dispatchEvent(new Event('change'));",
             fecha_input, fecha_formateada
         )
+        
 
-        print("🧩 Esperando que resuelvas el CAPTCHA y se cargue el resultado...")
-
+        # --- BLOQUE DE EXTRACCIÓN DE RESULTADOS ---
         nombre_ciudadano = ""
         estado_text = "DESCONOCIDO"
-        
-        # ID del campo de estado:
         STATUS_FIELD_ID = "textfield" 
-        # 🎯 CAMBIO CLAVE: USAR EL ID CORRECTO PARA EL NOMBRE
         NAME_FIELD_ID = "textfield2" 
 
-        # Bloque de espera y extracción con JS
         try:
-            
-            # 1. Esperamos hasta que el campo de estado esté visible 
+            # 1. Esperamos hasta que el campo de estado esté visible (CAPTHA resuelto)
             WebDriverWait(driver, 600).until(
                 EC.visibility_of_element_located((By.ID, STATUS_FIELD_ID))
             )
             
-            # 2. Inyectamos JavaScript para leer los valores
+            # 2. Inyectamos JavaScript para leer los valores DIRECTAMENTE
             script = f"""
                 var estado = document.getElementById('{STATUS_FIELD_ID}').value.trim().toUpperCase();
                 var nombre = '';
@@ -77,7 +70,6 @@ def verificar_empadronamiento(num_boleta, fecha_nacimiento, tipo_doc='1'):
                 return [estado, nombre];
             """
             
-            # Ejecutamos el script y recibimos los resultados
             estado_text, nombre_ciudadano = driver.execute_script(script)
             
         except TimeoutException:
@@ -88,6 +80,7 @@ def verificar_empadronamiento(num_boleta, fecha_nacimiento, tipo_doc='1'):
             estado_text = "DESCONOCIDO"
             nombre_ciudadano = ""
 
+
         # Evaluar resultado
         if estado_text == "ACTIVO":
             mensaje = "✅ El ciudadano está EMPADRONADO (Estado: ACTIVO)"
@@ -97,9 +90,12 @@ def verificar_empadronamiento(num_boleta, fecha_nacimiento, tipo_doc='1'):
             mensaje = "⚠️ No se pudo determinar el estado del ciudadano. Revise los datos y la resolución del CAPTCHA."
 
         print(mensaje)
-        time.sleep(2)
         
-        # RETORNO CLAVE: Devolvemos la tupla (mensaje, nombre)
+        # 🎯 NUEVO: Pausa de 10 segundos para visualización, solo si la extracción fue exitosa
+        if estado_text != "DESCONOCIDO":
+            print(f"La información se mostrará durante 10 segundos para confirmación.")
+            time.sleep(10)
+        
         return (mensaje, nombre_ciudadano)
 
     except Exception as e:
@@ -107,4 +103,5 @@ def verificar_empadronamiento(num_boleta, fecha_nacimiento, tipo_doc='1'):
         return (f"Error Selenium General: {str(e)}", "")
 
     finally:
+        # 🎯 driver.quit() cierra la ventana
         driver.quit()
