@@ -88,23 +88,9 @@ class Comision(models.Model):
         return self.nombre
 
 
-# -------------------------------
-# Líder Comunitario
-# -------------------------------
-class LiderComunitario(models.Model):
-    nombre_completo = models.CharField(max_length=150)
-    telefono = models.CharField(max_length=20, blank=True, null=True)
-    comunidad = models.ForeignKey('Comunidad', on_delete=models.SET_NULL, null=True, blank=True, related_name="lideres")
-    comisiones = models.ManyToManyField('Comision', blank=True, related_name="lideres")
-
-    def __str__(self):
-        if self.comunidad:
-            return f"{self.nombre_completo} ({self.comunidad.nombre})"
-        return self.nombre_completo
-
 
 # -------------------------------
-# Afiliado
+# Afiliado (Modelo modificado)
 # -------------------------------
 class Afiliado(models.Model):
     nombre_completo = models.CharField(max_length=150)
@@ -114,7 +100,21 @@ class Afiliado(models.Model):
     direccion = models.TextField()
     comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="afiliados")
     centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="afiliados")
-    lider = models.ForeignKey(LiderComunitario, on_delete=models.SET_NULL, null=True, blank=True, related_name="afiliados")
+    
+    # 🌟 Campo para identificar si ESTE afiliado es un líder
+    es_lider_comunitario = models.BooleanField(default=False)
+    
+    # 🔗 Clave foránea recursiva para vincular este afiliado a SU líder
+    # Solo se puede vincular a otro Afiliado que es un líder.
+    lider_vinculado = models.ForeignKey(
+        'self', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name="referidos",
+        limit_choices_to={'es_lider_comunitario': True} # Opcional: limita la elección solo a los que son líderes
+    )
+    
     empadronado = models.BooleanField(default=False)
     comisiones = models.ManyToManyField(Comision, blank=True, related_name="afiliados")
 

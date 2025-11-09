@@ -1,0 +1,172 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<div class="page-body">
+    <div class="container-fluid">
+        <div class="page-title">
+            <div class="row">
+                <div class="col-6">
+                    <h4 class="card-title mb-0">Lista de Líderes Comunitarios</h4>
+                </div>
+                <div class="col-6">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'afiliados:dahsboard' %}">
+                            <svg class="stroke-icon">
+                                <use href="../assets/svg/icon-sprite.svg#stroke-home"></use>
+                            </svg></a></li>
+                        <li class="breadcrumb-item">Dashboard</li>
+                        <li class="breadcrumb-item active">Líderes</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="edit-profile">
+            <div class="row">
+                <div class="col-xl-12">
+                    <div class="card">
+                        
+                        {# ENCABEZADO DE LISTA (CORREGIDO) #}
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Líderes Comunitarios Registrados</h5>
+                        </div>
+                        
+                        <div class="card-body">
+                            {% if messages %}
+                            <ul>
+                                {% for message in messages %}
+                                <li class="message">{{ message }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+
+                            <div class="table-responsive custom-scrollbar">
+                                <table class="display" id="basic-9">
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre</th>
+                                            <th>DPI</th>
+                                            <th>Comunidad</th>
+                                            <th>Teléfono</th> 
+                                            <th>Referidos</th> 
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for a in lideres %}
+                                        <tr>
+                                            <td>{{ a.nombre_completo }}</td>
+                                            <td>{{ a.dpi }}</td>
+                                            <td>{{ a.comunidad }}</td>
+                                            <td>{{ a.telefono|default:"N/A" }}</td>
+                                            <td><span class="badge bg-primary">{{ a.referidos.count }}</span></td> 
+                                            <td>
+                                                <ul class="action d-flex">
+                                                    {# ENLACES DENTRO DEL BUCLE (USANDO 'a') #}
+                                                    <li class="detail me-2"> 
+                                                        <a href="{% url 'afiliados:afiliado_detalle' a.id %}" title="Ver Detalle">
+                                                            <i class="icon-eye"></i> 
+                                                        </a>
+                                                    </li>
+                                                    
+                                                    <li class="edit me-2"> 
+    <a href="{% url 'afiliados:lider_editar' a.id %}" title="Editar Líder">
+        <i class="icon-pencil-alt"></i>
+    </a>
+</li>
+                                                    
+                                                    <li class="delete"> 
+                                                        <a href="#" 
+                                                            class="btn-eliminar" 
+                                                            data-id="{{ a.id }}" 
+                                                            data-url="{% url 'afiliados:afiliado_eliminar' a.id %}"
+                                                            title="Eliminar">
+                                                            <i class="icon-trash"></i>
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted">No hay líderes comunitarios registrados.</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <th>Nombre</th>
+                                            <th>DPI</th>
+                                            <th>Comunidad</th>
+                                            <th>Teléfono</th>
+                                            <th>Referidos</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<script>
+$(document).ready(function(){
+
+    // --- ELIMINAR AFILIADO ---
+    $(document).on('click', '.btn-eliminar', function(e){
+        e.preventDefault();
+
+        const afiliadoId = $(this).data('id');
+        const fila = $(this).closest('tr');
+
+        Swal.fire({
+            title: '¿Seguro que deseas eliminar este afiliado?',
+            text: 'Esta acción no se puede deshacer',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, eliminar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: `/afiliados/eliminar/${afiliadoId}/`,
+                    method: 'POST', 
+                    headers: {
+                        // El token CSRF se obtiene del formulario implícito de la página
+                        'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val(), 
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    success: function(response){
+                        if (response.exito) {
+                            Swal.fire({ icon: 'success', title: response.mensaje, toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
+                            fila.fadeOut(400, function(){ $(this).remove(); });
+                        } else {
+                            Swal.fire({ icon: 'error', title: response.mensaje });
+                        }
+                    },
+                    error: function(){
+                        Swal.fire({ icon: 'error', title: 'Error al intentar eliminar el afiliado.' });
+                    }
+                });
+            }
+        });
+    });
+
+    // Nota: Se asume que DataTables ya se inicializa globalmente mediante datatable.custom.js.
+});
+</script>
+
+{% endblock %}

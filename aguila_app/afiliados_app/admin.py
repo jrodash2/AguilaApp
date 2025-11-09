@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Institucion, Perfil, FraseMotivacional,
-    Comunidad, CentroVotacion, Comision, LiderComunitario, Afiliado
+    Comunidad, CentroVotacion, Comision, Afiliado
 )
 
 # -------------------------------
@@ -59,31 +59,14 @@ class ComisionAdmin(admin.ModelAdmin):
 
 admin.site.register(Comision, ComisionAdmin)
 
-# -------------------------------
-# Admin para Lider Comunitario
-# -------------------------------
-class LiderComunitarioAdmin(admin.ModelAdmin):
-    list_display = ('nombre_completo', 'telefono', 'comunidad_list', 'comisiones_list')
-    search_fields = ('nombre_completo', 'telefono', 'comunidad__nombre', 'comisiones__nombre')
-    filter_horizontal = ('comisiones',)
-
-    def comunidad_list(self, obj):
-        return obj.comunidad.nombre if obj.comunidad else "-"
-    comunidad_list.short_description = 'Comunidad'
-
-    def comisiones_list(self, obj):
-        return ", ".join([c.nombre for c in obj.comisiones.all()])
-    comisiones_list.short_description = 'Comisiones'
-
-admin.site.register(LiderComunitario, LiderComunitarioAdmin)
 
 # -------------------------------
 # Admin para Afiliado
 # -------------------------------
 class AfiliadoAdmin(admin.ModelAdmin):
-    list_display = ('nombre_completo', 'dpi', 'comunidad', 'lider', 'centro_votacion', 'empadronado', 'comisiones_list')
-    search_fields = ('nombre_completo', 'dpi', 'comunidad__nombre', 'lider__nombre_completo', 'centro_votacion__nombre')
-    list_filter = ('empadronado', 'comunidad', 'lider', 'centro_votacion')
+    list_display = ('nombre_completo', 'dpi', 'comunidad','centro_votacion', 'empadronado', 'comisiones_list')
+    search_fields = ('nombre_completo', 'dpi', 'comunidad__nombre', 'centro_votacion__nombre')
+    list_filter = ('empadronado', 'comunidad','centro_votacion')
     filter_horizontal = ('comisiones',)
 
     def comisiones_list(self, obj):

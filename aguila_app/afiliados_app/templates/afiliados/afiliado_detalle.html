@@ -1,0 +1,416 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<div class="page-body">
+    <div class="container-fluid">
+        <div class="page-title">
+            <div class="row">
+                <div class="col-12">
+                    <h4 class="card-title mb-0">Detalle de Afiliado</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row">
+            
+            {# Card Principal del Afiliado #}
+            <div class="col-xl-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{{ afiliado.nombre_completo }} (DPI: {{ afiliado.dpi }})</h5>
+                        <a href="{% url 'afiliados:afiliado_editar' afiliado.id %}" class="btn btn-warning">
+                            <i class="icon-pencil-alt"></i> Editar
+                        </a>
+                    </div>
+                    
+                    <div class="card-body">
+                        
+                        <h6 class="border-bottom pb-2 mb-3">Información Personal y Contacto</h6>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <p><strong>DPI:</strong> {{ afiliado.dpi }}</p>
+                                <p><strong>Teléfono:</strong> {{ afiliado.telefono|default:"N/A" }}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <p><strong>Fecha de Nacimiento:</strong> {{ afiliado.fecha_nacimiento|date:"d/m/Y" }}</p>
+                                <p><strong>Dirección/Municipio:</strong> {{ afiliado.direccion }}</p>
+                            </div>
+                        </div>
+
+                        <h6 class="border-bottom pb-2 mt-4 mb-3">Información Organizacional</h6>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <p><strong>Comunidad:</strong> {{ afiliado.comunidad|default:"N/A" }}</p>
+                                <p><strong>Centro de Votación:</strong> {{ afiliado.centro_votacion|default:"N/A" }}</p>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <p><strong>Empadronado:</strong> 
+                                    <span class="badge {% if afiliado.empadronado %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ afiliado.empadronado|yesno:"Sí,No" }}
+                                    </span>
+                                </p>
+                                <p><strong>Líder Referente:</strong> {{ afiliado.lider_vinculado.nombre_completo|default:"Ninguno" }}</p>
+                            </div>
+                            <div class="col-md-12 mb-3">
+                                <p><strong>Comisiones:</strong> 
+                                    {% for comision in afiliado.comisiones.all %}
+                                        <span class="badge bg-primary">{{ comision.nombre }}</span>
+                                    {% empty %}
+                                        <span class="text-muted">Ninguna</span>
+                                    {% endfor %}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <h6 class="border-bottom pb-2 mt-4 mb-3">Rol de Liderazgo</h6>
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <p><strong>Es Líder Comunitario:</strong> 
+                                    <span class="badge {% if afiliado.es_lider_comunitario %}bg-info{% else %}bg-secondary{% endif %}">
+                                        {{ afiliado.es_lider_comunitario|yesno:"Sí,No" }}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+            
+            {# Card de Referidos (Solo si es líder) #}
+            {% if afiliado.es_lider_comunitario %}
+            <div class="col-xl-12 mt-4"> 
+                <div class="card">
+                    
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 text-success">Personas Referidas ({{ referidos.count }})</h5>
+                        
+                        {# Botón que abre el modal y pasa el ID del líder #}
+                        <button type="button" 
+                                class="btn btn-success" 
+                                data-bs-toggle="modal" 
+                                data-bs-target="#nuevoAfiliadoModal"
+                                data-lider-id="{{ afiliado.id }}"
+                                data-lider-nombre="{{ afiliado.nombre_completo }}">
+                            + Añadir Referido
+                        </button>
+                    </div>
+                    
+                    <div class="card-body">
+                        {% if referidos %}
+                            <div class="table-responsive custom-scrollbar">
+                                <table class="display" id="basic-9"> {# ID Cambiado a 'referidos-table' para inicialización #}
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre</th>
+                                            <th>DPI</th>
+                                            <th>Teléfono</th>
+                                            <th>Comunidad</th>
+                                            <th>Detalle</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for referido in referidos %}
+                                            <tr>
+                                                <td>{{ referido.nombre_completo }}</td>
+                                                <td>{{ referido.dpi }}</td>
+                                                <td>{{ referido.telefono|default:"N/A" }}</td>
+                                                <td>{{ referido.comunidad|default:"N/A" }}</td>
+                                                <td>
+                                                    <a href="{% url 'afiliados:afiliado_detalle' referido.id %}"  title="Ver Detalle">
+                                                        <i class="icon-eye"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-warning mb-0">Este líder aún no tiene afiliados vinculados.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+        </div>
+    </div>
+</div>
+
+
+<div class="modal fade" id="nuevoAfiliadoModal" tabindex="-1" aria-labelledby="nuevoAfiliadoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content dark-sign-up">
+            <div class="modal-body social-profile text-start p-4">
+                <div class="Riho-demo-img">
+                    <ul class="dot-group pb-3 pt-0">
+                        <li></li>
+                        <li></li>
+                        <li></li>
+                    </ul>
+
+                    <div class="title-wrapper pb-3 modal-heading text-center">
+                        <h5 class="theme-name mb-0"><span>Nuevo - </span>Afiliado</h5>
+                    </div>
+
+                    <div class="overflow-hidden text-center mb-4">
+                        <a href="">
+                            <img class="img-fluid small-logo" src="{{ institucion.logo2.url }}" alt="">
+                        </a>
+                    </div>
+
+                    <form method="POST" id="formNuevoAfiliado">
+                        {% csrf_token %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="id_dpi" class="form-label">DPI</label>
+                                <input type="text" id="id_dpi" name="dpi" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="id_fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
+                                <input type="date" id="id_fecha_nacimiento" name="fecha_nacimiento" class="form-control" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.nombre_completo.id_for_label }}" class="form-label">Nombre Completo</label>
+                                {{ form.nombre_completo }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.direccion.id_for_label }}" class="form-label">Municipio de Residencia</label>
+                                {{ form.direccion }}
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3 p-3 border rounded" style="background-color: rgba(255, 255, 255, 0.05);">
+                            <div class="col-md-12">
+                                <h6 class="mb-3 text-white">Verificación y Roles</h6>
+                            </div>
+                            
+                            <div class="col-md-6 d-flex flex-column gap-2">
+                                <div class="d-flex align-items-center">
+                                    <label for="{{ form.empadronado.id_for_label }}" class="form-label me-3 mb-0" style="min-width: 120px;">
+                                        Empadronado
+                                    </label>
+                                    <div class="checkbox-grande">
+                                        {{ form.empadronado }}
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex align-items-center mt-2">
+                                    <label for="{{ form.es_lider_comunitario.id_for_label }}" class="form-label me-3 mb-0" style="min-width: 120px;">
+                                        **Es Líder Comunitario**
+                                    </label>
+                                    <div class="checkbox-grande">
+                                        {{ form.es_lider_comunitario }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 d-flex align-items-center justify-content-end">
+                                <button type="button" class="btn btn-info w-75" id="btnVerificarEmpadronamiento">
+                                    Verificar Empadronamiento
+                                </button>
+                            </div>
+                            
+                        </div>
+                        <div id="resultadoEmpadronamiento" class="mb-3"></div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.telefono.id_for_label }}" class="form-label">Teléfono</label>
+                                {{ form.telefono }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.comunidad.id_for_label }}" class="form-label">Comunidad</label>
+                                {{ form.comunidad }}
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.lider_vinculado.id_for_label }}" class="form-label">Líder Vinculado (Referente)</label>
+                                {{ form.lider_vinculado }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.centro_votacion.id_for_label }}" class="form-label">Centro de Votación</label>
+                                {{ form.centro_votacion }}
+                            </div>
+                        </div>
+                        
+                       
+
+                        <div class="text-end mt-3">
+                            <button type="submit" class="btn btn-success">Guardar Afiliado</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.checkbox-grande input[type="checkbox"] {
+  transform: scale(1.8);
+  cursor: pointer;
+}
+</style>
+
+
+<script>
+$(document).ready(function() {
+
+    // --- 1. LÓGICA DE PRE-SELECCIÓN DE LÍDER ---
+    $('#nuevoAfiliadoModal').on('show.bs.modal', function (event) {
+        var button = $(event.relatedTarget); // Botón que activó el modal
+        var liderId = button.data('lider-id');
+        var liderNombre = button.data('lider-nombre');
+        var modal = $(this);
+        
+        var liderVinculadoField = modal.find('#id_lider_vinculado');
+
+        // Resetear estado inicial (si se usa el modal para otros fines)
+        liderVinculadoField.prop('disabled', false);
+        liderVinculadoField.val('');
+        modal.find('.modal-heading h5').html('<span>Nuevo - </span>Afiliado');
+
+
+        // Si viene de un botón 'Añadir Referido' del detalle de un líder
+        if (liderId) {
+            // Pre-selecciona el ID del líder actual
+            liderVinculadoField.val(liderId);
+            
+            // Deshabilita el campo para que el usuario no lo cambie
+            liderVinculadoField.prop('disabled', true); 
+
+            // Actualiza el título del modal para contexto
+            modal.find('.modal-heading h5').html('Añadir Referido a: <span>' + liderNombre + '</span>');
+        }
+    });
+
+    // CRUCIAL: Restaurar el campo antes de cerrar el modal para que su valor sea enviado
+    $('#nuevoAfiliadoModal').on('hide.bs.modal', function () {
+        var liderVinculadoField = $(this).find('#id_lider_vinculado');
+        liderVinculadoField.prop('disabled', false);
+    });
+    
+    // 🎯 CORRECCIÓN CLAVE: ASIGNAR EL ID AL ABRIR EL MODAL (Necesario para el llenado de nombre)
+    $('#nuevoAfiliadoModal').on('shown.bs.modal', function () {
+        $('input[name="nombre_completo"]').attr('id', 'id_nombre_completo');
+    });
+
+    // --- 2. LÓGICA DE VERIFICACIÓN DE EMPADRONAMIENTO ---
+    $('#btnVerificarEmpadronamiento').click(function() {
+    var dpi = $('#id_dpi').val();
+    var fecha = $('#id_fecha_nacimiento').val();
+
+    if(!dpi || !fecha){
+        $('#resultadoEmpadronamiento').html('<div class="alert alert-warning">Ingrese DPI y Fecha de Nacimiento</div>');
+        return;
+    }
+
+    $('#resultadoEmpadronamiento').html('<div class="alert alert-info">Verificando empadronamiento...</div>');
+
+    $.ajax({
+        url: "{% url 'afiliados:verificar_empadronamiento' %}",
+        method: "POST",
+        data: {
+            'dpi': dpi,
+            'fecha_nacimiento': fecha,
+            'csrfmiddlewaretoken': $('input[name="csrfmiddlewaretoken"]').val()
+        },
+        success: function(data) {
+            if(data.exito){
+                $('#resultadoEmpadronamiento').html(
+                    '<div class="alert alert-success" style="white-space: pre-wrap;">' + data.mensaje + '</div>'
+                );
+                if (data.nombre) {
+                    $('#id_nombre_completo').val(data.nombre); 
+                }
+                if (data.municipio) {
+                    $('#id_direccion').val(data.municipio); 
+                }
+                $('#id_empadronado').prop('checked', true); 
+            } else {
+                $('#id_empadronado').prop('checked', false); 
+                $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">' + data.mensaje + '</div>');
+            }
+        },
+        error: function(xhr, status, error) {
+            $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">Error al verificar: ' + error + '</div>');
+        }
+    });
+});
+
+
+    // --- 3. GUARDAR NUEVO AFILIADO CON AJAX ---
+    $('#formNuevoAfiliado').on('submit', function(e){
+        e.preventDefault();
+
+        $.ajax({
+            url: "{% url 'afiliados:afiliado_nuevo' %}", 
+            method: "POST",
+            data: $(this).serialize(),
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            success: function(response){
+                if (response.exito) {
+                    $('#nuevoAfiliadoModal').modal('hide');
+                    Swal.fire({
+                        icon: 'success',
+                        title: response.mensaje,
+                        showConfirmButton: false,
+                        timer: 2000,
+                        toast: true,
+                        position: 'top-end'
+                    });
+                    // Recargamos la página de detalle para ver el nuevo referido
+                    setTimeout(function() { 
+                        window.location.reload(); 
+                    }, 500);
+
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: response.mensaje,
+                        showConfirmButton: true
+                    });
+                }
+            },
+            error: function(){
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error al guardar el afiliado. Intente nuevamente.'
+                });
+            }
+        });
+    });
+    
+    // --- 4. INICIALIZACIÓN DE DATATABLES ---
+    if ($.fn.DataTable) {
+        // Inicializar tabla de referidos
+        $('#referidos-table').DataTable({
+            // Aquí puedes dejar la configuración de tu tabla DataTables
+            "language": {
+                "url": "//cdn.datatables.net/plug-ins/1.10.25/i18n/Spanish.json"
+            }
+        });
+    }
+
+
+});
+</script>
+
+{% endblock %}

@@ -217,7 +217,7 @@ def signin(request):
 @login_required
 @grupo_requerido('Administrador')
 def afiliado_lista(request):
-    afiliados = Afiliado.objects.all().select_related('comunidad', 'centro_votacion', 'lider')
+    afiliados = Afiliado.objects.all().select_related('comunidad', 'centro_votacion')
     form = AfiliadoForm()  # Instancia vacía para el modal
 
     if request.method == 'POST':
@@ -232,47 +232,72 @@ def afiliado_lista(request):
     })
 
 
-# -------------------------------
-# CREAR AFILIADO
-# -------------------------------
 @login_required
-@grupo_requerido('Administrador')
+@csrf_exempt # Solo si estás usando AJAX sin manejar CSRF token en el header correctamente
 def afiliado_nuevo(request):
+    institucion = Institucion.objects.first()
+    
     if request.method == 'POST':
-        form = AfiliadoForm(request.POST)
-        if form.is_valid():
-            afiliado = form.save()
-
-            # Si la solicitud es AJAX, devolvemos JSON en lugar de redirigir
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-                data = {
+        # 1. Usar el AfiliadoForm actualizado
+        form = AfiliadoForm(request.POST) 
+        
+        # Si la solicitud es AJAX (desde el modal)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            
+            if form.is_valid():
+                afiliado = form.save()
+                
+                # 🛠️ Verificación Adicional (Opcional pero Recomendada)
+                # Si el afiliado es guardado con lider_vinculado, nos aseguramos que ese 'lider_vinculado'
+                # realmente exista y sea un líder (aunque el form ya lo limite, esto es una capa de seguridad).
+                if afiliado.lider_vinculado and not afiliado.lider_vinculado.es_lider_comunitario:
+                    # Esto no debería pasar si limit_choices_to funciona, pero es buena práctica.
+                    # Podrías registrar un error o limpiar el campo si es necesario.
+                    pass 
+                
+                # Preparamos la respuesta para AJAX
+                response_data = {
                     'exito': True,
-                    'mensaje': "Afiliado agregado correctamente.",
+                    'mensaje': f"Afiliado '{afiliado.nombre_completo}' guardado con éxito.",
                     'afiliado': {
                         'id': afiliado.id,
                         'nombre_completo': afiliado.nombre_completo,
-                        'dpi': afiliado.dpi,
-                        'comunidad': str(afiliado.comunidad) if afiliado.comunidad else "",
-                        'lider': str(afiliado.lider) if afiliado.lider else "",
-                        'centro_votacion': str(afiliado.centro_votacion) if afiliado.centro_votacion else "",
-                        'empadronado': "Sí" if afiliado.empadronado else "No",
+                        # ... puedes añadir más campos para actualizar la tabla si es necesario
                     }
                 }
-                return JsonResponse(data)
+                return JsonResponse(response_data, status=200)
+            
             else:
-                messages.success(request, "Afiliado agregado correctamente.")
-                return redirect('afiliados:afiliado_lista')
-        else:
-            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                # Manejar errores de validación para AJAX
+                error_html = render_to_string('afiliados/partials/form_errors.html', {'form': form})
                 return JsonResponse({
                     'exito': False,
-                    'mensaje': "Datos inválidos. Verifique el formulario."
-                })
-
+                    'mensaje': "Error de validación. Revise los campos.",
+                    'errores': form.errors.as_json()
+                }, status=400)
+                
+        # Si la solicitud es POST normal (no AJAX)
+        else:
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Afiliado guardado con éxito.')
+                return redirect('afiliados:afiliados_lista') # Asegúrate que el nombre de la URL sea correcto
+            else:
+                messages.error(request, 'Hubo un error al guardar el afiliado.')
+                # Si no es AJAX, podrías renderizar la página completa con el formulario con errores
+                
     else:
+        # Petición GET: Creamos el formulario vacío
         form = AfiliadoForm()
 
-    return render(request, 'afiliados/form.html', {'form': form})
+    # Renderizamos la lista principal o el contexto para el modal (si no es AJAX)
+    # Asumiendo que esta vista es la que renderiza la lista principal y el modal
+    context = {
+        'afiliados': Afiliado.objects.all(),
+        'form': form, # El formulario vacío o con errores
+        'institucion': institucion
+    }
+    return render(request, 'afiliados/afiliados_lista.html', context)
 
 # -------------------------------
 # EDITAR AFILIADO
@@ -291,6 +316,51 @@ def afiliado_editar(request, pk):
         form = AfiliadoForm(instance=afiliado)
     return render(request, 'afiliados/form.html', {'form': form, 'afiliado': afiliado})
 
+@login_required
+# @grupo_requerido('Administrador') # Descomentar si usas este decorador
+def lider_editar(request, pk):
+    afiliado = get_object_or_404(Afiliado, pk=pk)
+    
+    # OPCIONAL: Si el objeto no es un líder, redirigir a la edición general
+    # if not afiliado.es_lider_comunitario:
+    #     return redirect('afiliados:afiliado_editar', pk=pk)
+
+    if request.method == 'POST':
+        form = AfiliadoForm(request.POST, instance=afiliado)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Líder {afiliado.nombre_completo} actualizado correctamente.")
+            return redirect('afiliados:lideres_lista') # 🚀 Redirección CLAVE
+    else:
+        form = AfiliadoForm(instance=afiliado)
+    
+    # Cambiamos el contexto para indicar que es una edición de líder (opcional)
+    context = {
+        'form': form, 
+        'afiliado': afiliado,
+        'es_lider_edicion': True # Usar esta variable en el template para cambiar el título
+    }
+    return render(request, 'afiliados/form.html', context)
+
+@login_required
+def lideres_lista(request):
+    """Muestra solo a los afiliados que son Líderes Comunitarios."""
+    
+    # Filtramos la lista de Afiliados donde es_lider_comunitario es True
+    lideres = Afiliado.objects.filter(es_lider_comunitario=True).select_related('comunidad', 'centro_votacion').order_by('nombre_completo')
+    
+    # Necesitas el formulario para el modal 'Nuevo Afiliado'
+    form = AfiliadoForm()
+    institucion = Institucion.objects.first()
+
+    context = {
+        'lideres': lideres, # Renombramos la variable a 'lideres' para evitar confusiones
+        'form': form,
+        'institucion': institucion,
+    }
+    
+    return render(request, 'afiliados/lideres_lista.html', context)
+
 # -------------------------------
 # ELIMINAR AFILIADO
 # -------------------------------
@@ -307,7 +377,28 @@ def afiliado_eliminar(request, pk):
 
     return JsonResponse({'exito': False, 'mensaje': 'Método no permitido.'}, status=400)
 
+# En tu archivo afiliados_app/views.py
 
+from .form import AfiliadoForm # Asegúrate de importar el formulario
+
+@login_required
+def afiliado_detalle(request, pk):
+    afiliado = get_object_or_404(Afiliado, pk=pk)
+    institucion = Institucion.objects.first()
+    
+    referidos = afiliado.referidos.all() # Ya no necesitamos el if, si no es líder estará vacío
+    
+    # 🆕 IMPORTANTE: Creamos el formulario para el modal
+    form = AfiliadoForm() 
+    
+    context = {
+        'afiliado': afiliado,
+        'institucion': institucion,
+        'referidos': referidos,
+        'form': form, # <-- Pasamos el formulario al template
+    }
+    
+    return render(request, 'afiliados/afiliado_detalle.html', context)
 
 
 # -------------------------------

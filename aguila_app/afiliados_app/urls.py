@@ -38,6 +38,9 @@ urlpatterns = [
     path('<int:pk>/editar/', views.afiliado_editar, name='afiliado_editar'),
     path('eliminar/<int:pk>/', views.afiliado_eliminar, name='afiliado_eliminar'),
     path('verificar_empadronamiento/', views.verificar_empadronamiento_ajax, name='verificar_empadronamiento'),
+    path('detalle/<int:pk>/', views.afiliado_detalle, name='afiliado_detalle'),
+    path('lideres/', views.lideres_lista, name='lideres_lista'),
+    path('<int:pk>/editar-lider/', views.lider_editar, name='lider_editar'),
   
 
 

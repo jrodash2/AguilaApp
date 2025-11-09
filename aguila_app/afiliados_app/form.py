@@ -4,7 +4,7 @@ from django.forms import CheckboxInput, DateInput, inlineformset_factory, modelf
 from django.core.exceptions import ValidationError
 
 
-from .models import  Perfil,  Institucion, Afiliado, LiderComunitario, Comunidad, CentroVotacion, Comision
+from .models import  Perfil,  Institucion, Afiliado, Comunidad, CentroVotacion, Comision
 
 from django.db.models import Sum, F, Value
 from django.db.models.functions import Coalesce
@@ -194,27 +194,42 @@ class PerfilForm(forms.ModelForm):
         widgets = {
             'foto': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
-  # -------------------------------
+
+
+from django import forms
+# Asegúrate de importar tu modelo Afiliado
+# from .models import Afiliado # o la ruta correcta
+# -------------------------------
 # Formulario Afiliado
 # -------------------------------
 class AfiliadoForm(forms.ModelForm):
     class Meta:
         model = Afiliado
-        fields = '__all__'
+        # ⚠️ IMPORTANTE: Ajustar la lista de campos
+        fields = [
+            'nombre_completo', 'dpi', 'fecha_nacimiento', 'telefono', 
+            'direccion', 'comunidad', 'centro_votacion', 
+            'es_lider_comunitario',  # 🌟 NUEVO: El check para ser líder
+            'lider_vinculado',       # 🔗 RENOMBRADO: Apunta a otro Afiliado (Líder)
+            'empadronado', 
+            'comisiones'
+        ]
+        
         widgets = {
             'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}),
             'dpi': forms.TextInput(attrs={'class': 'form-control'}),
             'fecha_nacimiento': forms.DateInput(
                 attrs={'class': 'form-control', 'type': 'date'},
-                format='%Y-%m-%d'  # 🔹 formato ISO compatible con <input type="date">
+                format='%Y-%m-%d'
             ),
             'telefono': forms.TextInput(attrs={'class': 'form-control'}),
             'direccion': forms.TextInput(attrs={'class': 'form-control', 'rows': 3}),
             'comunidad': forms.Select(attrs={'class': 'form-control'}),
-            'lider': forms.Select(attrs={'class': 'form-control'}),
+            'lider_vinculado': forms.Select(attrs={'class': 'form-control'}), # 🔗 RENOMBRADO
             'centro_votacion': forms.Select(attrs={'class': 'form-control'}),
             'empadronado': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'comisiones': forms.SelectMultiple(attrs={'class': 'form-control'}),
+            'es_lider_comunitario': forms.CheckboxInput(attrs={'class': 'form-check-input'}), # 🌟 NUEVO
+
         }
 
     def __init__(self, *args, **kwargs):
@@ -222,21 +237,9 @@ class AfiliadoForm(forms.ModelForm):
         # ✅ Forzar formato correcto de fecha al cargar el formulario (modo edición)
         if self.instance and self.instance.fecha_nacimiento:
             self.initial['fecha_nacimiento'] = self.instance.fecha_nacimiento.strftime('%Y-%m-%d')
-
-# -------------------------------
-# Formulario Líder Comunitario
-# -------------------------------
-class LiderForm(forms.ModelForm):
-    class Meta:
-        model = LiderComunitario
-        fields = '__all__'
-        widgets = {
-            'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}),
-            'telefono': forms.TextInput(attrs={'class': 'form-control'}),
-            'comunidad': forms.Select(attrs={'class': 'form-control'}),
-            'comisiones': forms.SelectMultiple(attrs={'class': 'form-control'}),
-        }
-
+        
+        # 🎨 Opcional: Renombrar la etiqueta del campo 'lider_vinculado'
+        self.fields['lider_vinculado'].label = 'Líder (Afiliado Referente)'
 # -------------------------------
 # Formulario Comunidad
 # -------------------------------
