@@ -12,8 +12,8 @@ import openpyxl
 from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 import requests
-from .form import  AfiliadoForm, PerfilForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm
-from .models import   Afiliado, Perfil,  Institucion
+from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm
+from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Perfil,  Institucion
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
@@ -156,13 +156,98 @@ from django.utils import timezone
 from django.db.models import Count, Q, Sum
 import json
 
+
 @login_required
 @grupo_requerido('Administrador', 'afiliados')
 def dahsboard(request):
 
+    # === Totales para las cards ===
+    total_afiliados = Afiliado.objects.count()
+    total_lideres = Afiliado.objects.filter(es_lider_comunitario=True).count()
+    total_comunidades = Comunidad.objects.count()
+    total_empadronados = Afiliado.objects.filter(empadronado=True).count()
 
+    # === 1. Últimos afiliados registrados ===
+    ultimos_afiliados = (
+        Afiliado.objects.select_related('comunidad')
+        .order_by('-id')[:10]
+    )
 
-    return render(request, 'afiliados/dashboard.html')
+    # === 2. Afiliados por comunidad ===
+    afiliados_por_comunidad = (
+        Afiliado.objects.values('comunidad__nombre')
+        .annotate(total=Count('id'))
+        .order_by('comunidad__nombre')
+    )
+
+    # === 3. Líderes por comunidad ===
+    lideres_por_comunidad = (
+        Afiliado.objects.filter(es_lider_comunitario=True)
+        .values('comunidad__nombre')
+        .annotate(total=Count('id'))
+        .order_by('comunidad__nombre')
+    )
+
+    # === 4. Afiliados por rango de edad ===
+    hoy = timezone.now().date()
+
+    rangos = {
+        "18-25": 0,
+        "26-35": 0,
+        "36-45": 0,
+        "46-60": 0,
+        "60+": 0,
+    }
+
+    afiliados = Afiliado.objects.exclude(fecha_nacimiento__isnull=True)
+
+    for a in afiliados:
+        fn = a.fecha_nacimiento
+        edad = hoy.year - fn.year - ((hoy.month, hoy.day) < (fn.month, fn.day))
+
+        if edad <= 25:
+            rangos["18-25"] += 1
+        elif edad <= 35:
+            rangos["26-35"] += 1
+        elif edad <= 45:
+            rangos["36-45"] += 1
+        elif edad <= 60:
+            rangos["46-60"] += 1
+        else:
+            rangos["60+"] += 1
+
+    rangos_edad = [
+        {"rango": "18-25", "total": rangos["18-25"]},
+        {"rango": "26-35", "total": rangos["26-35"]},
+        {"rango": "36-45", "total": rangos["36-45"]},
+        {"rango": "46-60", "total": rangos["46-60"]},
+        {"rango": "60+",   "total": rangos["60+"]},
+    ]
+
+    # === 5. Empadronados ===
+    total_no_empadronados = Afiliado.objects.filter(empadronado=False).count()
+
+    # === CONTEXT ===
+    context = {
+        # Totales para las cards
+        'total_afiliados': total_afiliados,
+        'total_lideres': total_lideres,
+        'total_comunidades': total_comunidades,
+        'total_empadronados': total_empadronados,
+
+        # Datos para dashboard
+        'ultimos_afiliados': ultimos_afiliados,
+        'afiliados_por_comunidad': list(afiliados_por_comunidad),
+        'lideres_por_comunidad': list(lideres_por_comunidad),
+        'rangos_edad': rangos_edad,
+        'empadronados': {
+            'empadronados': total_empadronados,
+            'no_empadronados': total_no_empadronados,
+        }
+    }
+
+    return render(request, 'afiliados/dahsboard.html', context)
+
 
 
 def acceso_denegado(request, exception=None):
@@ -442,3 +527,222 @@ def verificar_empadronamiento_ajax(request):
             })
 
     return JsonResponse({'exito': False, 'mensaje': 'Método no permitido.'}, status=400)
+
+# -----------------------------------------
+# CRUD - COMUNIDAD
+# -----------------------------------------
+
+@login_required
+@grupo_requerido('Administrador', 'afiliados')
+def comunidad_lista(request):
+    comunidades = Comunidad.objects.all().order_by('nombre')
+    form = ComunidadForm()  # Nuevo formulario vacío 
+
+    return render(request, 'afiliados/comunidad_lista.html', {
+        'form': form,
+        'comunidades': comunidades
+    })
+
+
+@login_required
+@grupo_requerido('Administrador')
+def comunidad_nueva(request):
+    if request.method == 'POST':
+        form = ComunidadForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Comunidad creada correctamente.")
+            return redirect('afiliados:comunidad_lista')
+    else:
+        form = ComunidadForm()
+
+    comunidades = Comunidad.objects.all().order_by('nombre')
+
+    return render(request, 'afiliados/comunidad_lista.html', {
+        'form': form,
+        'comunidades': comunidades
+    })
+
+
+@login_required
+@grupo_requerido('Administrador')
+def comunidad_editar(request, pk):
+    comunidad = get_object_or_404(Comunidad, pk=pk)
+
+    if request.method == "POST":
+        form = ComunidadForm(request.POST, instance=comunidad)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Comunidad actualizada correctamente.")
+            return redirect('afiliados:comunidad_lista')
+    else:
+        form = ComunidadForm(instance=comunidad)
+
+    comunidades = Comunidad.objects.all().order_by('nombre')
+
+    return render(request, 'afiliados/comunidad_lista.html', {
+        'form': form,
+        'comunidad': comunidad,
+        'comunidades': comunidades,
+    })
+
+
+@login_required
+@grupo_requerido('Administrador')
+def comunidad_eliminar(request, pk):
+    comunidad = get_object_or_404(Comunidad, pk=pk)
+
+    if request.method == 'POST':
+        comunidad.delete()
+        messages.success(request, "Comunidad eliminada.")
+        return redirect('afiliados:comunidad_lista')
+
+    # ❌ Ya NO renderizamos nada
+    return redirect('afiliados:comunidad_lista')
+
+# -----------------------------------------
+# CRUD - CENTRO DE VOTACION
+# -----------------------------------------
+# -----------------------------------------
+# CRUD - CENTRO DE VOTACIÓN (MisMO estilo)
+# -----------------------------------------
+
+@login_required
+@grupo_requerido('Administrador', 'afiliados')
+def centro_lista(request):
+    centros = CentroVotacion.objects.all().order_by('nombre')
+    form = CentroVotacionForm()  # formulario vacío para creación
+
+    return render(request, 'afiliados/centro_lista.html', {
+        'form': form,
+        'centros': centros
+    })
+
+
+@login_required
+@grupo_requerido('Administrador')
+def centro_nuevo(request):
+    if request.method == 'POST':
+        form = CentroVotacionForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Centro de Votación creado correctamente.")
+            return redirect('afiliados:centro_lista')
+    else:
+        form = CentroVotacionForm()
+
+    centros = CentroVotacion.objects.all().order_by('nombre')
+
+    return render(request, 'afiliados/centro_lista.html', {
+        'form': form,
+        'centros': centros
+    })
+
+
+@login_required
+@grupo_requerido('Administrador')
+def centro_editar(request, pk):
+    centro = get_object_or_404(CentroVotacion, pk=pk)
+
+    if request.method == "POST":
+        form = CentroVotacionForm(request.POST, instance=centro)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Centro de Votación actualizado correctamente.")
+            return redirect('afiliados:centro_lista')
+    else:
+        form = CentroVotacionForm(instance=centro)
+
+    centros = CentroVotacion.objects.all().order_by('nombre')
+
+    return render(request, 'afiliados/centro_lista.html', {
+        'form': form,
+        'centro': centro,
+        'centros': centros,
+    })
+
+
+@login_required
+@grupo_requerido('Administrador')
+def centro_eliminar(request, pk):
+    centro = get_object_or_404(CentroVotacion, pk=pk)
+
+    if request.method == 'POST':
+        centro.delete()
+        messages.success(request, "Centro de votación eliminado.")
+        return redirect('afiliados:centro_lista')
+
+    return redirect('afiliados:centro_lista')
+
+# -----------------------------------------
+# CRUD - COMISION
+# -----------------------------------------
+# -----------------------------------------
+# CRUD - COMISIÓN (Mismo estilo)
+# -----------------------------------------
+
+@login_required
+@grupo_requerido('Administrador', 'afiliados')
+def comision_lista(request):
+    comisiones = Comision.objects.all().order_by('nombre')
+    form = ComisionForm()
+
+    return render(request, 'afiliados/comision_lista.html', {
+        'form': form,
+        'comisiones': comisiones,
+    })
+
+
+@login_required
+@grupo_requerido('Administrador')
+def comision_nueva(request):
+    if request.method == 'POST':
+        form = ComisionForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Comisión creada correctamente.")
+            return redirect('afiliados:comision_lista')
+
+    comisiones = Comision.objects.all().order_by('nombre')
+    form = ComisionForm()
+
+    return render(request, 'afiliados/comision_lista.html', {
+        'form': form,
+        'comisiones': comisiones,
+    })
+
+
+@login_required
+@grupo_requerido('Administrador')
+def comision_editar(request, pk):
+    comision = get_object_or_404(Comision, pk=pk)
+
+    if request.method == 'POST':
+        form = ComisionForm(request.POST, instance=comision)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Comisión actualizada correctamente.")
+            return redirect('afiliados:comision_lista')
+    else:
+        form = ComisionForm(instance=comision)
+
+    comisiones = Comision.objects.all().order_by('nombre')
+
+    return render(request, 'afiliados/comision_lista.html', {
+        'form': form,
+        'comision': comision,
+        'comisiones': comisiones,
+    })
+
+
+@login_required
+@grupo_requerido('Administrador')
+def comision_eliminar(request, pk):
+    comision = get_object_or_404(Comision, pk=pk)
+
+    if request.method == 'POST':
+        comision.delete()
+        messages.success(request, "Comisión eliminada correctamente.")
+        return redirect('afiliados:comision_lista')
+
+    return redirect('afiliados:comision_lista')

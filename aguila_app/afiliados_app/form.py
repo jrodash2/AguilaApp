@@ -240,27 +240,23 @@ class AfiliadoForm(forms.ModelForm):
         
         # 🎨 Opcional: Renombrar la etiqueta del campo 'lider_vinculado'
         self.fields['lider_vinculado'].label = 'Líder (Afiliado Referente)'
-# -------------------------------
-# Formulario Comunidad
-# -------------------------------
+
+
 class ComunidadForm(forms.ModelForm):
     class Meta:
-        model = Comunidad
-        fields = ['nombre']
-        widgets = {
-            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
-        }
+         model = Comunidad
+         fields = ['nombre']
+         widgets = {
+             'nombre': forms.TextInput(attrs={'class': 'form-control'})
+         }
 
-# -------------------------------
-# Formulario Centro de Votación
-# -------------------------------
 class CentroVotacionForm(forms.ModelForm):
     class Meta:
         model = CentroVotacion
         fields = ['nombre', 'ubicacion']
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
-            'ubicacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'ubicacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 
 # -------------------------------
@@ -274,3 +270,14 @@ class ComisionForm(forms.ModelForm):
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
+
+
+class ComisionForm(forms.ModelForm):
+    class Meta:
+        model = Comision
+        fields = ['nombre', 'descripcion']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+

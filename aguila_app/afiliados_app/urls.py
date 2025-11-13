@@ -41,6 +41,31 @@ urlpatterns = [
     path('detalle/<int:pk>/', views.afiliado_detalle, name='afiliado_detalle'),
     path('lideres/', views.lideres_lista, name='lideres_lista'),
     path('<int:pk>/editar-lider/', views.lider_editar, name='lider_editar'),
+
+    # -----------------------
+# CRUD Comunidad
+# -----------------------
+path('comunidades/', views.comunidad_lista, name='comunidad_lista'),
+path('comunidades/nuevo/', views.comunidad_nueva, name='comunidad_nueva'),
+path('comunidades/editar/<int:pk>/', views.comunidad_editar, name='comunidad_editar'),
+path('comunidades/eliminar/<int:pk>/', views.comunidad_eliminar, name='comunidad_eliminar'),
+
+# -----------------------
+# CRUD Centro Votacion
+# -----------------------
+path('centros/', views.centro_lista, name='centro_lista'),
+path('centros/nuevo/', views.centro_nuevo, name='centro_nuevo'),
+path('centros/editar/<int:pk>/', views.centro_editar, name='centro_editar'),
+path('centros/eliminar/<int:pk>/', views.centro_eliminar, name='centro_eliminar'),
+
+# -----------------------
+# CRUD Comision
+# -----------------------
+path('comisiones/', views.comision_lista, name='comision_lista'),
+path('comisiones/nuevo/', views.comision_nueva, name='comision_nueva'),
+path('comisiones/editar/<int:pk>/', views.comision_editar, name='comision_editar'),
+path('comisiones/eliminar/<int:pk>/', views.comision_eliminar, name='comision_eliminar'),
+
   
 
 

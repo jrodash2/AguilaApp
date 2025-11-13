@@ -1,0 +1,152 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+
+<!-- Cargar jQuery y DataTable -->
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
+
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0">
+            {% if centro %}
+              Editar Centro de Votación
+            {% else %}
+              Crear Centro de Votación
+            {% endif %}
+          </h4>
+        </div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+              <a href="{% url 'afiliados:centro_lista' %}">
+                <svg class="stroke-icon">
+                  <use href="{% static 'assets/svg/icon-sprite.svg#stroke-home' %}"></use>
+                </svg>
+              </a>
+            </li>
+            <li class="breadcrumb-item">Dashboard</li>
+            <li class="breadcrumb-item active">Centro de Votación</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Container-fluid starts-->
+  <div class="container-fluid">
+    <div class="edit-profile">
+      <div class="row">
+        <div class="col-xl-12">
+          <div class="card">
+            <div class="card-body">
+
+              <!-- MENSAJES -->
+              {% if messages %}
+                <ul>
+                  {% for message in messages %}
+                    <li class="message">{{ message }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+
+              <!-- ERRORES -->
+              {% if form.errors %}
+              <div class="alert alert-danger">
+                <ul>
+                  {% for field, errors in form.errors.items %}
+                    <li><strong>{{ field }}:</strong> {{ errors|join:', ' }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+
+              <!-- FORMULARIO -->
+<form method="POST" 
+      action="{% if centro %}{% url 'afiliados:centro_editar' centro.pk %}{% else %}{% url 'afiliados:centro_nuevo' %}{% endif %}">
+    {% csrf_token %}
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="{{ form.nombre.id_for_label }}">Nombre del Centro de Votación</label>
+                {{ form.nombre }}
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="{{ form.ubicacion.id_for_label }}">Ubicación</label>
+                {{ form.ubicacion }}
+            </div>
+        </div>
+    </div>
+
+    <div class="form-footer text-end mt-3">
+        <button class="btn btn-primary" type="submit">
+            {% if centro %}Actualizar Centro{% else %}Crear Centro{% endif %}
+        </button>
+    </div>
+</form>
+
+              <!-- TABLA -->
+              <div class="mt-5">
+                <h5>Listado de Centros de Votación</h5>
+                <div class="table-responsive custom-scrollbar">
+                  <table class="display" id="basic-9">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Ubicación</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for c in centros %}
+                      <tr>
+                        <td>{{ c.id }}</td>
+                        <td>{{ c.nombre }}</td>
+                        <td>{{ c.ubicacion }}</td>
+                        <td>
+
+                          <a href="{% url 'afiliados:centro_editar' c.pk %}"
+                             class="btn btn-primary btn-sm">Editar</a>
+
+                          <form method="POST" action="{% url 'afiliados:centro_eliminar' c.pk %}"
+                                style="display:inline;">
+                              {% csrf_token %}
+                              <button type="submit" class="btn btn-danger btn-sm">
+                                Eliminar
+                              </button>
+                          </form>
+
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Ubicación</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+            </div> <!-- card-body -->
+          </div> <!-- card -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,143 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+
+<!-- Cargar jQuery y DataTable -->
+<script src="{% static 'assets/js/jquery.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
+<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
+
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0">
+            {% if form.instance.pk %}
+              Editar Comunidad
+            {% else %}
+              Crear Comunidad
+            {% endif %}
+          </h4>
+        </div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+              <a href="{% url 'afiliados:comunidad_lista' %}">
+                <svg class="stroke-icon">
+                  <use href="{% static 'assets/svg/icon-sprite.svg#stroke-home' %}"></use>
+                </svg>
+              </a>
+            </li>
+            <li class="breadcrumb-item">Dashboard</li>
+            <li class="breadcrumb-item active">Comunidad</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Container-fluid starts-->
+  <div class="container-fluid">
+    <div class="edit-profile">
+      <div class="row">
+        <div class="col-xl-12">
+          <div class="card">
+            <div class="card-body">
+
+              <!-- MENSAJES -->
+              {% if messages %}
+                <ul>
+                  {% for message in messages %}
+                    <li class="message">{{ message }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+
+              <!-- ERRORES -->
+              {% if form.errors %}
+              <div class="alert alert-danger">
+                <ul>
+                  {% for field, errors in form.errors.items %}
+                    <li><strong>{{ field }}:</strong> {{ errors|join:', ' }}</li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+
+              <!-- FORMULARIO -->
+<form method="POST" 
+      action="{% if comunidad %}{% url 'afiliados:comunidad_editar' comunidad.pk %}{% else %}{% url 'afiliados:comunidad_nueva' %}{% endif %}">
+    {% csrf_token %}
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="form-group">
+                <label for="{{ form.nombre.id_for_label }}">Nombre de la Comunidad</label>
+                {{ form.nombre }}
+            </div>
+        </div>
+    </div>
+
+    <div class="form-footer text-end mt-3">
+        <button class="btn btn-primary" type="submit">
+            {% if comunidad %}Actualizar Comunidad{% else %}Crear Comunidad{% endif %}
+        </button>
+    </div>
+</form>
+
+
+              <!-- TABLA -->
+              <div class="mt-5">
+                <h5>Listado de Comunidades</h5>
+                <div class="table-responsive custom-scrollbar">
+                  <table class="display" id="basic-9">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for c in comunidades %}
+                      <tr>
+                        <td>{{ c.id }}</td>
+                        <td>{{ c.nombre }}</td>
+                        <td>
+                          <a href="{% url 'afiliados:comunidad_editar' c.pk %}"
+                             class="btn btn-primary btn-sm">Editar</a>
+
+                          <form method="POST" 
+      action="{% url 'afiliados:comunidad_eliminar' c.pk %}" 
+      style="display:inline;">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger btn-sm">
+        Eliminar
+    </button>
+</form>
+
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Acciones</th>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+            </div> <!-- card-body -->
+          </div> <!-- card -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

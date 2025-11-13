@@ -1,36 +1,369 @@
-
 {% extends 'afiliados/base.html' %}
 {% load static %}
-{% block title %}Inicio{% endblock %}
 
 {% block content %}
 
-
-
-
-
-
 <div class="page-body">
-    <div class="container-fluid">
-      <div class="page-title">
-        <div class="row">
-          <div class="col-6">
-            <h4>Dashboard</h4>
-          </div>
-          <div class="col-6"> 
-            <ol class="breadcrumb">
-              <li class="breadcrumb-item"><a href="">                                       
-                  <svg class="stroke-icon">
-                    <use href="../assets/svg/icon-sprite.svg#stroke-home"></use>
-                  </svg></a></li>
+ <div class="container-fluid">
+<!-- ======== CARDS ASIMÉTRICOS CELESTE ======== -->
+<!-- ======== CARDS ASIMÉTRICOS CELESTE ======== -->
+ <style>
+    /* 🔥 Baja todo el contenido para que no lo tape el menú horizontal */
+    .page-body {
+        margin-top: 150px !important;   /* Ajusta si necesitas más */
+    }
 
-            </ol>
-          </div>
+    @media (max-width: 768px) {
+        .page-body {
+            margin-top: 80px !important; /* móviles requieren más espacio */
+        }
+    }
+</style>
+
+<style>
+    .card-asim {
+        background: #e3f2fd; /* Celeste claro */
+        border: none;
+        border-radius: 18px;
+        padding: 25px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+        transition: all 0.35s ease;
+        color: #100464 !important; /* 🔥 TEXTO NEGRO */
+    }
+
+    .card-asim:hover {
+        transform: translateY(-6px) scale(1.02);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.12);
+    }
+
+    .card-asim .label {
+        font-size: 15px;
+        font-weight: 600;
+        opacity: 1;      /* 🔥 antes .8, ahora mejor visibilidad */
+        color: #000;     /* 🔥 TEXTO NEGRO */
+    }
+
+    .card-asim .value {
+        font-size: 38px;
+        font-weight: 800;
+        margin-top: -5px;
+        color: #100464;     /* 🔥 TEXTO NEGRO */
+    }
+
+    /* Icono diagonal grande */
+    .card-asim svg {
+        position: absolute;
+        right: -20px;
+        bottom: -20px;
+        width: 120px;
+        height: 120px;
+        opacity: 0.18; /* un poco más fuerte para contraste */
+        transform: rotate(-15deg);
+        fill: #000; /* 🔥 icono negro para mantener estética */
+        stroke: #000;
+    }
+
+    /* Efecto flotante */
+    .float {
+        animation: flotar 4s ease-in-out infinite;
+    }
+
+    @keyframes flotar {
+        0% { transform: translateY(0px); }
+        50% { transform: translateY(-6px); }
+        100% { transform: translateY(0px); }
+    }
+</style>
+
+
+<div class="row mt-4">
+
+    <!-- Afiliados -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card-asim float">
+            <div class="label">Afiliados</div>
+            <div class="value">{{ total_afiliados }}</div>
+
+            <svg class="stroke-icon">
+                <use href="../assets/svg/icon-sprite.svg#stroke-user"></use>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Líderes -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card-asim float" style="animation-delay: .2s;">
+            <div class="label">Líderes</div>
+            <div class="value">{{ total_lideres }}</div>
+
+            <svg class="stroke-icon">
+                <use href="../assets/svg/icon-sprite.svg#stroke-user"></use>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Comunidades -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card-asim float" style="animation-delay: .4s;">
+            <div class="label">Comunidades</div>
+            <div class="value">{{ total_comunidades }}</div>
+
+            <svg class="stroke-icon">
+                <use href="../assets/svg/icon-sprite.svg#stroke-gallery"></use>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Empadronados -->
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card-asim float" style="animation-delay: .6s;">
+            <div class="label">Empadronados</div>
+            <div class="value">{{ total_empadronados }}</div>
+
+            <svg class="stroke-icon">
+                <use href="../assets/svg/icon-sprite.svg#stroke-task"></use>
+            </svg>
+        </div>
+    </div>
+
+</div>
+<!-- ======== FIN CARDS ASIMÉTRICOS ======== -->
+
+  <!-- Fila 1: Afiliados + Líderes -->
+  <div class="row mt-4">
+    
+    <!-- Afiliados por Comunidad -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="card-title">Afiliados por Comunidad</h4>
+        </div>
+        <div class="card-body">
+          <div id="chartAfiliadosComunidad"></div>
         </div>
       </div>
     </div>
 
+    <!-- Líderes por Comunidad -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="card-title">Líderes por Comunidad</h4>
+        </div>
+        <div class="card-body">
+          <div id="chartLideresComunidad"></div>
+        </div>
+      </div>
+    </div>
 
   </div>
+
+  <!-- Fila 2: Edades + Empadronados -->
+  <div class="row mt-4">
+
+    <!-- Afiliados por Edad -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="card-title">Distribución por Rango de Edad</h4>
+        </div>
+        <div class="card-body">
+          <div id="chartEdad"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empadronados vs No Empadronados -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h4 class="card-title">Empadronados</h4>
+        </div>
+        <div class="card-body">
+          <div id="chartEmpadronados"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+ </div>
+</div>
+<style>
+    /* Fondo suave para las gráficas */
+    .card .card-body {
+        background: #f9fbff;
+        border-radius: 15px;
+    }
+
+    /* Título más moderno */
+    .card-title {
+        font-weight: 700;
+        font-size: 18px;
+        color: #0d47a1;
+    }
+</style>
+
 {% endblock %}
+{% block extra_js %}
+
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+<script>
+// Datos Django
+const afiliadosCom = {{ afiliados_por_comunidad|safe }};
+const lideresCom = {{ lideres_por_comunidad|safe }};
+const edades = {{ rangos_edad|safe }};
+const empad = {{ empadronados|safe }};
+
+// PALETA MODERNA
+const colors = ['#1565c0', '#42a5f5', '#64b5f6', '#90caf9', '#0d47a1'];
+
+/* ----------------------------------
+   1. Gráfico de Afiliados por Comunidad (Bar Moderno)
+---------------------------------- */
+new ApexCharts(document.querySelector("#chartAfiliadosComunidad"), {
+  chart: {
+    type: 'bar',
+    height: 350,
+    toolbar: { show: false },
+    animations: { speed: 900 }
+  },
+  plotOptions: {
+    bar: {
+      borderRadius: 8,
+      columnWidth: '55%',
+      distributed: true,
+      endingShape: 'rounded'
+    }
+  },
+  dataLabels: {
+    enabled: false
+  },
+  legend: {
+    show: false     // 🔥🔥 QUITA TODOS LOS CUADROS CON NOMBRES ABAJO
+  },
+  colors: colors,
+  series: [{
+    name: 'Afiliados',
+    data: afiliadosCom.map(x => x.total)
+  }],
+  xaxis: {
+    categories: afiliadosCom.map(x => x.comunidad__nombre),
+    labels: {
+      style: {
+        colors: '#000',
+        fontWeight: 600
+      }
+    }
+  },
+  yaxis: {
+    labels: { style: { colors: '#000' } }
+  },
+  tooltip: {
+    theme: "light",
+    y: { formatter: val => `${val} personas` }
+  }
+}).render();
+
+
+
+/* ----------------------------------
+   2. Gráfico de Líderes por Comunidad (Bar con Degradado)
+---------------------------------- */
+new ApexCharts(document.querySelector("#chartLideresComunidad"), {
+  chart: { type: 'bar', height: 350, toolbar: { show: false } },
+  colors: ['#0d47a1'],
+  fill: {
+    type: "gradient",
+    gradient: {
+      shade: "light",
+      type: "vertical",
+      gradientToColors: ["#42a5f5"],
+      stops: [0, 100]
+    }
+  },
+  plotOptions: {
+    bar: {
+      borderRadius: 10,
+      columnWidth: '45%',
+    }
+  },
+  series: [{
+    name: 'Líderes',
+    data: lideresCom.map(x => x.total)
+  }],
+  xaxis: { categories: lideresCom.map(x => x.comunidad__nombre) }
+}).render();
+
+
+/* ----------------------------------
+   3. Distribución por Edades (Donut Glass)
+---------------------------------- */
+new ApexCharts(document.querySelector("#chartEdad"), {
+  chart: { type: 'donut', height: 350 },
+  series: edades.map(x => x.total),
+  labels: edades.map(x => x.rango),
+  colors: ['#0d47a1', '#1565c0', '#1976d2', '#1e88e5', '#42a5f5'],
+  stroke: { width: 3 },
+  legend: { position: 'bottom' },
+  plotOptions: {
+    pie: {
+      donut: {
+        size: '70%',
+        background: '#e3f2fd'
+      }
+    }
+  }
+}).render();
+
+
+/* ----------------------------------
+   4. Empadronados (Pie Animado)
+---------------------------------- */
+new ApexCharts(document.querySelector("#chartEmpadronados"), {
+  chart: { type: 'pie', height: 350 },
+  colors: ['#0d47a1', '#64b5f6'],
+  series: [empad.empadronados, empad.no_empadronados],
+  labels: ['Empadronados', 'No Empadronados'],
+  legend: { position: 'bottom' }
+}).render();
+
+
+/* ----------------------------------
+   ⭐ 5. GRÁFICO EXTRA: Tendencia Mensual de Afiliados
+---------------------------------- */
+let meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+let tendencia_random = Array.from({length: 12}, () => Math.floor(Math.random() * (50 - 10 + 1) + 10));
+
+new ApexCharts(document.querySelector("#chartTendencia"), {
+  chart: {
+    type: 'area',
+    height: 360,
+    toolbar: { show: false }
+  },
+  colors: ['#1976d2'],
+  fill: {
+    type: "gradient",
+    gradient: {
+      shadeIntensity: 1,
+      opacityFrom: 0.5,
+      opacityTo: 0.1,
+      stops: [0, 90, 100]
+    }
+  },
+  series: [{
+    name: "Afiliados Nuevos",
+    data: tendencia_random
+  }],
+  xaxis: { categories: meses },
+  stroke: { curve: 'smooth', width: 3 },
+  markers: { size: 5, colors: ['#0d47a1'], strokeColors: '#fff', strokeWidth: 2 },
+}).render();
+</script>
+
+{% endblock %}
+
 
