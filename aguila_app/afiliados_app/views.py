@@ -13,7 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 import requests
 from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm
-from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Perfil,  Institucion
+from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
@@ -297,6 +297,89 @@ def signin(request):
                 'error': 'Usuario o contraseña incorrectos',
                 'institucion': institucion,
             })
+
+def dashboard_elecciones(request):
+
+    centros = Eleccion2023.objects.values_list(
+        "centro_votacion", flat=True
+    ).distinct().order_by("centro_votacion")
+
+    partidos = [
+        "todos","cambio","morena","vamos","pin","renovador",
+        "valor","azul","une","fcn_nacion","podemos","uc"
+    ]
+
+    # 🔥 GENERAR TOTALES GLOBALES
+    totales_globales = {
+        p: Eleccion2023.objects.aggregate(total=Sum(p))["total"] or 0
+        for p in partidos
+    }
+
+    # 🔥 ORDENAR DE MAYOR A MENOR Y AGREGAR RANKING
+    ranking_global = sorted(
+        totales_globales.items(),
+        key=lambda x: x[1],
+        reverse=True
+    )
+
+    return render(request, "afiliados/elecciones2023.html", {
+        "centros": centros,
+        "ranking_global": ranking_global,  # ⬅ nueva variable
+    })
+
+
+
+from django.http import JsonResponse
+from django.db.models import Sum
+
+def datos_centro(request):
+    centro = request.GET.get("centro", "").strip()
+    mesa = request.GET.get("mesa", "").strip()
+
+    if not centro:
+        return JsonResponse({"error": "Centro no enviado"})
+
+    queryset = Eleccion2023.objects.filter(centro_votacion=centro)
+
+    if not queryset.exists():
+        return JsonResponse({"error": "Centro no encontrado"})
+
+    # 🔥 SOLO filtrar mesa si no es "0"
+    if mesa and mesa != "0":
+        queryset = queryset.filter(mesa=mesa)
+
+    partidos = [
+        "todos","cambio","morena","vamos","pin","renovador",
+        "valor","azul","une","fcn_nacion","podemos","uc"
+    ]
+
+    data_partidos = {
+        p: queryset.aggregate(total=Sum(p))["total"] or 0
+        for p in partidos
+    }
+
+    resumen = {
+        "votos_blanco": queryset.aggregate(Sum("votos_blanco"))["votos_blanco__sum"] or 0,
+        "votos_nulos": queryset.aggregate(Sum("votos_nulos"))["votos_nulos__sum"] or 0,
+        "votos_invalidos": queryset.aggregate(Sum("votos_invalidos"))["votos_invalidos__sum"] or 0,
+        "total": queryset.aggregate(Sum("total"))["total__sum"] or 0,
+    }
+
+    mesas = list(
+        Eleccion2023.objects.filter(centro_votacion=centro)
+        .exclude(mesa__isnull=True)
+        .values_list("mesa", flat=True)
+        .order_by("mesa")
+    )
+
+    return JsonResponse({
+        "partidos": data_partidos,
+        "resumen": resumen,
+        "mesas": mesas,
+    })
+
+
+
 
 
 @login_required

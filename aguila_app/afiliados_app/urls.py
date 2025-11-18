@@ -16,6 +16,8 @@ urlpatterns = [
 
     # Acceso denegado
     path('no-autorizado/', views.acceso_denegado, name='acceso_denegado'),
+    path("dashboard/", views.dashboard_elecciones, name="dashboard_elecciones"),
+    path("dashboard/datos/", views.datos_centro, name="dashboard_datos_centro"),
    
     # Usuarios
     path('usuario/crear/', views.user_create, name='user_create'),

@@ -120,3 +120,33 @@ class Afiliado(models.Model):
 
     def __str__(self):
         return f"{self.nombre_completo} ({self.dpi})"
+    
+
+class Eleccion2023(models.Model):
+    mesa = models.IntegerField(null=True, blank=True)
+    todos = models.IntegerField(null=True, blank=True)
+    cambio = models.IntegerField(null=True, blank=True)
+    morena = models.IntegerField(null=True, blank=True)
+    vamos = models.IntegerField(null=True, blank=True)
+    pin = models.IntegerField(null=True, blank=True)
+    renovador = models.IntegerField(null=True, blank=True)
+    valor = models.IntegerField(null=True, blank=True)
+    azul = models.IntegerField(null=True, blank=True)
+    une = models.IntegerField(null=True, blank=True)
+    fcn_nacion = models.IntegerField(null=True, blank=True)
+    podemos = models.IntegerField(null=True, blank=True)
+    uc = models.IntegerField(null=True, blank=True)
+    votos_blanco = models.IntegerField(null=True, blank=True)
+    votos_nulos = models.IntegerField(null=True, blank=True)
+    total = models.IntegerField(null=True, blank=True)
+    votos_invalidos = models.IntegerField(null=True, blank=True)
+    impugnaciones = models.TextField(null=True, blank=True)
+    observaciones = models.TextField(null=True, blank=True)
+    centro_votacion = models.TextField(null=True, blank=True)
+    secnum = models.IntegerField(null=True, blank=True)
+
+    class Meta:
+        db_table = "elecciones_2023"
+
+    def __str__(self):
+        return f"Mesa {self.mesa} - {self.centro_votacion}"    
