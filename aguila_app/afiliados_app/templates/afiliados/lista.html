@@ -34,7 +34,7 @@
           <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
               <h5 class="mb-0">Afiliados Registrados</h5>
-              <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#nuevoAfiliadoModal">
+              <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevoAfiliadoModal">
                 + Nuevo Afiliado
               </button>
             </div>
@@ -56,6 +56,7 @@
                       <th>Comunidad</th>
                       <th>Centro Votación</th>
                       <th>Empadronado</th>
+                      <th>Fecha Creación</th>
                       <th>Acciones</th>
                     </tr>
                   </thead>
@@ -67,6 +68,7 @@
                       <td>{{ a.comunidad }}</td>
                       <td>{{ a.centro_votacion }}</td>
                       <td>{{ a.empadronado|yesno:"Sí,No" }}</td>
+                      <td>{{ a.fecha_creacion|date:"d/m/Y H:i" }}</td>
                       <td>
                        <ul class="action d-flex">
     <li class="detail me-2"> 
@@ -106,6 +108,7 @@
                       <th>Comunidad</th>
                       <th>Centro Votación</th>
                       <th>Empadronado</th>
+                      <th>Fecha Creación</th>
                       <th>Acciones</th>
                     </tr>
                   </tfoot>
@@ -226,8 +229,8 @@
 
 
             <div class="text-end mt-3">
-              <button type="submit" class="btn btn-success">Guardar Afiliado</button>
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button type="submit" class="btn btn-primary">Guardar Afiliado</button>
+              <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Cancelar</button>
             </div>
           </form>
         </div>

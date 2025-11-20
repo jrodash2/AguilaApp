@@ -283,6 +283,18 @@
                             </a>
                         </li>
 
+                        
+                       <li class="sidebar-list {% if '/afiliados/comunidad' in request.path %}active{% endif %}">
+
+
+
+                            <a class="sidebar-link" href="{% url 'afiliados:sector_lista' %}">
+                                <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
+                                <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
+                                <span>Sectores</span>
+                            </a>
+                        </li>
+
                        <li class="sidebar-list {% if '/afiliados/centro' in request.path %}active{% endif %}">
 
 
@@ -314,7 +326,7 @@
                             <a class="sidebar-link" href="{% url 'afiliados:dashboard_elecciones' %}">
                                 <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
                                 <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
-                                <span>2023</span>
+                                <span>Elecciones 2023</span>
                             </a>
                         </li>
                       <li class="sidebar-list {% if '/afiliados/editar_institucion' in request.path %}active{% endif %}">

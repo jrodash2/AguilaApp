@@ -10,7 +10,7 @@
  <style>
     /* 🔥 Baja todo el contenido para que no lo tape el menú horizontal */
     .page-body {
-        margin-top: 150px !important;   /* Ajusta si necesitas más */
+        margin-top: 75px !important;   /* Ajusta si necesitas más */
     }
 
     @media (max-width: 768px) {
@@ -187,6 +187,36 @@
       </div>
     </div>
 
+    <!-- FILA 3: NUEVAS GRAFICAS -->
+<div class="row mt-4">
+
+    <!-- Afiliados por Mes -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Afiliados Registrados por Mes</h4>
+            </div>
+            <div class="card-body">
+                <div id="chartAfiliadosMes"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comunidades por Sector -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="card-title">Comunidades por Sector</h4>
+            </div>
+            <div class="card-body">
+                <div id="chartComunidadesSector"></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
   </div>
 
  </div>
@@ -331,37 +361,51 @@ new ApexCharts(document.querySelector("#chartEmpadronados"), {
   legend: { position: 'bottom' }
 }).render();
 
-
 /* ----------------------------------
-   ⭐ 5. GRÁFICO EXTRA: Tendencia Mensual de Afiliados
+   ⭐ 6. Afiliados por Mes (Area Smooth)
 ---------------------------------- */
-let meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-let tendencia_random = Array.from({length: 12}, () => Math.floor(Math.random() * (50 - 10 + 1) + 10));
+const afiliadosMes = {{ afiliados_por_mes|safe }};
 
-new ApexCharts(document.querySelector("#chartTendencia"), {
-  chart: {
-    type: 'area',
-    height: 360,
-    toolbar: { show: false }
+new ApexCharts(document.querySelector("#chartAfiliadosMes"), {
+  chart: { type: 'area', height: 350, toolbar: { show: false } },
+  series: [{
+    name: "Afiliados",
+    data: afiliadosMes.map(x => x.total)
+  }],
+  xaxis: {
+    categories: afiliadosMes.map(x => `${x.mes} ${x.anio}`),
   },
-  colors: ['#1976d2'],
+  colors: ['#1565c0'],
+  stroke: { curve: 'smooth', width: 3 },
   fill: {
     type: "gradient",
-    gradient: {
-      shadeIntensity: 1,
-      opacityFrom: 0.5,
-      opacityTo: 0.1,
-      stops: [0, 90, 100]
-    }
-  },
-  series: [{
-    name: "Afiliados Nuevos",
-    data: tendencia_random
-  }],
-  xaxis: { categories: meses },
-  stroke: { curve: 'smooth', width: 3 },
-  markers: { size: 5, colors: ['#0d47a1'], strokeColors: '#fff', strokeWidth: 2 },
+    gradient: { shadeIntensity: 1, opacityFrom: 0.5, opacityTo: 0.1 }
+  }
 }).render();
+
+
+/* ----------------------------------
+   ⭐ 7. Comunidades por Sector (Bar Horizontal)
+---------------------------------- */
+const comunidadesSector = {{ comunidades_por_sector|safe }};
+
+new ApexCharts(document.querySelector("#chartComunidadesSector"), {
+  chart: { type: 'bar', height: 350, toolbar: { show: false } },
+  plotOptions: {
+    bar: { horizontal: true, borderRadius: 6 }
+  },
+  colors: ['#0d47a1'],
+  series: [{
+    name: "Comunidades",
+    data: comunidadesSector.map(x => x.total)
+  }],
+  xaxis: {
+    categories: comunidadesSector.map(x => x.nombre_sector),
+  }
+}).render();
+
+
+
 </script>
 
 {% endblock %}

@@ -21,69 +21,165 @@
     <div class="container-fluid">
         <div class="row">
             
-            {# Card Principal del Afiliado #}
-            <div class="col-xl-12">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">{{ afiliado.nombre_completo }} (DPI: {{ afiliado.dpi }})</h5>
-                        <a href="{% url 'afiliados:afiliado_editar' afiliado.id %}" class="btn btn-warning">
-                            <i class="icon-pencil-alt"></i> Editar
-                        </a>
-                    </div>
-                    
-                    <div class="card-body">
-                        
-                        <h6 class="border-bottom pb-2 mb-3">Información Personal y Contacto</h6>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <p><strong>DPI:</strong> {{ afiliado.dpi }}</p>
-                                <p><strong>Teléfono:</strong> {{ afiliado.telefono|default:"N/A" }}</p>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <p><strong>Fecha de Nacimiento:</strong> {{ afiliado.fecha_nacimiento|date:"d/m/Y" }}</p>
-                                <p><strong>Dirección/Municipio:</strong> {{ afiliado.direccion }}</p>
-                            </div>
-                        </div>
+<style>
+/* ====== CARD ESTILO RIHO ====== */
+.card-riho {
+    border: none;
+    border-radius: 18px;
+    background: #ffffff;
+    padding: 35px 40px;    /* tamaño igual que antes */
+    margin: 0 auto;
+    max-width: 1050px;     /* tamaño original */
+    box-shadow: 0 8px 28px rgba(0,0,0,0.08);
+    transition: all 0.35s ease;
+}
 
-                        <h6 class="border-bottom pb-2 mt-4 mb-3">Información Organizacional</h6>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <p><strong>Comunidad:</strong> {{ afiliado.comunidad|default:"N/A" }}</p>
-                                <p><strong>Centro de Votación:</strong> {{ afiliado.centro_votacion|default:"N/A" }}</p>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <p><strong>Empadronado:</strong> 
-                                    <span class="badge {% if afiliado.empadronado %}bg-success{% else %}bg-danger{% endif %}">
-                                        {{ afiliado.empadronado|yesno:"Sí,No" }}
-                                    </span>
-                                </p>
-                                <p><strong>Líder Referente:</strong> {{ afiliado.lider_vinculado.nombre_completo|default:"Ninguno" }}</p>
-                            </div>
-                            <div class="col-md-12 mb-3">
-                                <p><strong>Comisiones:</strong> 
-                                    {% for comision in afiliado.comisiones.all %}
-                                        <span class="badge bg-primary">{{ comision.nombre }}</span>
-                                    {% empty %}
-                                        <span class="text-muted">Ninguna</span>
-                                    {% endfor %}
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <h6 class="border-bottom pb-2 mt-4 mb-3">Rol de Liderazgo</h6>
-                        <div class="row mb-3">
-                            <div class="col-12">
-                                <p><strong>Es Líder Comunitario:</strong> 
-                                    <span class="badge {% if afiliado.es_lider_comunitario %}bg-info{% else %}bg-secondary{% endif %}">
-                                        {{ afiliado.es_lider_comunitario|yesno:"Sí,No" }}
-                                    </span>
-                                </p>
-                            </div>
-                        </div>
-                        
-                    </div>
-                </div>
+.card-riho:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.1);
+}
+
+/* HEADER limpio */
+.card-riho-header-clean {
+    text-align: center;
+    margin-bottom: 18px;  /* menos espacio */
+}
+
+/* Título centrado */
+.riho-title {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 700;
+    font-size: 26px;
+    color: #0d47a1;
+    margin-bottom: 2px;
+}
+
+/* DPI centrado */
+.riho-subtitle {
+    font-size: 15px;
+    color: #666;
+    margin-top: -4px;
+}
+
+/* Botón Editar */
+.btn-edit-riho {
+    margin-top: 10px;
+    padding: 7px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    background: #0d6efd;
+    color: #fff;
+    border: none;
+    transition: 0.3s;
+}
+
+.btn-edit-riho:hover {
+    background: #084298;
+}
+
+/* Secciones */
+.riho-section-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #0d47a1;
+    margin-top: 22px;     /* menos espacio */
+    margin-bottom: 8px;   /* menos espacio */
+}
+
+/* Información compacta */
+.riho-info p {
+    margin-bottom: 3px;   /* 🔥 ¡Aquí reducimos el espacio entre líneas! */
+    font-size: 15px;
+    color: #333;
+    line-height: 1.2;      /* MENOS espacio entre líneas */
+}
+
+.riho-info strong {
+    color: #0d47a1;
+}
+
+/* Badges */
+.badge-riho {
+    padding: 5px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+    margin-bottom: 3px;
+}
+
+.badge-riho-primary { background: #e3f2fd; color: #0d47a1; }
+.badge-riho-danger  { background: #ffebee; color: #c62828; }
+.badge-riho-info    { background: #e0f7fa; color: #0277bd; }
+</style>
+<div class="col-xl-12">
+    <div class="card-riho">
+
+        <!-- Encabezado limpio y centrado -->
+        <div class="card-riho-header-clean text-center">
+            <div class="riho-title">{{ afiliado.nombre_completo }}</div>
+            <div class="riho-subtitle">DPI: {{ afiliado.dpi }}</div>
+
+        </div>
+
+            <a href="{% url 'afiliados:afiliado_editar' afiliado.id %}" class="btn btn-primary">
+                <i class="icon-pencil-alt"></i> Editar
+            </a>
+        <!-- Información Personal -->
+        <div class="riho-section-title">Información Personal</div>
+        <div class="row riho-info">
+            <div class="col-md-6">
+                <p><strong>Teléfono:</strong> {{ afiliado.telefono|default:"N/A" }}</p>
+                <p><strong>Fecha Nacimiento:</strong> {{ afiliado.fecha_nacimiento|date:"d/m/Y" }}</p>
             </div>
+            <div class="col-md-6">
+                <p><strong>Municipio/Dirección:</strong> {{ afiliado.direccion }}</p>
+               <p><strong>Sector:</strong> {{ afiliado.comunidad.sector.nombre|default:"N/A" }}</p>
+
+            </div>
+        </div>
+
+        <!-- Información Organizacional -->
+        <div class="riho-section-title">Información Organizacional</div>
+        <div class="row riho-info">
+            <div class="col-md-6">
+                <p><strong>Comunidad:</strong> {{ afiliado.comunidad|default:"N/A" }}</p>
+                <p><strong>Centro de Votación:</strong> {{ afiliado.centro_votacion|default:"N/A" }}</p>
+            </div>
+            <div class="col-md-6">
+                <p><strong>Empadronado:</strong>
+                    <span class="badge-riho {% if afiliado.empadronado %}badge-riho-primary{% else %}badge-riho-danger{% endif %}">
+                        {{ afiliado.empadronado|yesno:"Sí,No" }}
+                    </span>
+                </p>
+
+                <p><strong>Líder Referente:</strong>
+                    {{ afiliado.lider_vinculado.nombre_completo|default:"Ninguno" }}
+                </p>
+            </div>
+
+            <div class="col-md-12 mt-1">
+                <p><strong>Comisiones:</strong><br>
+                    {% for comision in afiliado.comisiones.all %}
+                        <span class="badge-riho badge-riho-info">{{ comision.nombre }}</span>
+                    {% empty %}
+                        <span class="text-muted">Ninguna</span>
+                    {% endfor %}
+                </p>
+            </div>
+        </div>
+
+        <!-- Rol -->
+        <div class="riho-section-title">Rol de Liderazgo</div>
+        <p class="riho-info">
+            <strong>Es Líder Comunitario:</strong>
+            <span class="badge-riho {% if afiliado.es_lider_comunitario %}badge-riho-info{% else %}badge-riho-danger{% endif %}">
+                {{ afiliado.es_lider_comunitario|yesno:"Sí,No" }}
+            </span>
+        </p>
+
+    </div>
+</div>
+
+
             
             {# Card de Referidos (Solo si es líder) #}
             {% if afiliado.es_lider_comunitario %}
@@ -95,7 +191,7 @@
                         
                         {# Botón que abre el modal y pasa el ID del líder #}
                         <button type="button" 
-                                class="btn btn-success" 
+                                class="btn btn-primary" 
                                 data-bs-toggle="modal" 
                                 data-bs-target="#nuevoAfiliadoModal"
                                 data-lider-id="{{ afiliado.id }}"
@@ -293,8 +389,9 @@ $(document).ready(function() {
             // Pre-selecciona el ID del líder actual
             liderVinculadoField.val(liderId);
             
-            // Deshabilita el campo para que el usuario no lo cambie
-            liderVinculadoField.prop('disabled', true); 
+         
+            liderVinculadoField.prop('readonly', true);
+
 
             // Actualiza el título del modal para contexto
             modal.find('.modal-heading h5').html('Añadir Referido a: <span>' + liderNombre + '</span>');

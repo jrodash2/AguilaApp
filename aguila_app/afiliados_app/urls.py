@@ -52,6 +52,13 @@ path('comunidades/nuevo/', views.comunidad_nueva, name='comunidad_nueva'),
 path('comunidades/editar/<int:pk>/', views.comunidad_editar, name='comunidad_editar'),
 path('comunidades/eliminar/<int:pk>/', views.comunidad_eliminar, name='comunidad_eliminar'),
 
+# SECTORES
+path('sectores/', views.sector_nueva, name='sector_lista'),
+path('sectores/nuevo/', views.sector_nueva, name='sector_nueva'),
+path('sectores/editar/<int:pk>/', views.sector_editar, name='sector_editar'),
+path('sectores/eliminar/<int:pk>/', views.sector_eliminar, name='sector_eliminar'),
+
+
 # -----------------------
 # CRUD Centro Votacion
 # -----------------------

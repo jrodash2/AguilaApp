@@ -4,7 +4,7 @@ from django.forms import CheckboxInput, DateInput, inlineformset_factory, modelf
 from django.core.exceptions import ValidationError
 
 
-from .models import  Perfil,  Institucion, Afiliado, Comunidad, CentroVotacion, Comision
+from .models import  Perfil,  Institucion, Afiliado, Comunidad, CentroVotacion, Comision, Sector
 
 from django.db.models import Sum, F, Value
 from django.db.models.functions import Coalesce
@@ -241,14 +241,15 @@ class AfiliadoForm(forms.ModelForm):
         # 🎨 Opcional: Renombrar la etiqueta del campo 'lider_vinculado'
         self.fields['lider_vinculado'].label = 'Líder (Afiliado Referente)'
 
-
 class ComunidadForm(forms.ModelForm):
     class Meta:
-         model = Comunidad
-         fields = ['nombre']
-         widgets = {
-             'nombre': forms.TextInput(attrs={'class': 'form-control'})
-         }
+        model = Comunidad
+        fields = ['nombre', 'sector']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'sector': forms.Select(attrs={'class': 'form-control'}),
+        }
+
 
 class CentroVotacionForm(forms.ModelForm):
     class Meta:
@@ -275,6 +276,16 @@ class ComisionForm(forms.ModelForm):
 class ComisionForm(forms.ModelForm):
     class Meta:
         model = Comision
+        fields = ['nombre', 'descripcion']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+
+class SectorForm(forms.ModelForm):
+    class Meta:
+        model = Sector
         fields = ['nombre', 'descripcion']
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),

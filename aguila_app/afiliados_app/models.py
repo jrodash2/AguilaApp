@@ -56,15 +56,6 @@ class FraseMotivacional(models.Model):
 
 
 
-# -------------------------------
-# Comunidad
-# -------------------------------
-class Comunidad(models.Model):
-    nombre = models.CharField(max_length=150, unique=True)
-
-    def __str__(self):
-        return self.nombre
-
 
 # -------------------------------
 # Centro de Votación
@@ -87,11 +78,26 @@ class Comision(models.Model):
     def __str__(self):
         return self.nombre
 
+class Sector(models.Model):
+    nombre = models.CharField(max_length=150, unique=True)
+    descripcion = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return self.nombre
+class Comunidad(models.Model):
+    nombre = models.CharField(max_length=150, unique=True)
+    sector = models.ForeignKey(
+        Sector,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="comunidades"
+    )
+
+    def __str__(self):
+        return self.nombre
 
 
-# -------------------------------
-# Afiliado (Modelo modificado)
-# -------------------------------
 class Afiliado(models.Model):
     nombre_completo = models.CharField(max_length=150)
     dpi = models.CharField(max_length=20, unique=True)
@@ -101,25 +107,28 @@ class Afiliado(models.Model):
     comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="afiliados")
     centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="afiliados")
     
-    # 🌟 Campo para identificar si ESTE afiliado es un líder
+    # 🌟 Campo para identificar si este afiliado es un líder
     es_lider_comunitario = models.BooleanField(default=False)
-    
-    # 🔗 Clave foránea recursiva para vincular este afiliado a SU líder
-    # Solo se puede vincular a otro Afiliado que es un líder.
+
+    # 🔗 Relación recursiva para vincularlo a su líder
     lider_vinculado = models.ForeignKey(
-        'self', 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True, 
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="referidos",
-        limit_choices_to={'es_lider_comunitario': True} # Opcional: limita la elección solo a los que son líderes
+        limit_choices_to={'es_lider_comunitario': True}
     )
-    
+
     empadronado = models.BooleanField(default=False)
     comisiones = models.ManyToManyField(Comision, blank=True, related_name="afiliados")
 
+    # 📅 Nueva columna: Fecha y hora de creación automática
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
     def __str__(self):
         return f"{self.nombre_completo} ({self.dpi})"
+
     
 
 class Eleccion2023(models.Model):

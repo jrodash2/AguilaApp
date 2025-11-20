@@ -71,11 +71,14 @@
     {% csrf_token %}
 
     <div class="row">
-        <div class="col-md-12">
-            <div class="form-group">
-                <label for="{{ form.nombre.id_for_label }}">Nombre de la Comunidad</label>
-                {{ form.nombre }}
-            </div>
+        <div class="col-md-6 mb-3">
+            <label for="{{ form.nombre.id_for_label }}"><strong>Nombre de la Comunidad</strong></label>
+            {{ form.nombre }}
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <label for="{{ form.sector.id_for_label }}"><strong>Sector</strong></label>
+            {{ form.sector }}
         </div>
     </div>
 
@@ -87,6 +90,7 @@
 </form>
 
 
+
               <!-- TABLA -->
               <div class="mt-5">
                 <h5>Listado de Comunidades</h5>
@@ -96,6 +100,7 @@
                       <tr>
                         <th>ID</th>
                         <th>Nombre</th>
+                        <th>Sector</th>
                         <th>Acciones</th>
                       </tr>
                     </thead>
@@ -104,6 +109,7 @@
                       <tr>
                         <td>{{ c.id }}</td>
                         <td>{{ c.nombre }}</td>
+<td>{{ c.sector.nombre|default:"Sin sector" }}</td>
                         <td>
                           <a href="{% url 'afiliados:comunidad_editar' c.pk %}"
                              class="btn btn-primary btn-sm">Editar</a>

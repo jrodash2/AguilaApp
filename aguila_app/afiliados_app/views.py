@@ -12,8 +12,8 @@ import openpyxl
 from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 import requests
-from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm
-from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion
+from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm
+from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
@@ -60,6 +60,7 @@ import re
 from django.views.generic.detail import DetailView
 from django.core.mail import BadHeaderError
 from smtplib import SMTPException
+from django.db.models.functions import ExtractYear, ExtractMonth
 
     
     
@@ -156,31 +157,35 @@ from django.utils import timezone
 from django.db.models import Count, Q, Sum
 import json
 
+from django.db.models.functions import TruncMonth
+from django.db.models.functions import Coalesce
+from django.db.models import Value, Count
+
 
 @login_required
 @grupo_requerido('Administrador', 'afiliados')
 def dahsboard(request):
 
-    # === Totales para las cards ===
+    # === Totales ===
     total_afiliados = Afiliado.objects.count()
     total_lideres = Afiliado.objects.filter(es_lider_comunitario=True).count()
     total_comunidades = Comunidad.objects.count()
     total_empadronados = Afiliado.objects.filter(empadronado=True).count()
 
-    # === 1. Últimos afiliados registrados ===
+    # === Últimos afiliados ===
     ultimos_afiliados = (
         Afiliado.objects.select_related('comunidad')
         .order_by('-id')[:10]
     )
 
-    # === 2. Afiliados por comunidad ===
+    # === Afiliados por comunidad ===
     afiliados_por_comunidad = (
         Afiliado.objects.values('comunidad__nombre')
         .annotate(total=Count('id'))
         .order_by('comunidad__nombre')
     )
 
-    # === 3. Líderes por comunidad ===
+    # === Líderes por comunidad ===
     lideres_por_comunidad = (
         Afiliado.objects.filter(es_lider_comunitario=True)
         .values('comunidad__nombre')
@@ -188,58 +193,79 @@ def dahsboard(request):
         .order_by('comunidad__nombre')
     )
 
-    # === 4. Afiliados por rango de edad ===
+    # === Afiliados por rango edad ===
     hoy = timezone.now().date()
-
-    rangos = {
-        "18-25": 0,
-        "26-35": 0,
-        "36-45": 0,
-        "46-60": 0,
-        "60+": 0,
-    }
+    rangos = {"18-25": 0, "26-35": 0, "36-45": 0, "46-60": 0, "60+": 0}
 
     afiliados = Afiliado.objects.exclude(fecha_nacimiento__isnull=True)
-
     for a in afiliados:
         fn = a.fecha_nacimiento
         edad = hoy.year - fn.year - ((hoy.month, hoy.day) < (fn.month, fn.day))
 
-        if edad <= 25:
-            rangos["18-25"] += 1
-        elif edad <= 35:
-            rangos["26-35"] += 1
-        elif edad <= 45:
-            rangos["36-45"] += 1
-        elif edad <= 60:
-            rangos["46-60"] += 1
-        else:
-            rangos["60+"] += 1
+        if edad <= 25: rangos["18-25"] += 1
+        elif edad <= 35: rangos["26-35"] += 1
+        elif edad <= 45: rangos["36-45"] += 1
+        elif edad <= 60: rangos["46-60"] += 1
+        else: rangos["60+"] += 1
 
-    rangos_edad = [
-        {"rango": "18-25", "total": rangos["18-25"]},
-        {"rango": "26-35", "total": rangos["26-35"]},
-        {"rango": "36-45", "total": rangos["36-45"]},
-        {"rango": "46-60", "total": rangos["46-60"]},
-        {"rango": "60+",   "total": rangos["60+"]},
+    rangos_edad = [{"rango": r, "total": rangos[r]} for r in rangos]
+
+    total_no_empadronados = Afiliado.objects.filter(empadronado=False).count()
+
+# ==============================================================
+# ⭐ 1. NUEVA GRAFICA: Afiliados creados por mes
+# ==============================================================
+    afiliados_por_mes = (
+        Afiliado.objects
+        .annotate(
+            anio=ExtractYear('fecha_creacion'),
+            mes_num=ExtractMonth('fecha_creacion')
+        )
+        .values('anio', 'mes_num')
+        .annotate(total=Count('id'))
+        .order_by('anio', 'mes_num')
+    )
+
+# Convertir mes número → nombre (para ApexCharts)
+    meses_nombre = [
+        "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+        "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"
     ]
 
-    # === 5. Empadronados ===
-    total_no_empadronados = Afiliado.objects.filter(empadronado=False).count()
+    afiliados_por_mes_list = []
+    for item in afiliados_por_mes:
+        afiliados_por_mes_list.append({
+        "mes": meses_nombre[item["mes_num"] - 1],
+        "anio": item["anio"],
+        "total": item["total"]
+    })
+
+    # ==============================================================
+    # ⭐ 2. NUEVA GRAFICA: Comunidades por Sector
+    # ==============================================================
+
+    comunidades_por_sector = (
+    Comunidad.objects
+        .values(nombre_sector=Coalesce('sector__nombre', Value('Sin Sector')))
+        .annotate(total=Count('id'))
+        .order_by('nombre_sector')
+    )
 
     # === CONTEXT ===
     context = {
-        # Totales para las cards
         'total_afiliados': total_afiliados,
         'total_lideres': total_lideres,
         'total_comunidades': total_comunidades,
         'total_empadronados': total_empadronados,
-
-        # Datos para dashboard
         'ultimos_afiliados': ultimos_afiliados,
         'afiliados_por_comunidad': list(afiliados_por_comunidad),
         'lideres_por_comunidad': list(lideres_por_comunidad),
         'rangos_edad': rangos_edad,
+
+        # Nuevos datos
+        'afiliados_por_mes': afiliados_por_mes_list,
+        'comunidades_por_sector': list(comunidades_por_sector),
+
         'empadronados': {
             'empadronados': total_empadronados,
             'no_empadronados': total_no_empadronados,
@@ -682,6 +708,67 @@ def comunidad_eliminar(request, pk):
 
     # ❌ Ya NO renderizamos nada
     return redirect('afiliados:comunidad_lista')
+
+# ------------------------
+# CRUD DE SECTOR
+# ------------------------
+
+@login_required
+@grupo_requerido('Administrador')
+def sector_nueva(request):
+    if request.method == 'POST':
+        form = SectorForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Sector creado correctamente.")
+            return redirect('afiliados:sector_lista')
+    else:
+        form = SectorForm()
+
+    sectores = Sector.objects.all().order_by('nombre')
+
+    return render(request, 'afiliados/sector_lista.html', {
+        'form': form,
+        'sectores': sectores
+    })
+
+
+@login_required
+@grupo_requerido('Administrador')
+def sector_editar(request, pk):
+    sector = get_object_or_404(Sector, pk=pk)
+
+    if request.method == 'POST':
+        form = SectorForm(request.POST, instance=sector)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Sector actualizado correctamente.")
+            return redirect('afiliados:sector_lista')
+    else:
+        form = SectorForm(instance=sector)
+
+    sectores = Sector.objects.all().order_by('nombre')
+
+    return render(request, 'afiliados/sector_lista.html', {
+        'form': form,
+        'sector': sector,
+        'sectores': sectores
+    })
+
+
+@login_required
+@grupo_requerido('Administrador')
+def sector_eliminar(request, pk):
+    sector = get_object_or_404(Sector, pk=pk)
+
+    if request.method == 'POST':
+        sector.delete()
+        messages.success(request, "Sector eliminado.")
+        return redirect('afiliados:sector_lista')
+
+    return redirect('afiliados:sector_lista')
+
+
 
 # -----------------------------------------
 # CRUD - CENTRO DE VOTACION
