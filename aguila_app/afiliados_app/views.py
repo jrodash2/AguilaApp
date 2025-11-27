@@ -795,7 +795,8 @@ def centro_nuevo(request):
     if request.method == 'POST':
         form = CentroVotacionForm(request.POST)
         if form.is_valid():
-            form.save()
+            centro = form.save()
+           
             messages.success(request, "Centro de Votación creado correctamente.")
             return redirect('afiliados:centro_lista')
     else:
@@ -817,7 +818,8 @@ def centro_editar(request, pk):
     if request.method == "POST":
         form = CentroVotacionForm(request.POST, instance=centro)
         if form.is_valid():
-            form.save()
+            centro = form.save()
+           
             messages.success(request, "Centro de Votación actualizado correctamente.")
             return redirect('afiliados:centro_lista')
     else:

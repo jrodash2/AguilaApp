@@ -208,7 +208,7 @@ class AfiliadoForm(forms.ModelForm):
         # ⚠️ IMPORTANTE: Ajustar la lista de campos
         fields = [
             'nombre_completo', 'dpi', 'fecha_nacimiento', 'telefono', 
-            'direccion', 'comunidad', 'centro_votacion', 
+            'direccion', 'comunidad', 
             'es_lider_comunitario',  # 🌟 NUEVO: El check para ser líder
             'lider_vinculado',       # 🔗 RENOMBRADO: Apunta a otro Afiliado (Líder)
             'empadronado', 
@@ -226,7 +226,7 @@ class AfiliadoForm(forms.ModelForm):
             'direccion': forms.TextInput(attrs={'class': 'form-control', 'rows': 3}),
             'comunidad': forms.Select(attrs={'class': 'form-control'}),
             'lider_vinculado': forms.Select(attrs={'class': 'form-control'}), # 🔗 RENOMBRADO
-            'centro_votacion': forms.Select(attrs={'class': 'form-control'}),
+
             'empadronado': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'es_lider_comunitario': forms.CheckboxInput(attrs={'class': 'form-check-input'}), # 🌟 NUEVO
 
@@ -251,13 +251,18 @@ class ComunidadForm(forms.ModelForm):
         }
 
 
+
 class CentroVotacionForm(forms.ModelForm):
     class Meta:
         model = CentroVotacion
-        fields = ['nombre', 'ubicacion']
+        fields = ['nombre', 'ubicacion', 'sectores']
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
-            'ubicacion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'ubicacion': forms.TextInput(attrs={'class': 'form-control'}),
+            'sectores': forms.SelectMultiple(attrs={
+                'class': 'form-control',
+                'size': 6,
+            }),
         }
 
 # -------------------------------

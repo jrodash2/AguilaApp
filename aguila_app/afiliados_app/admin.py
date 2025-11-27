@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Institucion, Perfil, FraseMotivacional,
-    Comunidad, CentroVotacion, Comision, Afiliado
+    Comunidad, CentroVotacion, Comision, Afiliado, Sector
 )
 
 # -------------------------------
@@ -32,14 +32,17 @@ class FraseMotivacionalAdmin(admin.ModelAdmin):
 
 admin.site.register(FraseMotivacional, FraseMotivacionalAdmin)
 
-# -------------------------------
-# Admin para Comunidad
-# -------------------------------
-class ComunidadAdmin(admin.ModelAdmin):
-    list_display = ('nombre',)
+@admin.register(Sector)
+class SectorAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'descripcion')
     search_fields = ('nombre',)
 
-admin.site.register(Comunidad, ComunidadAdmin)
+
+@admin.register(Comunidad)
+class ComunidadAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'sector')
+    list_filter = ('sector',)
+    search_fields = ('nombre',)
 
 # -------------------------------
 # Admin para Centro de Votacion

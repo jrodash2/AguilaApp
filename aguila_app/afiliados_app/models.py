@@ -64,6 +64,12 @@ class CentroVotacion(models.Model):
     nombre = models.CharField(max_length=150)
     ubicacion = models.TextField()
 
+    sectores = models.ManyToManyField(
+        'Sector',
+        blank=True,
+        related_name='centros'
+    )
+
     def __str__(self):
         return f"{self.nombre} - {self.ubicacion}"
 
@@ -84,6 +90,8 @@ class Sector(models.Model):
 
     def __str__(self):
         return self.nombre
+
+
 class Comunidad(models.Model):
     nombre = models.CharField(max_length=150, unique=True)
     sector = models.ForeignKey(
@@ -125,6 +133,10 @@ class Afiliado(models.Model):
 
     # 📅 Nueva columna: Fecha y hora de creación automática
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def sector(self):
+        return self.comunidad.sector if self.comunidad else None
 
     def __str__(self):
         return f"{self.nombre_completo} ({self.dpi})"

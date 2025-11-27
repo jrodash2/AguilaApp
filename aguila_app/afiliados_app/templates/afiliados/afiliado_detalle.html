@@ -110,6 +110,7 @@
 .badge-riho-danger  { background: #ffebee; color: #c62828; }
 .badge-riho-info    { background: #e0f7fa; color: #0277bd; }
 </style>
+
 <div class="col-xl-12">
     <div class="card-riho">
 
@@ -117,12 +118,12 @@
         <div class="card-riho-header-clean text-center">
             <div class="riho-title">{{ afiliado.nombre_completo }}</div>
             <div class="riho-subtitle">DPI: {{ afiliado.dpi }}</div>
-
         </div>
 
-            <a href="{% url 'afiliados:afiliado_editar' afiliado.id %}" class="btn btn-primary">
-                <i class="icon-pencil-alt"></i> Editar
-            </a>
+        <a href="{% url 'afiliados:afiliado_editar' afiliado.id %}" class="btn btn-primary">
+            <i class="icon-pencil-alt"></i> Editar
+        </a>
+
         <!-- Información Personal -->
         <div class="riho-section-title">Información Personal</div>
         <div class="row riho-info">
@@ -132,30 +133,54 @@
             </div>
             <div class="col-md-6">
                 <p><strong>Municipio/Dirección:</strong> {{ afiliado.direccion }}</p>
-               <p><strong>Sector:</strong> {{ afiliado.comunidad.sector.nombre|default:"N/A" }}</p>
-
             </div>
         </div>
 
         <!-- Información Organizacional -->
         <div class="riho-section-title">Información Organizacional</div>
         <div class="row riho-info">
+
+            <!-- Columna izquierda -->
             <div class="col-md-6">
                 <p><strong>Comunidad:</strong> {{ afiliado.comunidad|default:"N/A" }}</p>
-                <p><strong>Centro de Votación:</strong> {{ afiliado.centro_votacion|default:"N/A" }}</p>
+
+                <p><strong>Sector:</strong> 
+                    {{ afiliado.comunidad.sector.nombre|default:"N/A" }}
+                </p>
+<p><strong>Centro de Votación:</strong>
+    {% if afiliado.comunidad and afiliado.comunidad.sector %}
+        {% with centro=afiliado.comunidad.sector.centros.first %}
+            {% if centro %}
+                {{ centro.nombre }}
+            {% else %}
+                <span class="text-muted">Sin centros asignados</span>
+            {% endif %}
+        {% endwith %}
+    {% else %}
+        <span class="text-muted">N/A</span>
+    {% endif %}
+</p>
+
+
             </div>
+
+            <!-- Columna derecha -->
             <div class="col-md-6">
+               
+
+
+                <p><strong>Líder Referente:</strong>
+                    {{ afiliado.lider_vinculado.nombre_completo|default:"Ninguno" }}
+                </p>
+
                 <p><strong>Empadronado:</strong>
                     <span class="badge-riho {% if afiliado.empadronado %}badge-riho-primary{% else %}badge-riho-danger{% endif %}">
                         {{ afiliado.empadronado|yesno:"Sí,No" }}
                     </span>
                 </p>
-
-                <p><strong>Líder Referente:</strong>
-                    {{ afiliado.lider_vinculado.nombre_completo|default:"Ninguno" }}
-                </p>
             </div>
 
+            <!-- Comisiones -->
             <div class="col-md-12 mt-1">
                 <p><strong>Comisiones:</strong><br>
                     {% for comision in afiliado.comisiones.all %}
