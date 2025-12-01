@@ -9,6 +9,15 @@ from django.db.models import Sum
 from django.db.models.signals import post_save
 from django.utils import timezone
 
+
+
+class EleccionTipo(models.TextChoices):
+    PRESIDENTE = "PRESIDENTE", "Presidente y Vicepresidente"
+    DIPUTADOS = "DIPUTADOS", "Diputados"
+    PARLACEN = "PARLACEN", "Parlacen"
+    ALCALDE = "ALCALDE", "Alcalde"
+    
+    
 class Institucion(models.Model):
     nombre = models.CharField(max_length=255)
     direccion = models.CharField(max_length=255)
@@ -171,3 +180,37 @@ class Eleccion2023(models.Model):
 
     def __str__(self):
         return f"Mesa {self.mesa} - {self.centro_votacion}"    
+    
+    
+class TrepCentroResultado(models.Model):
+    tipo = models.CharField(max_length=20, choices=EleccionTipo.choices)
+
+    departamento = models.CharField(max_length=100)
+    municipio = models.CharField(max_length=100)
+
+    centro_codigo = models.CharField(max_length=20, db_index=True)
+    centro_nombre = models.CharField(max_length=200, null=True, blank=True)
+
+    mesa = models.CharField(max_length=20, db_index=True)
+
+    acta_url = models.TextField(null=True, blank=True)
+
+    partidos = models.JSONField()
+
+    votos_blanco = models.IntegerField(default=0)
+    votos_nulos = models.IntegerField(default=0)
+    votos_total = models.IntegerField(default=0)
+    votos_invalidos = models.IntegerField(default=0)
+
+    impugnaciones = models.CharField(max_length=50, blank=True, null=True)
+    observaciones = models.TextField(blank=True, null=True)
+
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Resultado por Mesa"
+        verbose_name_plural = "Resultados por Mesa"
+        unique_together = ("tipo", "centro_codigo", "mesa")
+
+    def __str__(self):
+        return f"{self.tipo} | Centro {self.centro_codigo} | Mesa {self.mesa}"    

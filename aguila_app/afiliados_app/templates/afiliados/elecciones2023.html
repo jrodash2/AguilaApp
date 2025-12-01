@@ -1,267 +1,142 @@
-{% extends 'afiliados/base.html' %}
+{% extends "afiliados/base.html" %}
 {% load static %}
 
 {% block content %}
 
-<style>
-.dashboard-wrapper {
-    margin-left: 260px !important;
-    padding: 25px;
-}
+<div class="container mt-4">
 
-.card-dashboard {
-    padding: 30px;
-    border-radius: 15px;
-    background: #fff;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-}
+    <h2 class="text-center mb-4">Elecciones 2023</h2>
 
-/* 🟦 TARJETAS GLOBALES FIJAS */
-.global-card {
-    background: #eef2f7;
-    border-radius: 8px;
-    padding: 6px;
-    text-align: center;
-    margin: 3px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-.global-card h6 {
-    font-size: 10px;
-    margin: 0;
-    font-weight: 600;
-    color: #333;
-}
-.global-card p {
-    font-size: 15px;
-    font-weight: bold;
-    margin: 0;
-    color: #2c3e50;
-}
+    <!-- FILTROS -->
+    <form method="get" class="row g-3 mb-4">
 
-/* Conservar estilo original */
-.chart-box {
-    height: 380px;
-}
-.chart-box canvas {
-    max-height: 380px !important;
-}
-
-.ranking-table {
-    width: 100%;
-    margin-top: 25px;
-    border-collapse: collapse;
-}
-.ranking-table th {
-    background: #343a40;
-    color: white;
-    padding: 10px;
-}
-.ranking-table td {
-    padding: 9px;
-    text-align: center;
-    border-bottom: 1px solid #ddd;
-    font-size: 15px;
-}
-.ranking-gold { background: #ffe08a; }
-.ranking-silver { background: #e9ecef; }
-.ranking-bronze { background: #ffd6a0; }
-
-</style>
-
-<div class="dashboard-wrapper">
-
-    <div class="card card-dashboard">
-<br><br><br>
-<!-- 🟦 TARJETAS FIJAS (TOTALES MUNICIPALES) -->
-<div class="d-flex flex-wrap justify-content-center mb-4">
-
-    {% for partido, total in ranking_global %}
-        <div class="global-card mx-2 my-1">
-            <h6>{{ partido|upper }}</h6>
-            <p>{{ total }}</p>
+        <!-- Tipo -->
+        <div class="col-md-3">
+            <label>Tipo de Elección</label>
+            <select name="tipo" class="form-select" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                {% for t in tipos %}
+                    <option value="{{ t }}" {% if t == tipo %}selected{% endif %}>{{ t }}</option>
+                {% endfor %}
+            </select>
         </div>
-    {% endfor %}
 
+        <!-- Departamento -->
+        <div class="col-md-3">
+            <label>Departamento</label>
+            <select name="departamento" class="form-select" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                {% for d in departamentos %}
+                    <option value="{{ d }}" {% if d == departamento %}selected{% endif %}>{{ d }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Municipio -->
+        <div class="col-md-3">
+            <label>Municipio</label>
+            <select name="municipio" class="form-select" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                {% for m in municipios %}
+                    <option value="{{ m }}" {% if m == municipio %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Centro -->
+        <div class="col-md-3">
+            <label>Centro de Votación</label>
+            <select name="centro" class="form-select" onchange="this.form.submit()">
+                <option value="">Todos</option>
+                {% for c in centros %}
+                    <option value="{{ c.centro_codigo }}" {% if centro == c.centro_codigo %}selected{% endif %}>
+                        {{ c.centro_nombre }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+    </form>
+
+   {% if resumen_partidos %}
+<div class="card p-3">
+    <h4 class="text-center mb-3">
+        Distribución de Votos {% if centro %} del Centro Seleccionado {% else %} Global {% endif %}
+    </h4>
+    <div id="grafica_partidos" style="height: 320px;"></div>
 </div>
 
-        <!-- FILTROS -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <label><b>Centro de Votación:</b></label>
-                <select id="selectCentro" class="form-control">
-                    <option value="">Seleccione...</option>
-                    {% for c in centros %}
-                    <option value="{{ c }}">{{ c }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+<div class="card p-3 mt-4">
+    <h4 class="text-center">Ranking {% if centro %} del Centro {% else %} Global {% endif %}</h4>
+    <table class="table table-striped mt-3">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Partido</th>
+                <th>Votos</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for partido, votos in ranking %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ partido|upper }}</td>
+                <td>{{ votos }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
 
-            <div class="col-md-6">
-                <label><b>Mesa (opcional):</b></label>
-                <select id="selectMesa" class="form-control">
-                    <option value="">Seleccione un centro primero</option>
-                </select>
-            </div>
-        </div>
-
-        <!-- GRÁFICAS -->
-        <div class="row mt-4">
-            <div class="col-md-12 mb-4 chart-box">
-                <canvas id="graficaPartidos"></canvas>
-            </div>
-        </div>
-
-        <div class="row mt-4">
-            <div class="col-md-6 mb-4 chart-box">
-                <canvas id="graficaTorta"></canvas>
-            </div>
-            <div class="col-md-6 mb-4 chart-box">
-                <canvas id="graficaRadar"></canvas>
-            </div>
-        </div>
-
-        <!-- RANKING -->
-        <h3 class="mt-4"><b>🏆 Ranking de Partidos</b></h3>
-        <table id="tablaRanking" class="ranking-table">
-            <thead>
-                <tr>
-                    <th>Puesto</th>
-                    <th>Partido</th>
-                    <th>Votos</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-
-    </div>
 
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
 <script>
-let chartPartidos, chartTorta, chartRadar;
+{% if resumen_partidos %}
+let resumen = {{ resumen_partidos|safe }};
 
-// ====================   CARGAR DATOS   ====================
-function cargarDatos() {
+// Ordenar partidos por votos descendente
+let partidos = Object.keys(resumen);
+let votos = Object.values(resumen);
 
-    const centro = document.getElementById("selectCentro").value;
-    const mesa = document.getElementById("selectMesa").value;
-
-    if (!centro) return;
-
-    fetch(`/afiliados/dashboard/datos/?centro=${encodeURIComponent(centro)}&mesa=${mesa}`)
-        .then(res => res.json())
-        .then(data => {
-
-            if (data.error) {
-                alert("No hay datos para este centro.");
-                return;
-            }
-
-            const selectMesa = document.getElementById("selectMesa");
-            const mesaSeleccionada = selectMesa.value;
-
-            selectMesa.innerHTML = `<option value="0">Todas</option>`;
-            data.mesas.forEach(m => {
-                selectMesa.innerHTML += `<option value="${m}">${m}</option>`;
-            });
-
-            selectMesa.value = mesaSeleccionada;
-
-            actualizarGraficas(data);
-            actualizarRanking(data.partidos);
-            actualizarTotales(data.partidos);  // 🟦 NUEVO
-
-        })
-        .catch(error => console.log("Error:", error));
-}
-
-document.getElementById("selectCentro").addEventListener("change", cargarDatos);
-document.getElementById("selectMesa").addEventListener("change", cargarDatos);
-
-
-// ====================   TARJETAS GLOBALES (NUEVO)   ====================
-function actualizarTotales(partidos) {
-
-    const contenedor = document.getElementById("totalesGlobales");
-    contenedor.innerHTML = "";
-
-    Object.entries(partidos).forEach(([partido, votos]) => {
-        contenedor.innerHTML += `
-            <div class="col-md-2 col-sm-4 col-6">
-                <div class="total-card">
-                    <h6>${partido.toUpperCase()}</h6>
-                    <p>${votos}</p>
-                </div>
-            </div>
-        `;
-    });
-}
-
-
-// ====================   GRÁFICAS   ====================
-function actualizarGraficas(data) {
-
-    const partidos = Object.keys(data.partidos);
-    const valores = Object.values(data.partidos);
-
-    const colores = partidos.map(() =>
-        `hsl(${Math.floor(Math.random() * 360)}, 70%, 55%)`
-    );
-
-    if (chartPartidos) chartPartidos.destroy();
-    chartPartidos = new Chart(document.getElementById("graficaPartidos"), {
-        type: "bar",
-        data: { labels: partidos, datasets: [{ label: "Votos por partido", data: valores, backgroundColor: colores }] },
-        options: { responsive: true, scales: { y: { beginAtZero: true } } }
-    });
-
-    if (chartTorta) chartTorta.destroy();
-    chartTorta = new Chart(document.getElementById("graficaTorta"), {
-        type: "pie",
-        data: { labels: ["Blanco", "Nulos", "Inválidos"],
-                datasets: [{ data: [data.resumen.votos_blanco, data.resumen.votos_nulos, data.resumen.votos_invalidos],
-                             backgroundColor: ["#999", "#d9534f", "#f0ad4e"] }] }
-    });
-
-    if (chartRadar) chartRadar.destroy();
-    chartRadar = new Chart(document.getElementById("graficaRadar"), {
-        type: "radar",
-        data: { labels: partidos, datasets: [{ label: "Distribución por partidos",
-                                               data: valores, backgroundColor: "rgba(54,100,235,0.3)",
-                                               borderColor: "rgba(54,100,235,1)" }] }
-    });
-}
-
-
-// ====================   🏆 RANKING   ====================
-function actualizarRanking(partidos) {
-
-    const tbody = document.querySelector("#tablaRanking tbody");
-    tbody.innerHTML = "";
-
-    const ranking = Object.entries(partidos)
-        .map(([partido, votos]) => ({ partido, votos }))
-        .sort((a, b) => b.votos - a.votos);
-
-    ranking.forEach((item, index) => {
-
-        let rowClass = "";
-        if (index === 0) rowClass = "ranking-gold";
-        else if (index === 1) rowClass = "ranking-silver";
-        else if (index === 2) rowClass = "ranking-bronze";
-
-        tbody.innerHTML += `
-            <tr class="${rowClass}">
-                <td><b>#${index + 1}</b></td>
-                <td>${item.partido.toUpperCase()}</td>
-                <td><b>${item.votos}</b></td>
-            </tr>
-        `;
-    });
-}
-
+// Gráfica moderna de barras
+new ApexCharts(document.querySelector("#grafica_partidos"), {
+    chart: {
+        type: 'bar',
+        height: 320,
+        toolbar: { show: false }
+    },
+    plotOptions: {
+        bar: {
+            horizontal: true,
+            borderRadius: 6,
+            barHeight: "75%",
+        }
+    },
+    colors: [
+        "#1E88E5", "#43A047", "#FB8C00", "#8E24AA", "#3949AB",
+        "#00897B", "#5E35B1", "#F4511E", "#6D4C41", "#039BE5"
+    ],
+    dataLabels: {
+        enabled: true,
+        style: {
+            fontSize: "13px",
+            fontWeight: 700
+        }
+    },
+    series: [{
+        name: "Votos",
+        data: votos
+    }],
+    xaxis: {
+        categories: partidos,
+        labels: { style: { fontSize: "13px" } }
+    }
+}).render();
+{% endif %}
 </script>
+
 
 {% endblock %}

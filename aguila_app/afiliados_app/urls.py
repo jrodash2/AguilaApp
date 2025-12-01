@@ -75,7 +75,8 @@ path('comisiones/nuevo/', views.comision_nueva, name='comision_nueva'),
 path('comisiones/editar/<int:pk>/', views.comision_editar, name='comision_editar'),
 path('comisiones/eliminar/<int:pk>/', views.comision_eliminar, name='comision_eliminar'),
 
-  
+path("elecciones2023/", views.elecciones2023, name="elecciones2023"),
+
 
 
 ]

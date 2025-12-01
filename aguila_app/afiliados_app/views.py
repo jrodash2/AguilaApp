@@ -62,6 +62,102 @@ from django.core.mail import BadHeaderError
 from smtplib import SMTPException
 from django.db.models.functions import ExtractYear, ExtractMonth
 
+
+from django.db.models import Sum
+from django.shortcuts import render
+from .models import TrepCentroResultado
+import json
+
+
+def elecciones2023(request):
+
+    # 🔵 Filtros
+    tipo = request.GET.get("tipo", "")
+    departamento = request.GET.get("departamento", "")
+    municipio = request.GET.get("municipio", "")
+    centro = request.GET.get("centro", "")
+
+    # 🔵 Base queryset
+    qs = TrepCentroResultado.objects.all()
+
+    # ---- APLICAR FILTROS ----
+    if tipo:
+        qs = qs.filter(tipo=tipo)
+
+    if departamento:
+        qs = qs.filter(departamento=departamento)
+
+    if municipio:
+        qs = qs.filter(municipio=municipio)
+
+    if centro:
+        qs = qs.filter(centro_codigo=centro)
+
+    # 🔹 Listas dinámicas para selects
+    tipos = ["PRESIDENTE", "ALCALDE", "DIPUTADOS", "PARLACEN"]
+
+    departamentos = (
+        TrepCentroResultado.objects.values_list("departamento", flat=True)
+        .distinct().order_by("departamento")
+    )
+
+    municipios = []
+    if departamento:
+        municipios = (
+            TrepCentroResultado.objects
+            .filter(departamento=departamento)
+            .values_list("municipio", flat=True)
+            .distinct().order_by("municipio")
+        )
+
+    # Centros dinamicos segun filtros
+    centros = []
+    if municipio:
+        centros = (
+            TrepCentroResultado.objects
+            .filter(municipio=municipio)
+            .values("centro_codigo", "centro_nombre")
+            .distinct().order_by("centro_nombre")
+        )
+    else:
+        centros = (
+            TrepCentroResultado.objects
+            .values("centro_codigo", "centro_nombre")
+            .distinct().order_by("centro_nombre")
+        )
+
+    # ===========================
+    # 🔵 CALCULAR RESUMEN
+    # ===========================
+    resumen_partidos = {}
+
+    for fila in qs:
+        for partido, votos in fila.partidos.items():
+            resumen_partidos[partido] = resumen_partidos.get(partido, 0) + votos
+
+    # Ranking global o por centro
+    ranking = sorted(resumen_partidos.items(), key=lambda x: x[1], reverse=True)
+
+    # ===========================
+    # CONTEXTO
+    # ===========================
+    context = {
+        "tipos": tipos,
+        "departamentos": departamentos,
+        "municipios": municipios,
+        "centros": centros,
+
+        "tipo": tipo,
+        "departamento": departamento,
+        "municipio": municipio,
+        "centro": centro,
+
+        "resumen_partidos": json.dumps(resumen_partidos),
+        "ranking": ranking,
+    }
+
+    return render(request, "afiliados/elecciones2023.html", context)
+
     
     
 @login_required
