@@ -2,8 +2,9 @@
 {% load static %}
 
 {% block content %}
-
-<div class="container mt-4">
+<div class="page-body">
+  <div class="container-fluid">
+<div class="container-fluid mt-4">
 
     <h2 class="text-center mb-4">Elecciones 2023</h2>
 
@@ -14,7 +15,7 @@
         <div class="col-md-3">
             <label>Tipo de Elección</label>
             <select name="tipo" class="form-select" onchange="this.form.submit()">
-                <option value="">Todos</option>
+                <option value="">Seleccione…</option>
                 {% for t in tipos %}
                     <option value="{{ t }}" {% if t == tipo %}selected{% endif %}>{{ t }}</option>
                 {% endfor %}
@@ -24,7 +25,7 @@
         <!-- Departamento -->
         <div class="col-md-3">
             <label>Departamento</label>
-            <select name="departamento" class="form-select" onchange="this.form.submit()">
+            <select name="departamento" class="form-select" onchange="this.form.submit()" {% if not tipo %}disabled{% endif %}>
                 <option value="">Todos</option>
                 {% for d in departamentos %}
                     <option value="{{ d }}" {% if d == departamento %}selected{% endif %}>{{ d }}</option>
@@ -35,7 +36,7 @@
         <!-- Municipio -->
         <div class="col-md-3">
             <label>Municipio</label>
-            <select name="municipio" class="form-select" onchange="this.form.submit()">
+            <select name="municipio" class="form-select" onchange="this.form.submit()" {% if not tipo %}disabled{% endif %}>
                 <option value="">Todos</option>
                 {% for m in municipios %}
                     <option value="{{ m }}" {% if m == municipio %}selected{% endif %}>{{ m }}</option>
@@ -46,7 +47,7 @@
         <!-- Centro -->
         <div class="col-md-3">
             <label>Centro de Votación</label>
-            <select name="centro" class="form-select" onchange="this.form.submit()">
+            <select name="centro" class="form-select" onchange="this.form.submit()" {% if not tipo %}disabled{% endif %}>
                 <option value="">Todos</option>
                 {% for c in centros %}
                     <option value="{{ c.centro_codigo }}" {% if centro == c.centro_codigo %}selected{% endif %}>
@@ -58,85 +59,116 @@
 
     </form>
 
-   {% if resumen_partidos %}
-<div class="card p-3">
-    <h4 class="text-center mb-3">
-        Distribución de Votos {% if centro %} del Centro Seleccionado {% else %} Global {% endif %}
-    </h4>
-    <div id="grafica_partidos" style="height: 320px;"></div>
-</div>
 
-<div class="card p-3 mt-4">
-    <h4 class="text-center">Ranking {% if centro %} del Centro {% else %} Global {% endif %}</h4>
-    <table class="table table-striped mt-3">
-        <thead>
-            <tr>
-                <th>#</th>
-                <th>Partido</th>
-                <th>Votos</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for partido, votos in ranking %}
-            <tr>
-                <td>{{ forloop.counter }}</td>
-                <td>{{ partido|upper }}</td>
-                <td>{{ votos }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+{% if not tipo %}
+    <div class="alert alert-info text-center p-3">
+        Seleccione un <strong>Tipo de Elección</strong> para mostrar los resultados.
+    </div>
+
+{% else %}
+
+    {% if resumen_partidos %}
+    <div class="card p-3 mb-4">
+        <h4 class="text-center mb-3">
+            Distribución de Votos {% if centro %} del Centro Seleccionado {% else %} Global {% endif %}
+        </h4>
+        <div id="grafica_partidos" style="height: 320px;"></div>
+    </div>
+
+    <div class="card p-3 mb-4">
+        <h4 class="text-center mb-3">
+            Votos por Mesa (Comparativo Apilado)
+        </h4>
+        <div id="grafica_mesas" style="height: 420px;"></div>
+    </div>
+
+    <!-- Ranking debajo -->
+    <div class="card p-3 mt-4">
+        <h4 class="text-center">Ranking {% if centro %} del Centro {% else %} Global {% endif %}</h4>
+        <table class="table table-striped mt-3">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Partido</th>
+                    <th>Votos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for partido, votos in ranking %}
+                <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ partido|upper }}</td>
+                    <td>{{ votos }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
 {% endif %}
 
-
+</div> <!-- container -->
 </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
+{% if tipo and resumen_partidos %}
 <script>
-{% if resumen_partidos %}
+
 let resumen = {{ resumen_partidos|safe }};
+let votosMesas = {{ votos_por_mesa|safe }};
 
-// Ordenar partidos por votos descendente
-let partidos = Object.keys(resumen);
-let votos = Object.values(resumen);
 
-// Gráfica moderna de barras
+// --------------------------------------------------------------------
+// 🟢 GRÁFICA PRINCIPAL
+// --------------------------------------------------------------------
 new ApexCharts(document.querySelector("#grafica_partidos"), {
-    chart: {
-        type: 'bar',
-        height: 320,
-        toolbar: { show: false }
-    },
-    plotOptions: {
-        bar: {
-            horizontal: true,
-            borderRadius: 6,
-            barHeight: "75%",
-        }
-    },
-    colors: [
-        "#1E88E5", "#43A047", "#FB8C00", "#8E24AA", "#3949AB",
-        "#00897B", "#5E35B1", "#F4511E", "#6D4C41", "#039BE5"
-    ],
-    dataLabels: {
-        enabled: true,
-        style: {
-            fontSize: "13px",
-            fontWeight: 700
-        }
-    },
-    series: [{
-        name: "Votos",
-        data: votos
-    }],
-    xaxis: {
-        categories: partidos,
-        labels: { style: { fontSize: "13px" } }
-    }
+    chart: { type: 'bar', height: 320, toolbar: { show: false }},
+    plotOptions: { bar: { horizontal: true, borderRadius: 6 }},
+    dataLabels: { enabled: true },
+    series: [{ name: "Votos", data: Object.values(resumen) }],
+    xaxis: { categories: Object.keys(resumen) }
 }).render();
-{% endif %}
-</script>
 
+
+// --------------------------------------------------------------------
+// 🟦 GRÁFICA APILADA POR MESA
+// --------------------------------------------------------------------
+
+let contenedorMesas = document.querySelector("#grafica_mesas");
+
+if (Object.keys(votosMesas).length === 0) {
+
+    contenedorMesas.innerHTML = "<p class='text-center text-muted'>No hay datos por mesa.</p>";
+
+} else {
+
+    let mesas = Object.keys(votosMesas);
+    let partidos = Object.keys(votosMesas[mesas[0]]);
+
+    let seriesApilado = partidos.map(partido => ({
+        name: partido,
+        data: mesas.map(mesa => votosMesas[mesa][partido] || 0)
+    }));
+
+    new ApexCharts(contenedorMesas, {
+        chart: {
+            type: "bar",
+            height: 420,
+            stacked: true,
+            toolbar: { show: true }
+        },
+        series: seriesApilado,
+        plotOptions: { bar: { horizontal: true, barHeight: "60%" }},
+        xaxis: { categories: mesas, title: { text: "Votos Totales" }},
+        legend: { position: 'right', offsetY: 40 },
+        dataLabels: { enabled: false }
+    }).render();
+}
+
+</script>
+{% endif %}
 
 {% endblock %}

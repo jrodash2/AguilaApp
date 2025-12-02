@@ -69,6 +69,11 @@ from .models import TrepCentroResultado
 import json
 
 
+from django.db.models import Sum
+from django.shortcuts import render
+from .models import TrepCentroResultado
+import json
+
 def elecciones2023(request):
 
     # 🔵 Filtros
@@ -77,10 +82,9 @@ def elecciones2023(request):
     municipio = request.GET.get("municipio", "")
     centro = request.GET.get("centro", "")
 
-    # 🔵 Base queryset
     qs = TrepCentroResultado.objects.all()
 
-    # ---- APLICAR FILTROS ----
+    # ---- Aplicar filtros ----
     if tipo:
         qs = qs.filter(tipo=tipo)
 
@@ -93,7 +97,7 @@ def elecciones2023(request):
     if centro:
         qs = qs.filter(centro_codigo=centro)
 
-    # 🔹 Listas dinámicas para selects
+    # 🔹 Listas dinámicas
     tipos = ["PRESIDENTE", "ALCALDE", "DIPUTADOS", "PARLACEN"]
 
     departamentos = (
@@ -110,37 +114,50 @@ def elecciones2023(request):
             .distinct().order_by("municipio")
         )
 
-    # Centros dinamicos segun filtros
-    centros = []
-    if municipio:
-        centros = (
-            TrepCentroResultado.objects
-            .filter(municipio=municipio)
-            .values("centro_codigo", "centro_nombre")
-            .distinct().order_by("centro_nombre")
-        )
-    else:
-        centros = (
-            TrepCentroResultado.objects
-            .values("centro_codigo", "centro_nombre")
-            .distinct().order_by("centro_nombre")
-        )
+    centros = (
+        TrepCentroResultado.objects
+        .filter(municipio=municipio) if municipio else TrepCentroResultado.objects
+    ).values(
+        "centro_codigo", "centro_nombre"
+    ).distinct().order_by("centro_nombre")
 
-    # ===========================
-    # 🔵 CALCULAR RESUMEN
-    # ===========================
+    # ============================================================
+    # 🟢 1. RESUMEN DE PARTIDOS (GLOBAL O FILTRADO)
+    # ============================================================
     resumen_partidos = {}
-
     for fila in qs:
         for partido, votos in fila.partidos.items():
             resumen_partidos[partido] = resumen_partidos.get(partido, 0) + votos
 
-    # Ranking global o por centro
+    # Ranking global o filtrado
     ranking = sorted(resumen_partidos.items(), key=lambda x: x[1], reverse=True)
 
-    # ===========================
+    # ============================================================
+    # 🟦 2. VOTOS POR MESA (PARA GRÁFICA 2)
+    # ============================================================
+    votos_por_mesa = {}
+
+    for fila in qs:
+        mesa = fila.mesa     # debe existir en tu modelo (ej. mesa 1, mesa 2)
+
+        if mesa not in votos_por_mesa:
+            votos_por_mesa[mesa] = {}
+
+        # Sumar votos de esa mesa por partido
+        for partido, votos in fila.partidos.items():
+            votos_por_mesa[mesa][partido] = (
+                votos_por_mesa[mesa].get(partido, 0) + votos
+            )
+
+    # Ordenar mesas numéricamente si son números
+    try:
+        votos_por_mesa = dict(sorted(votos_por_mesa.items(), key=lambda x: int(x[0])))
+    except:
+        pass  # si son strings, se deja así
+
+    # ============================================================
     # CONTEXTO
-    # ===========================
+    # ============================================================
     context = {
         "tipos": tipos,
         "departamentos": departamentos,
@@ -154,9 +171,11 @@ def elecciones2023(request):
 
         "resumen_partidos": json.dumps(resumen_partidos),
         "ranking": ranking,
+        "votos_por_mesa": json.dumps(votos_por_mesa),   # <<<<<<<<<<  NUEVO
     }
 
     return render(request, "afiliados/elecciones2023.html", context)
+
 
     
     
