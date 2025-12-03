@@ -214,3 +214,19 @@ class TrepCentroResultado(models.Model):
 
     def __str__(self):
         return f"{self.tipo} | Centro {self.centro_codigo} | Mesa {self.mesa}"    
+    
+
+
+# afiliados_app/models.py
+
+class PadronElectoral(models.Model):
+    nombre = models.CharField(max_length=255)
+    edad = models.PositiveIntegerField(null=True, blank=True)
+    identificacion = models.CharField(max_length=20, unique=True)  # DPI
+    comunidad = models.CharField(max_length=255, null=True, blank=True)
+    departamento = models.CharField(max_length=100, null=True, blank=True)
+    municipio = models.CharField(max_length=100, null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.nombre} - {self.identificacion}"
+

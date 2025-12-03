@@ -68,7 +68,6 @@ from django.shortcuts import render
 from .models import TrepCentroResultado
 import json
 
-
 from django.db.models import Sum
 from django.shortcuts import render
 from .models import TrepCentroResultado
@@ -122,6 +121,16 @@ def elecciones2023(request):
     ).distinct().order_by("centro_nombre")
 
     # ============================================================
+    # 🟢 OBTENER NOMBRE DEL CENTRO SELECCIONADO
+    # ============================================================
+    centro_nombre = ""
+
+    if centro:
+        fila_centro = TrepCentroResultado.objects.filter(centro_codigo=centro).first()
+        if fila_centro:
+            centro_nombre = fila_centro.centro_nombre
+
+    # ============================================================
     # 🟢 1. RESUMEN DE PARTIDOS (GLOBAL O FILTRADO)
     # ============================================================
     resumen_partidos = {}
@@ -129,7 +138,6 @@ def elecciones2023(request):
         for partido, votos in fila.partidos.items():
             resumen_partidos[partido] = resumen_partidos.get(partido, 0) + votos
 
-    # Ranking global o filtrado
     ranking = sorted(resumen_partidos.items(), key=lambda x: x[1], reverse=True)
 
     # ============================================================
@@ -138,22 +146,19 @@ def elecciones2023(request):
     votos_por_mesa = {}
 
     for fila in qs:
-        mesa = fila.mesa     # debe existir en tu modelo (ej. mesa 1, mesa 2)
-
+        mesa = fila.mesa
         if mesa not in votos_por_mesa:
             votos_por_mesa[mesa] = {}
 
-        # Sumar votos de esa mesa por partido
         for partido, votos in fila.partidos.items():
             votos_por_mesa[mesa][partido] = (
                 votos_por_mesa[mesa].get(partido, 0) + votos
             )
 
-    # Ordenar mesas numéricamente si son números
     try:
         votos_por_mesa = dict(sorted(votos_por_mesa.items(), key=lambda x: int(x[0])))
     except:
-        pass  # si son strings, se deja así
+        pass
 
     # ============================================================
     # CONTEXTO
@@ -168,10 +173,11 @@ def elecciones2023(request):
         "departamento": departamento,
         "municipio": municipio,
         "centro": centro,
+        "centro_nombre": centro_nombre,   # <<<<<< AQUI LO AGREGAMOS
 
         "resumen_partidos": json.dumps(resumen_partidos),
         "ranking": ranking,
-        "votos_por_mesa": json.dumps(votos_por_mesa),   # <<<<<<<<<<  NUEVO
+        "votos_por_mesa": json.dumps(votos_por_mesa),
     }
 
     return render(request, "afiliados/elecciones2023.html", context)
@@ -521,6 +527,28 @@ def datos_centro(request):
 
 
 
+from django.http import JsonResponse
+from .models import PadronElectoral
+
+def buscar_en_padron(request):
+    dpi = request.GET.get("dpi", "")
+
+    if not dpi:
+        return JsonResponse({"ok": False, "mensaje": "Debe ingresar un DPI"})
+
+    persona = PadronElectoral.objects.filter(identificacion=dpi).first()
+
+    if not persona:
+        return JsonResponse({"ok": False, "mensaje": "No aparece en el padrón"})
+
+    return JsonResponse({
+        "ok": True,
+        "nombre": persona.nombre,
+        "comunidad": persona.comunidad,
+        "departamento": persona.departamento,
+        "municipio": persona.municipio,
+        "edad": persona.edad,
+    })
 
 
 @login_required

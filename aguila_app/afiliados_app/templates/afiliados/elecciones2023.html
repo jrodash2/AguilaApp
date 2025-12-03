@@ -68,12 +68,16 @@
 {% else %}
 
     {% if resumen_partidos %}
-    <div class="card p-3 mb-4">
-        <h4 class="text-center mb-3">
-            Distribución de Votos {% if centro %} del Centro Seleccionado {% else %} Global {% endif %}
-        </h4>
-        <div id="grafica_partidos" style="height: 320px;"></div>
-    </div>
+<div class="card p-3 mb-4">
+    <h4 class="text-center mb-3">
+        {% if centro %}
+            Distribución de Votos – <strong>{{ centro_nombre }}</strong>
+        {% else %}
+            Distribución de Votos Global
+        {% endif %}
+    </h4>
+    <div id="grafica_partidos" style="height: 320px;"></div>
+</div>
 
     <div class="card p-3 mb-4">
         <h4 class="text-center mb-3">
