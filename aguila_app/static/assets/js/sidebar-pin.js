@@ -2,6 +2,9 @@
 (function () {
   const pinTitle = document.querySelector(".pin-title");
   let pinIcon = document.querySelectorAll(".sidebar-list .fa-thumb-tack");
+  if (!pinTitle || !pinIcon.length) {
+    return;
+  }
   function togglePinnedName() {
     if (document.getElementsByClassName("pined").length) {
       if (!pinTitle.classList.contains("show")) pinTitle.classList.add("show");
@@ -37,15 +40,21 @@
       var elem = item;
       var topPos = elem.offsetTop;
       togglePinnedName();
+      const scrollWrapper = document.getElementsByClassName(
+        "simplebar-content-wrapper"
+      )[0];
+      if (!scrollWrapper) {
+        return;
+      }
       if (item.parentElement.parentElement.classList.contains("pined")) {
         scrollTo(
-          document.getElementsByClassName("simplebar-content-wrapper")[0],
+          scrollWrapper,
           topPos - 30,
           600
         );
       } else {
         scrollTo(
-          document.getElementsByClassName("simplebar-content-wrapper")[0],
+          scrollWrapper,
           elem.parentNode.offsetTop - 30,
           600
         );

@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'django.contrib.staticfiles',
     'afiliados_app',
 
 ]
@@ -173,4 +174,3 @@ EMAIL_HOST_USER = 'informatica@upcv.gob.gt'
 EMAIL_HOST_PASSWORD = 'xtdj nvwz ymyw lqyr'  
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-
