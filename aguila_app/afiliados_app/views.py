@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import logging
 from venv import logger
 from django.forms import IntegerField
 from django.shortcuts import render, redirect
@@ -61,6 +62,8 @@ from django.views.generic.detail import DetailView
 from django.core.mail import BadHeaderError
 from smtplib import SMTPException
 from django.db.models.functions import ExtractYear, ExtractMonth
+
+logger = logging.getLogger(__name__)
 
 
 from django.db.models import Sum
@@ -292,6 +295,8 @@ def dahsboard(request):
     total_lideres = Afiliado.objects.filter(es_lider_comunitario=True).count()
     total_comunidades = Comunidad.objects.count()
     total_empadronados = Afiliado.objects.filter(empadronado=True).count()
+    if total_afiliados == 0:
+        logger.info("Dashboard sin afiliados registrados.")
 
     # === Últimos afiliados ===
     ultimos_afiliados = (
@@ -305,6 +310,8 @@ def dahsboard(request):
         .annotate(total=Count('id'))
         .order_by('comunidad__nombre')
     )
+    if not afiliados_por_comunidad:
+        logger.info("Dashboard sin afiliados por comunidad.")
 
     # === Líderes por comunidad ===
     lideres_por_comunidad = (
@@ -313,6 +320,8 @@ def dahsboard(request):
         .annotate(total=Count('id'))
         .order_by('comunidad__nombre')
     )
+    if not lideres_por_comunidad:
+        logger.info("Dashboard sin líderes por comunidad.")
 
     # === Afiliados por rango edad ===
     hoy = timezone.now().date()
@@ -360,6 +369,8 @@ def dahsboard(request):
         "anio": item["anio"],
         "total": item["total"]
     })
+    if not afiliados_por_mes_list:
+        logger.info("Dashboard sin afiliados registrados por mes.")
 
     # ==============================================================
     # ⭐ 2. NUEVA GRAFICA: Comunidades por Sector
@@ -371,6 +382,8 @@ def dahsboard(request):
         .annotate(total=Count('id'))
         .order_by('nombre_sector')
     )
+    if not comunidades_por_sector:
+        logger.info("Dashboard sin comunidades por sector.")
 
     # === CONTEXT ===
     context = {
