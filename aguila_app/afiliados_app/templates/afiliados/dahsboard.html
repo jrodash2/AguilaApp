@@ -242,11 +242,23 @@
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
 <script>
-// Datos Django
-const afiliadosCom = {{ afiliados_por_comunidad|safe }};
-const lideresCom = {{ lideres_por_comunidad|safe }};
-const edades = {{ rangos_edad|safe }};
-const empad = {{ empadronados|safe }};
+// Datos Django (siempre JSON válido)
+const afiliadosComRaw = {{ afiliados_por_comunidad|safe }};
+const lideresComRaw = {{ lideres_por_comunidad|safe }};
+const edadesRaw = {{ rangos_edad|safe }};
+const empadRaw = {{ empadronados|safe }};
+
+const afiliadosCom = Array.isArray(afiliadosComRaw) ? afiliadosComRaw : [];
+const lideresCom = Array.isArray(lideresComRaw) ? lideresComRaw : [];
+const edades = Array.isArray(edadesRaw) ? edadesRaw : [];
+const empad = (empadRaw || { empadronados: 0, no_empadronados: 0 });
+
+const showEmptyMessage = (selector, mensaje) => {
+  const el = document.querySelector(selector);
+  if (el) {
+    el.innerHTML = `<div class="text-center text-muted py-4">${mensaje}</div>`;
+  }
+};
 
 // PALETA MODERNA
 const colors = ['#1565c0', '#42a5f5', '#64b5f6', '#90caf9', '#0d47a1'];
@@ -254,7 +266,10 @@ const colors = ['#1565c0', '#42a5f5', '#64b5f6', '#90caf9', '#0d47a1'];
 /* ----------------------------------
    1. Gráfico de Afiliados por Comunidad (Bar Moderno)
 ---------------------------------- */
-new ApexCharts(document.querySelector("#chartAfiliadosComunidad"), {
+if (afiliadosCom.length === 0) {
+  showEmptyMessage("#chartAfiliadosComunidad", "Sin datos para mostrar");
+} else {
+  new ApexCharts(document.querySelector("#chartAfiliadosComunidad"), {
   chart: {
     type: 'bar',
     height: 350,
@@ -281,7 +296,7 @@ new ApexCharts(document.querySelector("#chartAfiliadosComunidad"), {
     data: afiliadosCom.map(x => x.total)
   }],
   xaxis: {
-    categories: afiliadosCom.map(x => x.comunidad__nombre),
+    categories: afiliadosCom.map(x => x.comunidad_nombre),
     labels: {
       style: {
         colors: '#000',
@@ -296,14 +311,18 @@ new ApexCharts(document.querySelector("#chartAfiliadosComunidad"), {
     theme: "light",
     y: { formatter: val => `${val} personas` }
   }
-}).render();
+  }).render();
+}
 
 
 
 /* ----------------------------------
    2. Gráfico de Líderes por Comunidad (Bar con Degradado)
 ---------------------------------- */
-new ApexCharts(document.querySelector("#chartLideresComunidad"), {
+if (lideresCom.length === 0) {
+  showEmptyMessage("#chartLideresComunidad", "Sin datos para mostrar");
+} else {
+  new ApexCharts(document.querySelector("#chartLideresComunidad"), {
   chart: { type: 'bar', height: 350, toolbar: { show: false } },
   colors: ['#0d47a1'],
   fill: {
@@ -325,14 +344,18 @@ new ApexCharts(document.querySelector("#chartLideresComunidad"), {
     name: 'Líderes',
     data: lideresCom.map(x => x.total)
   }],
-  xaxis: { categories: lideresCom.map(x => x.comunidad__nombre) }
-}).render();
+  xaxis: { categories: lideresCom.map(x => x.comunidad_nombre) }
+  }).render();
+}
 
 
 /* ----------------------------------
    3. Distribución por Edades (Donut Glass)
 ---------------------------------- */
-new ApexCharts(document.querySelector("#chartEdad"), {
+if (edades.length === 0) {
+  showEmptyMessage("#chartEdad", "Sin datos para mostrar");
+} else {
+  new ApexCharts(document.querySelector("#chartEdad"), {
   chart: { type: 'donut', height: 350 },
   series: edades.map(x => x.total),
   labels: edades.map(x => x.rango),
@@ -347,26 +370,35 @@ new ApexCharts(document.querySelector("#chartEdad"), {
       }
     }
   }
-}).render();
+  }).render();
+}
 
 
 /* ----------------------------------
    4. Empadronados (Pie Animado)
 ---------------------------------- */
-new ApexCharts(document.querySelector("#chartEmpadronados"), {
+if (!empad || (empad.empadronados === 0 && empad.no_empadronados === 0)) {
+  showEmptyMessage("#chartEmpadronados", "Sin datos para mostrar");
+} else {
+  new ApexCharts(document.querySelector("#chartEmpadronados"), {
   chart: { type: 'pie', height: 350 },
   colors: ['#0d47a1', '#64b5f6'],
-  series: [empad.empadronados, empad.no_empadronados],
+  series: [empad.empadronados || 0, empad.no_empadronados || 0],
   labels: ['Empadronados', 'No Empadronados'],
   legend: { position: 'bottom' }
-}).render();
+  }).render();
+}
 
 /* ----------------------------------
    ⭐ 6. Afiliados por Mes (Area Smooth)
 ---------------------------------- */
-const afiliadosMes = {{ afiliados_por_mes|safe }};
+const afiliadosMesRaw = {{ afiliados_por_mes|safe }};
+const afiliadosMes = Array.isArray(afiliadosMesRaw) ? afiliadosMesRaw : [];
 
-new ApexCharts(document.querySelector("#chartAfiliadosMes"), {
+if (afiliadosMes.length === 0) {
+  showEmptyMessage("#chartAfiliadosMes", "Sin datos para mostrar");
+} else {
+  new ApexCharts(document.querySelector("#chartAfiliadosMes"), {
   chart: { type: 'area', height: 350, toolbar: { show: false } },
   series: [{
     name: "Afiliados",
@@ -381,15 +413,20 @@ new ApexCharts(document.querySelector("#chartAfiliadosMes"), {
     type: "gradient",
     gradient: { shadeIntensity: 1, opacityFrom: 0.5, opacityTo: 0.1 }
   }
-}).render();
+  }).render();
+}
 
 
 /* ----------------------------------
    ⭐ 7. Comunidades por Sector (Bar Horizontal)
 ---------------------------------- */
-const comunidadesSector = {{ comunidades_por_sector|safe }};
+const comunidadesSectorRaw = {{ comunidades_por_sector|safe }};
+const comunidadesSector = Array.isArray(comunidadesSectorRaw) ? comunidadesSectorRaw : [];
 
-new ApexCharts(document.querySelector("#chartComunidadesSector"), {
+if (comunidadesSector.length === 0) {
+  showEmptyMessage("#chartComunidadesSector", "Sin datos para mostrar");
+} else {
+  new ApexCharts(document.querySelector("#chartComunidadesSector"), {
   chart: { type: 'bar', height: 350, toolbar: { show: false } },
   plotOptions: {
     bar: { horizontal: true, borderRadius: 6 }
@@ -402,12 +439,11 @@ new ApexCharts(document.querySelector("#chartComunidadesSector"), {
   xaxis: {
     categories: comunidadesSector.map(x => x.nombre_sector),
   }
-}).render();
+  }).render();
+}
 
 
 
 </script>
 
 {% endblock %}
-
-

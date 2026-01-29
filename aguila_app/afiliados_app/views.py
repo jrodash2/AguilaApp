@@ -305,20 +305,30 @@ def dahsboard(request):
     )
 
     # === Afiliados por comunidad ===
+    # Nota: si comunidad es NULL, el render anterior enviaba "None" (Python) al JS,
+    # lo cual rompía los gráficos. Coalesce + JSON válido evita el fallo.
     afiliados_por_comunidad = (
-        Afiliado.objects.values('comunidad__nombre')
+        Afiliado.objects
+        .annotate(
+            comunidad_nombre=Coalesce('comunidad__nombre', Value('SIN COMUNIDAD'))
+        )
+        .values('comunidad_nombre')
         .annotate(total=Count('id'))
-        .order_by('comunidad__nombre')
+        .order_by('comunidad_nombre')
     )
     if not afiliados_por_comunidad:
         logger.info("Dashboard sin afiliados por comunidad.")
 
     # === Líderes por comunidad ===
     lideres_por_comunidad = (
-        Afiliado.objects.filter(es_lider_comunitario=True)
-        .values('comunidad__nombre')
+        Afiliado.objects
+        .filter(es_lider_comunitario=True)
+        .annotate(
+            comunidad_nombre=Coalesce('comunidad__nombre', Value('SIN COMUNIDAD'))
+        )
+        .values('comunidad_nombre')
         .annotate(total=Count('id'))
-        .order_by('comunidad__nombre')
+        .order_by('comunidad_nombre')
     )
     if not lideres_por_comunidad:
         logger.info("Dashboard sin líderes por comunidad.")
@@ -392,18 +402,24 @@ def dahsboard(request):
         'total_comunidades': total_comunidades,
         'total_empadronados': total_empadronados,
         'ultimos_afiliados': ultimos_afiliados,
-        'afiliados_por_comunidad': list(afiliados_por_comunidad),
-        'lideres_por_comunidad': list(lideres_por_comunidad),
-        'rangos_edad': rangos_edad,
+        'afiliados_por_comunidad': json.dumps(
+            list(afiliados_por_comunidad), ensure_ascii=False
+        ),
+        'lideres_por_comunidad': json.dumps(
+            list(lideres_por_comunidad), ensure_ascii=False
+        ),
+        'rangos_edad': json.dumps(rangos_edad, ensure_ascii=False),
 
         # Nuevos datos
-        'afiliados_por_mes': afiliados_por_mes_list,
-        'comunidades_por_sector': list(comunidades_por_sector),
+        'afiliados_por_mes': json.dumps(afiliados_por_mes_list, ensure_ascii=False),
+        'comunidades_por_sector': json.dumps(
+            list(comunidades_por_sector), ensure_ascii=False
+        ),
 
-        'empadronados': {
+        'empadronados': json.dumps({
             'empadronados': total_empadronados,
             'no_empadronados': total_no_empadronados,
-        }
+        }, ensure_ascii=False),
     }
 
     return render(request, 'afiliados/dahsboard.html', context)

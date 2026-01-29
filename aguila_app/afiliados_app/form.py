@@ -241,6 +241,10 @@ class AfiliadoForm(forms.ModelForm):
         # 🎨 Opcional: Renombrar la etiqueta del campo 'lider_vinculado'
         self.fields['lider_vinculado'].label = 'Líder (Afiliado Referente)'
 
+    def clean_comunidad(self):
+        comunidad = self.cleaned_data.get('comunidad')
+        return comunidad or None
+
 class ComunidadForm(forms.ModelForm):
     class Meta:
         model = Comunidad
@@ -296,4 +300,3 @@ class SectorForm(forms.ModelForm):
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
-
