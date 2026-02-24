@@ -18,6 +18,10 @@ urlpatterns = [
     path('no-autorizado/', views.acceso_denegado, name='acceso_denegado'),
     path("dashboard/", views.dashboard_elecciones, name="dashboard_elecciones"),
     path("dashboard/datos/", views.datos_centro, name="dashboard_datos_centro"),
+
+path("dashboard/filtros/", views.dashboard_filtros, name="dashboard_filtros"),
+path("dashboard/filtros/export/excel/", views.exportar_filtros_excel, name="exportar_filtros_excel"),
+path("dashboard/filtros/export/pdf/", views.exportar_filtros_pdf, name="exportar_filtros_pdf"),
    
     # Usuarios
     path('usuario/crear/', views.user_create, name='user_create'),
@@ -39,7 +43,6 @@ urlpatterns = [
     path('nuevo/', views.afiliado_nuevo, name='afiliado_nuevo'),
     path('<int:pk>/editar/', views.afiliado_editar, name='afiliado_editar'),
     path('eliminar/<int:pk>/', views.afiliado_eliminar, name='afiliado_eliminar'),
-    path('verificar_empadronamiento/', views.verificar_empadronamiento_ajax, name='verificar_empadronamiento'),
     path('detalle/<int:pk>/', views.afiliado_detalle, name='afiliado_detalle'),
     path('lideres/', views.lideres_lista, name='lideres_lista'),
     path('<int:pk>/editar-lider/', views.lider_editar, name='lider_editar'),
@@ -76,7 +79,7 @@ path('comisiones/editar/<int:pk>/', views.comision_editar, name='comision_editar
 path('comisiones/eliminar/<int:pk>/', views.comision_eliminar, name='comision_eliminar'),
 
 path("elecciones2023/", views.elecciones2023, name="elecciones2023"),
-path("padron/buscar/", views.buscar_en_padron, name="buscar_en_padron"),
+path("api/padron/", views.consultar_padron_local, name="consultar_padron_local"),
 
 
 

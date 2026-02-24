@@ -37,9 +37,6 @@
               <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevoAfiliadoModal">
                 + Nuevo Afiliado
               </button>
-              <button type="button" class="btn btn-info ms-2" data-bs-toggle="modal" data-bs-target="#buscarPadronModal">
-    Afiliado (Consultar DPI)
-</button>
 
             </div>
             <div class="card-body">
@@ -199,10 +196,11 @@
                     </div>
                 </div>
 
-                <div class="col-md-6 d-flex align-items-center justify-content-end">
+                <div class="col-md-6 d-flex flex-column align-items-end justify-content-center gap-2">
                     <button type="button" class="btn btn-info w-75" id="btnVerificarEmpadronamiento">
                         Verificar Empadronamiento
                     </button>
+                    <a href="https://www.tse.org.gt/reg-ciudadanos/sistema-de-estadisticas/consulta-de-afiliacion" class="btn btn-outline-secondary w-75" id="btnTSE" target="_blank" rel="noopener noreferrer">TSE</a>
                 </div>
                 
             </div>
@@ -241,31 +239,6 @@
 </div>
 
 
-<!--  Modal para consultar DPI en el Padrón -->
-<div class="modal fade" id="buscarPadronModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content dark-sign-up">
-      <div class="modal-body p-4">
-
-        <h5 class="text-center mb-3">Consultar DPI en el Padrón Electoral</h5>
-
-        <div class="mb-3">
-          <label class="form-label">DPI</label>
-          <input type="text" id="padron_dpi" class="form-control" placeholder="Ingrese DPI">
-        </div>
-
-        <div id="padron_resultado"></div>
-
-        <div class="text-end mt-3">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-          <button type="button" class="btn btn-info" id="btnBuscarPadron">Buscar</button>
-        </div>
-
-      </div>
-    </div>
-  </div>
-</div>
-
 <style>
 .checkbox-grande input[type="checkbox"] {
   transform: scale(1.8);
@@ -284,56 +257,49 @@ $(document).ready(function() {
         // $('.form-control[multiple]').select2(); // Descomentar si usas Select2
     });
 
-    // --- VERIFICAR EMPADRONAMIENTO ---
-    $('#btnVerificarEmpadronamiento').click(function() {
-    var dpi = $('#id_dpi').val();
-    var fecha = $('#id_fecha_nacimiento').val();
-
-    if(!dpi || !fecha){
-        $('#resultadoEmpadronamiento').html('<div class="alert alert-warning">Ingrese DPI y Fecha de Nacimiento</div>');
-        return;
+    function limpiarDpi(valor) {
+        return (valor || '').replace(/\D/g, '');
     }
 
-    $('#resultadoEmpadronamiento').html('<div class="alert alert-info">Verificando empadronamiento...</div>');
+    // --- VERIFICAR EMPADRONAMIENTO LOCAL ---
+    $('#btnVerificarEmpadronamiento').click(function() {
+        const dpiLimpio = limpiarDpi($('#id_dpi').val());
 
-    $.ajax({
-        url: "{% url 'afiliados:verificar_empadronamiento' %}",
-        method: "POST",
-        data: {
-            'dpi': dpi,
-            'fecha_nacimiento': fecha,
-            'csrfmiddlewaretoken': '{{ csrf_token }}'
-        },
-    success: function(data) {
-        if(data.exito){
-            $('#resultadoEmpadronamiento').html(
-                '<div class="alert alert-success" style="white-space: pre-wrap;">' + data.mensaje + '</div>'
-            );
-
-            // 1. Llenamos el campo de nombre 
-            if (data.nombre) {
-                $('#id_nombre_completo').val(data.nombre); 
-            }
-
-            // 2. Llenamos el campo de dirección/municipio 
-            if (data.municipio) {
-                $('#id_direccion').val(data.municipio); 
-            }
-            
-            // 3. MARCAR CHECKBOX EMPADRONADO
-            $('#id_empadronado').prop('checked', true); 
-
-        } else {
-            // Si NO fue exitoso (INACTIVO o error), desmarcamos por si acaso.
-            $('#id_empadronado').prop('checked', false); 
-            $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">' + data.mensaje + '</div>');
+        if (!dpiLimpio) {
+            $('#resultadoEmpadronamiento').html('<div class="alert alert-warning">Ingrese DPI</div>');
+            return;
         }
-    },
-        error: function(xhr, status, error) {
-            $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">Error al verificar: ' + error + '</div>');
-        }
+
+        $('#resultadoEmpadronamiento').html('<div class="alert alert-info">Consultando padrón local...</div>');
+
+        fetch(`{% url 'afiliados:consultar_padron_local' %}?dpi=${encodeURIComponent(dpiLimpio)}`)
+            .then(async (response) => {
+                const data = await response.json();
+                return { status: response.status, data };
+            })
+            .then(({ status, data }) => {
+                if (!data.ok) {
+                    $('#id_empadronado').prop('checked', false);
+                    $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">' + (data.error || 'Error al consultar padrón local') + '</div>');
+                    return;
+                }
+
+                if (data.found) {
+                    const persona = data.data || {};
+                    if (persona.nombre_completo) $('#id_nombre_completo').val(persona.nombre_completo);
+                    if (persona.municipio) $('#id_direccion').val(persona.municipio);
+                    $('#id_empadronado').prop('checked', true);
+                    $('#resultadoEmpadronamiento').html('<div class="alert alert-success">Encontrado en padrón local</div>');
+                } else {
+                    $('#id_empadronado').prop('checked', false);
+                    $('#resultadoEmpadronamiento').html('<div class="alert alert-warning">' + data.message + '</div>');
+                }
+            })
+            .catch(() => {
+                $('#id_empadronado').prop('checked', false);
+                $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">Error al consultar padrón local.</div>');
+            });
     });
-});
 
 
     // --- GUARDAR NUEVO AFILIADO CON AJAX ---
@@ -451,47 +417,6 @@ $(document).on('click', '.btn-eliminar', function(e){
 });
 
 
-// Buscar en el padrón y autocompletar el formulario
-$('#btnBuscarPadron').click(function() {
-    let dpi = $('#padron_dpi').val();
-
-    if(!dpi) {
-        $('#padron_resultado').html('<div class="alert alert-warning">Ingrese un DPI</div>');
-        return;
-    }
-
-    $('#padron_resultado').html('<div class="alert alert-info">Buscando...</div>');
-
-    $.ajax({
-        url: "{% url 'afiliados:buscar_en_padron' %}",
-        method: "GET",
-        data: { dpi: dpi },
-
-        success: function(data) {
-            if (data.ok) {
-
-                $('#padron_resultado').html(
-                    '<div class="alert alert-success">Encontrado en el padrón</div>'
-                );
-
-                // 👉 Llenar formulario principal
-                $('#id_dpi').val(dpi);
-                $('#id_nombre_completo').val(data.nombre);
-                $('#id_comunidad').val(data.comunidad);
-                $('#id_direccion').val(data.municipio);
-                
-                // cerrar modal del padrón
-                $('#buscarPadronModal').modal('hide');
-
-                // abrir modal principal
-                $('#nuevoAfiliadoModal').modal('show');
-
-            } else {
-                $('#padron_resultado').html('<div class="alert alert-danger">' + data.mensaje + '</div>');
-            }
-        }
-    });
-});
 
 </script>
 

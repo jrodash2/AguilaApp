@@ -1,0 +1,212 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0">Filtros</h4>
+        </div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'afiliados:dahsboard' %}">
+                <svg class="stroke-icon">
+                  <use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-home"></use>
+                </svg></a></li>
+            <li class="breadcrumb-item">Dashboard</li>
+            <li class="breadcrumb-item active">Filtros</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    <div class="card">
+      <div class="card-body">
+        <form method="get" class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label">Comunidad</label>
+            <select name="comunidad_id" class="form-control">
+              <option value="">Todas</option>
+              {% for comunidad in comunidades %}
+                <option value="{{ comunidad.id }}" {% if comunidad_id == comunidad.id|stringformat:"s" %}selected{% endif %}>{{ comunidad.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Líder</label>
+            <select name="lider_id" class="form-control">
+              <option value="">Todos</option>
+              {% for lider in lideres %}
+                <option value="{{ lider.id }}" {% if lider_id == lider.id|stringformat:"s" %}selected{% endif %}>{{ lider.nombre_completo }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Sector</label>
+            <select name="sector_id" class="form-control">
+              <option value="">Todos</option>
+              {% for sector in sectores %}
+                <option value="{{ sector.id }}" {% if sector_id == sector.id|stringformat:"s" %}selected{% endif %}>{{ sector.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Centro de Votación</label>
+            <select name="centro_votacion_id" class="form-control">
+              <option value="">Todos</option>
+              {% for centro in centros_votacion %}
+                <option value="{{ centro.id }}" {% if centro_votacion_id == centro.id|stringformat:"s" %}selected{% endif %}>{{ centro.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Modo</label>
+            <select name="modo" class="form-control">
+              <option value="afiliados" {% if modo == 'afiliados' %}selected{% endif %}>Afiliados</option>
+              <option value="referidos" {% if modo == 'referidos' %}selected{% endif %}>Referidos de líder</option>
+              <option value="lideres_dependientes" {% if modo == 'lideres_dependientes' %}selected{% endif %}>Líderes dependientes</option>
+              <option value="dependientes_y_referidos" {% if modo == 'dependientes_y_referidos' %}selected{% endif %}>Dependientes y referidos del líder</option>
+            </select>
+          </div>
+
+          <div class="col-md-8 d-flex align-items-end justify-content-end gap-2">
+            <button type="submit" class="btn btn-primary">Filtrar</button>
+            <a class="btn btn-success" href="{% url 'afiliados:exportar_filtros_excel' %}?{{ request.GET.urlencode }}">Exportar Excel</a>
+            <a class="btn btn-danger" href="{% url 'afiliados:exportar_filtros_pdf' %}?{{ request.GET.urlencode }}">Exportar PDF</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        {% if modo == 'dependientes_y_referidos' %}
+          {% if mensaje %}
+            <div class="alert alert-warning">{{ mensaje }}</div>
+          {% else %}
+            <h6 class="mb-2">Líderes dependientes</h6>
+            <div class="table-responsive custom-scrollbar mb-4">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>DPI</th>
+                    <th>Nombre</th>
+                    <th>Comunidad</th>
+                    <th>Sector</th>
+                    <th>Centro de Votación</th>
+                    <th>Líder Referente</th>
+                    <th>Es Líder</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for afiliado in dependientes %}
+                    <tr>
+                      <td>{{ afiliado.dpi }}</td>
+                      <td>{{ afiliado.nombre_completo }}</td>
+                      <td>{{ afiliado.comunidad|default:"-" }}</td>
+                      <td>{{ afiliado.sector|default:"-" }}</td>
+                      <td>{{ afiliado.centro_votacion|default:"-" }}</td>
+                      <td>{{ afiliado.lider_vinculado|default:"-" }}</td>
+                      <td>{{ afiliado.es_lider_comunitario|yesno:"Sí,No" }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">Sin líderes dependientes.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <h6 class="mb-2">Afiliados referidos</h6>
+            <div class="table-responsive custom-scrollbar">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>DPI</th>
+                    <th>Nombre</th>
+                    <th>Comunidad</th>
+                    <th>Sector</th>
+                    <th>Centro de Votación</th>
+                    <th>Líder Referente</th>
+                    <th>Es Líder</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for afiliado in referidos %}
+                    <tr>
+                      <td>{{ afiliado.dpi }}</td>
+                      <td>{{ afiliado.nombre_completo }}</td>
+                      <td>{{ afiliado.comunidad|default:"-" }}</td>
+                      <td>{{ afiliado.sector|default:"-" }}</td>
+                      <td>{{ afiliado.centro_votacion|default:"-" }}</td>
+                      <td>{{ afiliado.lider_vinculado|default:"-" }}</td>
+                      <td>{{ afiliado.es_lider_comunitario|yesno:"Sí,No" }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">Sin afiliados referidos.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% endif %}
+        {% else %}
+        <div class="table-responsive custom-scrollbar">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>DPI</th>
+                <th>Nombre</th>
+                <th>Comunidad</th>
+                <th>Sector</th>
+                <th>Centro de Votación</th>
+                <th>Líder Referente</th>
+                <th>Es Líder</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for afiliado in resultados %}
+                <tr>
+                  <td>{{ afiliado.dpi }}</td>
+                  <td>{{ afiliado.nombre_completo }}</td>
+                  <td>{{ afiliado.comunidad|default:"-" }}</td>
+                  <td>{{ afiliado.sector|default:"-" }}</td>
+                  <td>{{ afiliado.centro_votacion|default:"-" }}</td>
+                  <td>{{ afiliado.lider_vinculado|default:"-" }}</td>
+                  <td>{{ afiliado.es_lider_comunitario|yesno:"Sí,No" }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="7" class="text-center text-muted">No hay resultados para los filtros seleccionados.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% if resultados.has_other_pages %}
+          <nav>
+            <ul class="pagination justify-content-end">
+              {% if resultados.has_previous %}
+                <li class="page-item"><a class="page-link" href="?{{ request.GET.urlencode }}&page={{ resultados.previous_page_number }}">Anterior</a></li>
+              {% endif %}
+              <li class="page-item disabled"><span class="page-link">Página {{ resultados.number }} de {{ resultados.paginator.num_pages }}</span></li>
+              {% if resultados.has_next %}
+                <li class="page-item"><a class="page-link" href="?{{ request.GET.urlencode }}&page={{ resultados.next_page_number }}">Siguiente</a></li>
+              {% endif %}
+            </ul>
+          </nav>
+        {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
