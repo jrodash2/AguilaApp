@@ -14,7 +14,7 @@ from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 import requests
 from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm
-from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector
+from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
@@ -556,27 +556,39 @@ def datos_centro(request):
 
 
 
-from django.http import JsonResponse
-from .models import PadronElectoral
+@login_required
+@require_GET
+def consultar_padron_local(request):
+    dpi_limpio = re.sub(r"\D", "", request.GET.get("dpi", ""))
 
-def buscar_en_padron(request):
-    dpi = request.GET.get("dpi", "")
+    if len(dpi_limpio) != 13:
+        return JsonResponse({
+            "ok": False,
+            "found": False,
+            "error": "DPI inválido. Debe contener exactamente 13 dígitos.",
+        }, status=400)
 
-    if not dpi:
-        return JsonResponse({"ok": False, "mensaje": "Debe ingresar un DPI"})
-
-    persona = PadronElectoral.objects.filter(identificacion=dpi).first()
+    persona = PadronElectoral.objects.filter(identificacion=dpi_limpio).first()
 
     if not persona:
-        return JsonResponse({"ok": False, "mensaje": "No aparece en el padrón"})
+        return JsonResponse({
+            "ok": True,
+            "found": False,
+            "message": "No aparece en padrón local: podría estar vecindado en otro municipio o no empadronado. Consulte TSE.",
+        })
 
     return JsonResponse({
         "ok": True,
-        "nombre": persona.nombre,
-        "comunidad": persona.comunidad,
-        "departamento": persona.departamento,
-        "municipio": persona.municipio,
-        "edad": persona.edad,
+        "found": True,
+        "data": {
+            "dpi": persona.identificacion,
+            "nombre_completo": persona.nombre,
+            "comunidad": persona.comunidad,
+            "departamento": persona.departamento,
+            "municipio": persona.municipio,
+            "edad": persona.edad,
+        },
+        "message": "Encontrado en padrón local",
     })
 
 
@@ -594,7 +606,8 @@ def afiliado_lista(request):
 
     return render(request, 'afiliados/lista.html', {
         'afiliados': afiliados,
-        'form': form  # Pasamos el formulario al template
+        'form': form,  # Pasamos el formulario al template
+        'TSE_CONSULTA_URL': settings.TSE_CONSULTA_URL,
     })
 
 
@@ -723,6 +736,7 @@ def lideres_lista(request):
         'lideres': lideres, # Renombramos la variable a 'lideres' para evitar confusiones
         'form': form,
         'institucion': institucion,
+        'TSE_CONSULTA_URL': settings.TSE_CONSULTA_URL,
     }
     
     return render(request, 'afiliados/lideres_lista.html', context)
@@ -762,6 +776,7 @@ def afiliado_detalle(request, pk):
         'institucion': institucion,
         'referidos': referidos,
         'form': form, # <-- Pasamos el formulario al template
+        'TSE_CONSULTA_URL': settings.TSE_CONSULTA_URL,
     }
     
     return render(request, 'afiliados/afiliado_detalle.html', context)
@@ -773,42 +788,6 @@ def afiliado_detalle(request, pk):
 @login_required
 def acceso_denegado(request):
     return render(request, 'afiliados/acceso_denegado.html')
-# from django.http import JsonResponse
-# from django.views.decorators.csrf import csrf_exempt
-# from .selenium_utils import verificar_empadronamiento 
-
-from .selenium_utils import verificar_empadronamiento
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-
-@csrf_exempt
-def verificar_empadronamiento_ajax(request):
-    if request.method == 'POST':
-        dpi = request.POST.get('dpi')
-        fecha_nacimiento = request.POST.get('fecha_nacimiento')
-
-        if not dpi or not fecha_nacimiento:
-            return JsonResponse({'exito': False, 'mensaje': 'Faltan datos.'})
-
-        # 🎯 CAMBIO CLAVE: Capturamos la tupla (mensaje, nombre, municipio)
-        mensaje_resultado, nombre_ciudadano, municipio_residencia = verificar_empadronamiento(dpi, fecha_nacimiento)
-
-        if "ACTIVO" in mensaje_resultado:
-            return JsonResponse({
-                'exito': True,
-                'mensaje': mensaje_resultado,
-                'nombre': nombre_ciudadano,
-                # 🎯 Enviamos el municipio REAL obtenido por Selenium
-                'municipio': municipio_residencia 
-            })
-        else:
-            return JsonResponse({
-                'exito': False, 
-                'mensaje': mensaje_resultado
-            })
-
-    return JsonResponse({'exito': False, 'mensaje': 'Método no permitido.'}, status=400)
-
 # -----------------------------------------
 # CRUD - COMUNIDAD
 # -----------------------------------------
