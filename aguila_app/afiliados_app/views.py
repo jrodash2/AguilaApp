@@ -615,6 +615,7 @@ def _construir_filtros_afiliados(request):
     dependientes = base_qs.none()
     referidos = base_qs.none()
     mensaje = ''
+    lider_principal = None
 
     if modo == 'referidos':
         resultados = base_qs.filter(lider_vinculado_id=lider_id) if lider_id else base_qs.none()
@@ -622,8 +623,10 @@ def _construir_filtros_afiliados(request):
         resultados = base_qs.filter(lider_vinculado_id=lider_id, es_lider_comunitario=True) if lider_id else base_qs.none()
     elif modo == 'dependientes_y_referidos':
         if lider_id:
-            dependientes = base_qs.filter(lider_vinculado_id=lider_id, es_lider_comunitario=True)
-            referidos = base_qs.filter(lider_vinculado_id=lider_id)
+            lider_principal = Afiliado.objects.filter(pk=lider_id, es_lider_comunitario=True).first()
+            dependientes = base_qs.filter(lider_vinculado_id=lider_id, es_lider_comunitario=True).distinct()
+            ids_dependientes = list(dependientes.values_list('id', flat=True))
+            referidos = base_qs.filter(lider_vinculado_id__in=ids_dependientes).exclude(id__in=ids_dependientes).distinct()
         else:
             mensaje = 'Seleccione un líder para ver dependientes y referidos'
     else:
@@ -640,6 +643,9 @@ def _construir_filtros_afiliados(request):
         'dependientes': dependientes,
         'referidos': referidos,
         'mensaje': mensaje,
+        'lider_principal': lider_principal,
+        'total_dependientes': dependientes.count(),
+        'total_referidos': referidos.count(),
     }
 
 
@@ -666,6 +672,9 @@ def dashboard_filtros(request):
         'dependientes': filtros['dependientes'],
         'referidos': filtros['referidos'],
         'mensaje': filtros['mensaje'],
+        'lider_principal': filtros['lider_principal'],
+        'total_dependientes': filtros['total_dependientes'],
+        'total_referidos': filtros['total_referidos'],
     }
 
     return render(request, 'afiliados/filtros.html', context)
@@ -711,7 +720,7 @@ def exportar_filtros_excel(request):
         ws_dep.title = 'LideresDependientes'
         _write_sheet(ws_dep, _rows_reporte_filtros(filtros['dependientes']))
 
-        ws_ref = wb.create_sheet('AfiliadosReferidos')
+        ws_ref = wb.create_sheet('AfiliadosDependientes')
         _write_sheet(ws_ref, _rows_reporte_filtros(filtros['referidos']))
     else:
         ws = wb.active
@@ -779,7 +788,7 @@ def exportar_filtros_pdf(request):
 
     if filtros['modo'] == 'dependientes_y_referidos':
         y = _draw_section('Líderes dependientes', _rows_reporte_filtros(filtros['dependientes']), height - 75)
-        _draw_section('Afiliados referidos', _rows_reporte_filtros(filtros['referidos']), y)
+        _draw_section('Afiliados referidos por líderes dependientes', _rows_reporte_filtros(filtros['referidos']), y)
     else:
         _draw_section('Resultados', rows, height - 75)
 
