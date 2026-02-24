@@ -264,6 +264,14 @@
                         </a>
                     </li>
 
+                    <li class="sidebar-list {% if '/afiliados/dashboard/filtros/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:dashboard_filtros' %}">
+                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-form' %}"></use></svg>
+                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-form' %}"></use></svg>
+                            <span>Filtros</span>
+                        </a>
+                    </li>
+
                     <li class="sidebar-list {% if '/afiliados/editar_institucion' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:editar_institucion' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-setting' %}"></use></svg>

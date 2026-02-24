@@ -18,6 +18,10 @@ urlpatterns = [
     path('no-autorizado/', views.acceso_denegado, name='acceso_denegado'),
     path("dashboard/", views.dashboard_elecciones, name="dashboard_elecciones"),
     path("dashboard/datos/", views.datos_centro, name="dashboard_datos_centro"),
+
+path("dashboard/filtros/", views.dashboard_filtros, name="dashboard_filtros"),
+path("dashboard/filtros/export/excel/", views.exportar_filtros_excel, name="exportar_filtros_excel"),
+path("dashboard/filtros/export/pdf/", views.exportar_filtros_pdf, name="exportar_filtros_pdf"),
    
     # Usuarios
     path('usuario/crear/', views.user_create, name='user_create'),

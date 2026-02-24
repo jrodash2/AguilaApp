@@ -20,6 +20,7 @@ from django.views.generic import ListView
 from django.urls import reverse_lazy
 from django.http import Http404, HttpResponseNotAllowed, JsonResponse
 from django.core.exceptions import ValidationError
+from django.core.paginator import Paginator
 from django.contrib import messages
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
@@ -590,6 +591,169 @@ def consultar_padron_local(request):
         },
         "message": "Encontrado en padrón local",
     })
+
+
+
+
+def _construir_filtros_afiliados(request):
+    modo = request.GET.get('modo', 'afiliados')
+    comunidad_id = request.GET.get('comunidad_id')
+    lider_id = request.GET.get('lider_id')
+    sector_id = request.GET.get('sector_id')
+    centro_votacion_id = request.GET.get('centro_votacion_id')
+
+    base_qs = Afiliado.objects.select_related('comunidad__sector', 'centro_votacion', 'lider_vinculado').order_by('nombre_completo')
+
+    if comunidad_id:
+        base_qs = base_qs.filter(comunidad_id=comunidad_id)
+    if sector_id:
+        base_qs = base_qs.filter(comunidad__sector_id=sector_id)
+    if centro_votacion_id:
+        base_qs = base_qs.filter(centro_votacion_id=centro_votacion_id)
+
+    if modo == 'referidos':
+        if lider_id:
+            resultados = base_qs.filter(lider_vinculado_id=lider_id)
+        else:
+            resultados = base_qs.none()
+    elif modo == 'lideres_dependientes':
+        if lider_id:
+            resultados = base_qs.filter(lider_vinculado_id=lider_id, es_lider_comunitario=True)
+        else:
+            resultados = base_qs.none()
+    else:
+        resultados = base_qs
+        if lider_id:
+            resultados = resultados.filter(lider_vinculado_id=lider_id)
+
+    return {
+        'modo': modo,
+        'comunidad_id': comunidad_id or '',
+        'lider_id': lider_id or '',
+        'sector_id': sector_id or '',
+        'centro_votacion_id': centro_votacion_id or '',
+        'resultados': resultados,
+    }
+
+
+@login_required
+def dashboard_filtros(request):
+    filtros = _construir_filtros_afiliados(request)
+    paginator = Paginator(filtros['resultados'], 25)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'comunidades': Comunidad.objects.all().order_by('nombre'),
+        'lideres': Afiliado.objects.filter(es_lider_comunitario=True).order_by('nombre_completo'),
+        'sectores': Sector.objects.all().order_by('nombre'),
+        'centros_votacion': CentroVotacion.objects.all().order_by('nombre'),
+        'modo': filtros['modo'],
+        'comunidad_id': filtros['comunidad_id'],
+        'lider_id': filtros['lider_id'],
+        'sector_id': filtros['sector_id'],
+        'centro_votacion_id': filtros['centro_votacion_id'],
+        'resultados': page_obj,
+    }
+
+    return render(request, 'afiliados/filtros.html', context)
+
+
+def _rows_reporte_filtros(resultados):
+    rows = []
+    for afiliado in resultados:
+        rows.append([
+            afiliado.dpi,
+            afiliado.nombre_completo,
+            afiliado.comunidad.nombre if afiliado.comunidad else '',
+            afiliado.sector.nombre if afiliado.sector else '',
+            afiliado.centro_votacion.nombre if afiliado.centro_votacion else '',
+            afiliado.lider_vinculado.nombre_completo if afiliado.lider_vinculado else '',
+            'Sí' if afiliado.es_lider_comunitario else 'No',
+        ])
+    return rows
+
+
+@login_required
+def exportar_filtros_excel(request):
+    filtros = _construir_filtros_afiliados(request)
+    rows = _rows_reporte_filtros(filtros['resultados'])
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'Filtros'
+
+    headers = ['DPI', 'Nombre', 'Comunidad', 'Sector', 'Centro de Votación', 'Líder Referente', 'Es Líder']
+    ws.append(headers)
+
+    for row in rows:
+        ws.append(row)
+
+    for col_idx, col_name in enumerate(headers, start=1):
+        max_len = len(col_name)
+        for row_idx in range(2, ws.max_row + 1):
+            value = ws.cell(row=row_idx, column=col_idx).value
+            if value:
+                max_len = max(max_len, len(str(value)))
+        ws.column_dimensions[get_column_letter(col_idx)].width = min(max_len + 2, 45)
+
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    fecha = timezone.now().strftime('%Y%m%d_%H%M%S')
+    response['Content-Disposition'] = f'attachment; filename="reporte_filtros_{fecha}.xlsx"'
+    wb.save(response)
+    return response
+
+
+@login_required
+def exportar_filtros_pdf(request):
+    filtros = _construir_filtros_afiliados(request)
+    rows = _rows_reporte_filtros(filtros['resultados'])
+
+    response = HttpResponse(content_type='application/pdf')
+    fecha = timezone.now().strftime('%Y%m%d_%H%M%S')
+    response['Content-Disposition'] = f'attachment; filename="reporte_filtros_{fecha}.pdf"'
+
+    p = canvas.Canvas(response, pagesize=landscape(letter))
+    width, height = landscape(letter)
+
+    p.setFont('Helvetica-Bold', 14)
+    p.drawString(30, height - 35, 'Reporte de Filtros')
+
+    p.setFont('Helvetica', 9)
+    filtros_txt = (
+        f"Modo: {filtros['modo']} | Comunidad: {filtros['comunidad_id'] or '-'} | "
+        f"Líder: {filtros['lider_id'] or '-'} | Sector: {filtros['sector_id'] or '-'} | "
+        f"Centro: {filtros['centro_votacion_id'] or '-'}"
+    )
+    p.drawString(30, height - 52, filtros_txt)
+
+    headers = ['DPI', 'Nombre', 'Comunidad', 'Sector', 'Centro', 'Líder Ref.', 'Es Líder']
+    x_positions = [30, 150, 330, 450, 540, 690, 800]
+    y = height - 75
+
+    p.setFont('Helvetica-Bold', 8)
+    for i, header in enumerate(headers):
+        p.drawString(x_positions[i], y, header)
+
+    y -= 14
+    p.setFont('Helvetica', 8)
+
+    for row in rows:
+        if y < 30:
+            p.showPage()
+            y = height - 35
+            p.setFont('Helvetica-Bold', 8)
+            for i, header in enumerate(headers):
+                p.drawString(x_positions[i], y, header)
+            y -= 14
+            p.setFont('Helvetica', 8)
+
+        for i, val in enumerate(row):
+            p.drawString(x_positions[i], y, str(val)[:28])
+        y -= 12
+
+    p.save()
+    return response
 
 
 @login_required
