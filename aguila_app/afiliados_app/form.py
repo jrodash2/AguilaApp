@@ -203,6 +203,12 @@ from django import forms
 # Formulario Afiliado
 # -------------------------------
 class AfiliadoForm(forms.ModelForm):
+    comision = forms.ModelChoiceField(
+        queryset=Comision.objects.all().order_by('nombre'),
+        required=False,
+        label='Comisión',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
     class Meta:
         model = Afiliado
         # ⚠️ IMPORTANTE: Ajustar la lista de campos
@@ -211,8 +217,7 @@ class AfiliadoForm(forms.ModelForm):
             'direccion', 'comunidad', 
             'es_lider_comunitario',  # 🌟 NUEVO: El check para ser líder
             'lider_vinculado',       # 🔗 RENOMBRADO: Apunta a otro Afiliado (Líder)
-            'empadronado', 
-            'comisiones'
+            'empadronado',
         ]
         
         widgets = {
@@ -237,6 +242,9 @@ class AfiliadoForm(forms.ModelForm):
         # ✅ Forzar formato correcto de fecha al cargar el formulario (modo edición)
         if self.instance and self.instance.fecha_nacimiento:
             self.initial['fecha_nacimiento'] = self.instance.fecha_nacimiento.strftime('%Y-%m-%d')
+
+        if self.instance and self.instance.pk:
+            self.fields['comision'].initial = self.instance.comisiones.first()
         
         # 🎨 Opcional: Renombrar la etiqueta del campo 'lider_vinculado'
         self.fields['lider_vinculado'].label = 'Líder (Afiliado Referente)'
@@ -244,6 +252,18 @@ class AfiliadoForm(forms.ModelForm):
     def clean_comunidad(self):
         comunidad = self.cleaned_data.get('comunidad')
         return comunidad or None
+
+    def save(self, commit=True):
+        afiliado = super().save(commit=commit)
+
+        if commit and 'comision' in self.data:
+            comision = self.cleaned_data.get('comision')
+            if comision:
+                afiliado.comisiones.set([comision])
+            else:
+                afiliado.comisiones.clear()
+
+        return afiliado
 
 class ComunidadForm(forms.ModelForm):
     class Meta:
