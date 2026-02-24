@@ -343,7 +343,7 @@
                                 <button type="button" class="btn btn-info w-75" id="btnVerificarEmpadronamiento">
                                     Verificar Empadronamiento
                                 </button>
-                                <a href="#" class="btn btn-outline-light w-75" id="btnTSE" target="_blank" rel="noopener noreferrer">TSE</a>
+                                <a href="https://www.tse.org.gt/reg-ciudadanos/sistema-de-estadisticas/consulta-de-afiliacion" class="btn btn-outline-secondary w-75" id="btnTSE" target="_blank" rel="noopener noreferrer">TSE</a>
                             </div>
                             
                         </div>
@@ -435,22 +435,9 @@ $(document).ready(function() {
         $('input[name="nombre_completo"]').attr('id', 'id_nombre_completo');
     });
 
-    const tseBaseUrl = "{{ TSE_CONSULTA_URL|default:'https://www.tse.org.gt/' }}";
-
     function limpiarDpi(valor) {
         return (valor || '').replace(/\D/g, '');
     }
-
-    function construirTseUrl(dpiLimpio) {
-        if (!dpiLimpio) return tseBaseUrl;
-        const sep = tseBaseUrl.includes('?') ? '&' : '?';
-        return `${tseBaseUrl}${sep}dpi=${encodeURIComponent(dpiLimpio)}`;
-    }
-
-    $('#btnTSE').on('click', function() {
-        const dpiLimpio = limpiarDpi($('#id_dpi').val());
-        $(this).attr('href', construirTseUrl(dpiLimpio));
-    });
 
     // --- 2. LÓGICA DE VERIFICACIÓN DE EMPADRONAMIENTO LOCAL ---
     $('#btnVerificarEmpadronamiento').click(function() {
