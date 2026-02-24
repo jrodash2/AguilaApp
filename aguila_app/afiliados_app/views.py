@@ -611,18 +611,22 @@ def _construir_filtros_afiliados(request):
     if centro_votacion_id:
         base_qs = base_qs.filter(centro_votacion_id=centro_votacion_id)
 
+    resultados = base_qs
+    dependientes = base_qs.none()
+    referidos = base_qs.none()
+    mensaje = ''
+
     if modo == 'referidos':
-        if lider_id:
-            resultados = base_qs.filter(lider_vinculado_id=lider_id)
-        else:
-            resultados = base_qs.none()
+        resultados = base_qs.filter(lider_vinculado_id=lider_id) if lider_id else base_qs.none()
     elif modo == 'lideres_dependientes':
+        resultados = base_qs.filter(lider_vinculado_id=lider_id, es_lider_comunitario=True) if lider_id else base_qs.none()
+    elif modo == 'dependientes_y_referidos':
         if lider_id:
-            resultados = base_qs.filter(lider_vinculado_id=lider_id, es_lider_comunitario=True)
+            dependientes = base_qs.filter(lider_vinculado_id=lider_id, es_lider_comunitario=True)
+            referidos = base_qs.filter(lider_vinculado_id=lider_id)
         else:
-            resultados = base_qs.none()
+            mensaje = 'Seleccione un líder para ver dependientes y referidos'
     else:
-        resultados = base_qs
         if lider_id:
             resultados = resultados.filter(lider_vinculado_id=lider_id)
 
@@ -633,15 +637,20 @@ def _construir_filtros_afiliados(request):
         'sector_id': sector_id or '',
         'centro_votacion_id': centro_votacion_id or '',
         'resultados': resultados,
+        'dependientes': dependientes,
+        'referidos': referidos,
+        'mensaje': mensaje,
     }
 
 
 @login_required
 def dashboard_filtros(request):
     filtros = _construir_filtros_afiliados(request)
-    paginator = Paginator(filtros['resultados'], 25)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    page_obj = filtros['resultados']
+    if filtros['modo'] != 'dependientes_y_referidos':
+        paginator = Paginator(filtros['resultados'], 25)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
 
     context = {
         'comunidades': Comunidad.objects.all().order_by('nombre'),
@@ -654,6 +663,9 @@ def dashboard_filtros(request):
         'sector_id': filtros['sector_id'],
         'centro_votacion_id': filtros['centro_votacion_id'],
         'resultados': page_obj,
+        'dependientes': filtros['dependientes'],
+        'referidos': filtros['referidos'],
+        'mensaje': filtros['mensaje'],
     }
 
     return render(request, 'afiliados/filtros.html', context)
@@ -680,26 +692,35 @@ def exportar_filtros_excel(request):
     rows = _rows_reporte_filtros(filtros['resultados'])
 
     wb = Workbook()
-    ws = wb.active
-    ws.title = 'Filtros'
-
     headers = ['DPI', 'Nombre', 'Comunidad', 'Sector', 'Centro de Votación', 'Líder Referente', 'Es Líder']
-    ws.append(headers)
 
-    for row in rows:
-        ws.append(row)
+    def _write_sheet(ws, sheet_rows):
+        ws.append(headers)
+        for row in sheet_rows:
+            ws.append(row)
+        for col_idx, col_name in enumerate(headers, start=1):
+            max_len = len(col_name)
+            for row_idx in range(2, ws.max_row + 1):
+                value = ws.cell(row=row_idx, column=col_idx).value
+                if value:
+                    max_len = max(max_len, len(str(value)))
+            ws.column_dimensions[get_column_letter(col_idx)].width = min(max_len + 2, 45)
 
-    for col_idx, col_name in enumerate(headers, start=1):
-        max_len = len(col_name)
-        for row_idx in range(2, ws.max_row + 1):
-            value = ws.cell(row=row_idx, column=col_idx).value
-            if value:
-                max_len = max(max_len, len(str(value)))
-        ws.column_dimensions[get_column_letter(col_idx)].width = min(max_len + 2, 45)
+    if filtros['modo'] == 'dependientes_y_referidos':
+        ws_dep = wb.active
+        ws_dep.title = 'LideresDependientes'
+        _write_sheet(ws_dep, _rows_reporte_filtros(filtros['dependientes']))
+
+        ws_ref = wb.create_sheet('AfiliadosReferidos')
+        _write_sheet(ws_ref, _rows_reporte_filtros(filtros['referidos']))
+    else:
+        ws = wb.active
+        ws.title = 'Filtros'
+        _write_sheet(ws, rows)
 
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     fecha = timezone.now().strftime('%Y%m%d_%H%M%S')
-    response['Content-Disposition'] = f'attachment; filename="reporte_filtros_{fecha}.xlsx"'
+    response['Content-Disposition'] = f'attachment; filename="reporte_filtros_{filtros["modo"]}_{fecha}.xlsx"'
     wb.save(response)
     return response
 
@@ -711,7 +732,7 @@ def exportar_filtros_pdf(request):
 
     response = HttpResponse(content_type='application/pdf')
     fecha = timezone.now().strftime('%Y%m%d_%H%M%S')
-    response['Content-Disposition'] = f'attachment; filename="reporte_filtros_{fecha}.pdf"'
+    response['Content-Disposition'] = f'attachment; filename="reporte_filtros_{filtros["modo"]}_{fecha}.pdf"'
 
     p = canvas.Canvas(response, pagesize=landscape(letter))
     width, height = landscape(letter)
@@ -729,28 +750,38 @@ def exportar_filtros_pdf(request):
 
     headers = ['DPI', 'Nombre', 'Comunidad', 'Sector', 'Centro', 'Líder Ref.', 'Es Líder']
     x_positions = [30, 150, 330, 450, 540, 690, 800]
-    y = height - 75
 
-    p.setFont('Helvetica-Bold', 8)
-    for i, header in enumerate(headers):
-        p.drawString(x_positions[i], y, header)
+    def _draw_section(title, section_rows, y_start):
+        y = y_start
+        p.setFont('Helvetica-Bold', 10)
+        p.drawString(30, y, title)
+        y -= 14
 
-    y -= 14
-    p.setFont('Helvetica', 8)
+        p.setFont('Helvetica-Bold', 8)
+        for i, header in enumerate(headers):
+            p.drawString(x_positions[i], y, header)
+        y -= 14
 
-    for row in rows:
-        if y < 30:
-            p.showPage()
-            y = height - 35
-            p.setFont('Helvetica-Bold', 8)
-            for i, header in enumerate(headers):
-                p.drawString(x_positions[i], y, header)
-            y -= 14
-            p.setFont('Helvetica', 8)
+        p.setFont('Helvetica', 8)
+        for row in section_rows:
+            if y < 30:
+                p.showPage()
+                y = height - 35
+                p.setFont('Helvetica-Bold', 8)
+                for i, header in enumerate(headers):
+                    p.drawString(x_positions[i], y, header)
+                y -= 14
+                p.setFont('Helvetica', 8)
+            for i, val in enumerate(row):
+                p.drawString(x_positions[i], y, str(val)[:28])
+            y -= 12
+        return y - 10
 
-        for i, val in enumerate(row):
-            p.drawString(x_positions[i], y, str(val)[:28])
-        y -= 12
+    if filtros['modo'] == 'dependientes_y_referidos':
+        y = _draw_section('Líderes dependientes', _rows_reporte_filtros(filtros['dependientes']), height - 75)
+        _draw_section('Afiliados referidos', _rows_reporte_filtros(filtros['referidos']), y)
+    else:
+        _draw_section('Resultados', rows, height - 75)
 
     p.save()
     return response

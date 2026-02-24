@@ -73,6 +73,7 @@
               <option value="afiliados" {% if modo == 'afiliados' %}selected{% endif %}>Afiliados</option>
               <option value="referidos" {% if modo == 'referidos' %}selected{% endif %}>Referidos de líder</option>
               <option value="lideres_dependientes" {% if modo == 'lideres_dependientes' %}selected{% endif %}>Líderes dependientes</option>
+              <option value="dependientes_y_referidos" {% if modo == 'dependientes_y_referidos' %}selected{% endif %}>Dependientes y referidos del líder</option>
             </select>
           </div>
 
@@ -87,6 +88,75 @@
 
     <div class="card">
       <div class="card-body">
+        {% if modo == 'dependientes_y_referidos' %}
+          {% if mensaje %}
+            <div class="alert alert-warning">{{ mensaje }}</div>
+          {% else %}
+            <h6 class="mb-2">Líderes dependientes</h6>
+            <div class="table-responsive custom-scrollbar mb-4">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>DPI</th>
+                    <th>Nombre</th>
+                    <th>Comunidad</th>
+                    <th>Sector</th>
+                    <th>Centro de Votación</th>
+                    <th>Líder Referente</th>
+                    <th>Es Líder</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for afiliado in dependientes %}
+                    <tr>
+                      <td>{{ afiliado.dpi }}</td>
+                      <td>{{ afiliado.nombre_completo }}</td>
+                      <td>{{ afiliado.comunidad|default:"-" }}</td>
+                      <td>{{ afiliado.sector|default:"-" }}</td>
+                      <td>{{ afiliado.centro_votacion|default:"-" }}</td>
+                      <td>{{ afiliado.lider_vinculado|default:"-" }}</td>
+                      <td>{{ afiliado.es_lider_comunitario|yesno:"Sí,No" }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">Sin líderes dependientes.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <h6 class="mb-2">Afiliados referidos</h6>
+            <div class="table-responsive custom-scrollbar">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>DPI</th>
+                    <th>Nombre</th>
+                    <th>Comunidad</th>
+                    <th>Sector</th>
+                    <th>Centro de Votación</th>
+                    <th>Líder Referente</th>
+                    <th>Es Líder</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for afiliado in referidos %}
+                    <tr>
+                      <td>{{ afiliado.dpi }}</td>
+                      <td>{{ afiliado.nombre_completo }}</td>
+                      <td>{{ afiliado.comunidad|default:"-" }}</td>
+                      <td>{{ afiliado.sector|default:"-" }}</td>
+                      <td>{{ afiliado.centro_votacion|default:"-" }}</td>
+                      <td>{{ afiliado.lider_vinculado|default:"-" }}</td>
+                      <td>{{ afiliado.es_lider_comunitario|yesno:"Sí,No" }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">Sin afiliados referidos.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% endif %}
+        {% else %}
         <div class="table-responsive custom-scrollbar">
           <table class="table table-striped">
             <thead>
@@ -132,6 +202,7 @@
               {% endif %}
             </ul>
           </nav>
+        {% endif %}
         {% endif %}
       </div>
     </div>
