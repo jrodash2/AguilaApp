@@ -174,3 +174,5 @@ EMAIL_HOST_USER = 'informatica@upcv.gob.gt'
 EMAIL_HOST_PASSWORD = 'xtdj nvwz ymyw lqyr'  
 
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+TSE_CONSULTA_URL = 'https://www.tse.org.gt/'

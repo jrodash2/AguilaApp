@@ -339,10 +339,11 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-6 d-flex align-items-center justify-content-end">
+                            <div class="col-md-6 d-flex flex-column align-items-end justify-content-center gap-2">
                                 <button type="button" class="btn btn-info w-75" id="btnVerificarEmpadronamiento">
                                     Verificar Empadronamiento
                                 </button>
+                                <a href="#" class="btn btn-outline-light w-75" id="btnTSE" target="_blank" rel="noopener noreferrer">TSE</a>
                             </div>
                             
                         </div>
@@ -434,48 +435,62 @@ $(document).ready(function() {
         $('input[name="nombre_completo"]').attr('id', 'id_nombre_completo');
     });
 
-    // --- 2. LÓGICA DE VERIFICACIÓN DE EMPADRONAMIENTO ---
-    $('#btnVerificarEmpadronamiento').click(function() {
-    var dpi = $('#id_dpi').val();
-    var fecha = $('#id_fecha_nacimiento').val();
+    const tseBaseUrl = "{{ TSE_CONSULTA_URL|default:'https://www.tse.org.gt/' }}";
 
-    if(!dpi || !fecha){
-        $('#resultadoEmpadronamiento').html('<div class="alert alert-warning">Ingrese DPI y Fecha de Nacimiento</div>');
-        return;
+    function limpiarDpi(valor) {
+        return (valor || '').replace(/\D/g, '');
     }
 
-    $('#resultadoEmpadronamiento').html('<div class="alert alert-info">Verificando empadronamiento...</div>');
+    function construirTseUrl(dpiLimpio) {
+        if (!dpiLimpio) return tseBaseUrl;
+        const sep = tseBaseUrl.includes('?') ? '&' : '?';
+        return `${tseBaseUrl}${sep}dpi=${encodeURIComponent(dpiLimpio)}`;
+    }
 
-    $.ajax({
-        url: "{% url 'afiliados:verificar_empadronamiento' %}",
-        method: "POST",
-        data: {
-            'dpi': dpi,
-            'fecha_nacimiento': fecha,
-            'csrfmiddlewaretoken': $('input[name="csrfmiddlewaretoken"]').val()
-        },
-        success: function(data) {
-            if(data.exito){
-                $('#resultadoEmpadronamiento').html(
-                    '<div class="alert alert-success" style="white-space: pre-wrap;">' + data.mensaje + '</div>'
-                );
-                if (data.nombre) {
-                    $('#id_nombre_completo').val(data.nombre); 
-                }
-                if (data.municipio) {
-                    $('#id_direccion').val(data.municipio); 
-                }
-                $('#id_empadronado').prop('checked', true); 
-            } else {
-                $('#id_empadronado').prop('checked', false); 
-                $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">' + data.mensaje + '</div>');
-            }
-        },
-        error: function(xhr, status, error) {
-            $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">Error al verificar: ' + error + '</div>');
-        }
+    $('#btnTSE').on('click', function() {
+        const dpiLimpio = limpiarDpi($('#id_dpi').val());
+        $(this).attr('href', construirTseUrl(dpiLimpio));
     });
-});
+
+    // --- 2. LÓGICA DE VERIFICACIÓN DE EMPADRONAMIENTO LOCAL ---
+    $('#btnVerificarEmpadronamiento').click(function() {
+        const dpiLimpio = limpiarDpi($('#id_dpi').val());
+
+        if (!dpiLimpio) {
+            $('#resultadoEmpadronamiento').html('<div class="alert alert-warning">Ingrese DPI</div>');
+            return;
+        }
+
+        $('#resultadoEmpadronamiento').html('<div class="alert alert-info">Consultando padrón local...</div>');
+
+        fetch(`{% url 'afiliados:consultar_padron_local' %}?dpi=${encodeURIComponent(dpiLimpio)}`)
+            .then(async (response) => {
+                const data = await response.json();
+                return { data, status: response.status };
+            })
+            .then(({ data }) => {
+                if (!data.ok) {
+                    $('#id_empadronado').prop('checked', false);
+                    $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">' + (data.error || 'Error al consultar padrón local') + '</div>');
+                    return;
+                }
+
+                if (data.found) {
+                    const persona = data.data || {};
+                    if (persona.nombre_completo) $('#id_nombre_completo').val(persona.nombre_completo);
+                    if (persona.municipio) $('#id_direccion').val(persona.municipio);
+                    $('#id_empadronado').prop('checked', true);
+                    $('#resultadoEmpadronamiento').html('<div class="alert alert-success">Encontrado en padrón local</div>');
+                } else {
+                    $('#id_empadronado').prop('checked', false);
+                    $('#resultadoEmpadronamiento').html('<div class="alert alert-warning">' + data.message + '</div>');
+                }
+            })
+            .catch(() => {
+                $('#id_empadronado').prop('checked', false);
+                $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">Error al consultar padrón local.</div>');
+            });
+    });
 
 
     // --- 3. GUARDAR NUEVO AFILIADO CON AJAX ---
