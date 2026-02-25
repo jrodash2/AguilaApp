@@ -116,6 +116,11 @@ class Comunidad(models.Model):
 
 
 class Afiliado(models.Model):
+    class CargoComision(models.TextChoices):
+        COORDINADOR = "COORDINADOR", "Coordinador"
+        SECRETARIO = "SECRETARIO", "Secretario"
+        INTEGRANTE = "INTEGRANTE", "Integrante"
+
     nombre_completo = models.CharField(max_length=150)
     dpi = models.CharField(max_length=20, unique=True)
     fecha_nacimiento = models.DateField()
@@ -139,6 +144,12 @@ class Afiliado(models.Model):
 
     empadronado = models.BooleanField(default=False)
     comisiones = models.ManyToManyField(Comision, blank=True, related_name="afiliados")
+    cargo_en_comision = models.CharField(
+        max_length=20,
+        choices=CargoComision.choices,
+        blank=True,
+        null=True,
+    )
 
     # 📅 Nueva columna: Fecha y hora de creación automática
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -229,4 +240,3 @@ class PadronElectoral(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.identificacion}"
-
