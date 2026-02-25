@@ -601,6 +601,7 @@ def _construir_filtros_afiliados(request):
     lider_id = request.GET.get('lider_id')
     sector_id = request.GET.get('sector_id')
     centro_votacion_id = request.GET.get('centro_votacion_id')
+    comision_id = request.GET.get('comision_id')
 
     base_qs = Afiliado.objects.select_related('comunidad__sector', 'centro_votacion', 'lider_vinculado').order_by('nombre_completo')
 
@@ -610,6 +611,8 @@ def _construir_filtros_afiliados(request):
         base_qs = base_qs.filter(comunidad__sector_id=sector_id)
     if centro_votacion_id:
         base_qs = base_qs.filter(centro_votacion_id=centro_votacion_id)
+    if comision_id:
+        base_qs = base_qs.filter(comisiones__id=comision_id).distinct()
 
     resultados = base_qs
     dependientes = base_qs.none()
@@ -639,6 +642,7 @@ def _construir_filtros_afiliados(request):
         'lider_id': lider_id or '',
         'sector_id': sector_id or '',
         'centro_votacion_id': centro_votacion_id or '',
+        'comision_id': comision_id or '',
         'resultados': resultados,
         'dependientes': dependientes,
         'referidos': referidos,
@@ -663,11 +667,13 @@ def dashboard_filtros(request):
         'lideres': Afiliado.objects.filter(es_lider_comunitario=True).order_by('nombre_completo'),
         'sectores': Sector.objects.all().order_by('nombre'),
         'centros_votacion': CentroVotacion.objects.all().order_by('nombre'),
+        'comisiones': Comision.objects.all().order_by('nombre'),
         'modo': filtros['modo'],
         'comunidad_id': filtros['comunidad_id'],
         'lider_id': filtros['lider_id'],
         'sector_id': filtros['sector_id'],
         'centro_votacion_id': filtros['centro_votacion_id'],
+        'comision_id': filtros['comision_id'],
         'resultados': page_obj,
         'dependientes': filtros['dependientes'],
         'referidos': filtros['referidos'],
@@ -753,7 +759,7 @@ def exportar_filtros_pdf(request):
     filtros_txt = (
         f"Modo: {filtros['modo']} | Comunidad: {filtros['comunidad_id'] or '-'} | "
         f"Líder: {filtros['lider_id'] or '-'} | Sector: {filtros['sector_id'] or '-'} | "
-        f"Centro: {filtros['centro_votacion_id'] or '-'}"
+        f"Centro: {filtros['centro_votacion_id'] or '-'} | Comisión: {filtros['comision_id'] or '-'}"
     )
     p.drawString(30, height - 52, filtros_txt)
 

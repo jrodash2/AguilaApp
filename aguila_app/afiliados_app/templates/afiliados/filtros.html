@@ -67,6 +67,17 @@
             </select>
           </div>
 
+
+          <div class="col-md-3">
+            <label class="form-label">Comisión</label>
+            <select name="comision_id" class="form-control">
+              <option value="">Todas</option>
+              {% for comision in comisiones %}
+                <option value="{{ comision.id }}" {% if comision_id == comision.id|stringformat:"s" %}selected{% endif %}>{{ comision.nombre }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
           <div class="col-md-4">
             <label class="form-label">Modo</label>
             <select name="modo" class="form-control">
