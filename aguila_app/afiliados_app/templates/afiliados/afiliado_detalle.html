@@ -184,7 +184,9 @@
             <div class="col-md-12 mt-1">
                 <p><strong>Comisiones:</strong><br>
                     {% for comision in afiliado.comisiones.all %}
-                        <span class="badge-riho badge-riho-info">{{ comision.nombre }}</span>
+                        <span class="badge-riho badge-riho-info">
+                            {{ comision.nombre }}{% if afiliado.cargo_en_comision %} ({{ afiliado.get_cargo_en_comision_display }}){% endif %}
+                        </span>
                     {% empty %}
                         <span class="text-muted">Ninguna</span>
                     {% endfor %}

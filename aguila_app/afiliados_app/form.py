@@ -209,6 +209,12 @@ class AfiliadoForm(forms.ModelForm):
         label='Comisión',
         widget=forms.Select(attrs={'class': 'form-control'})
     )
+    cargo_en_comision = forms.ChoiceField(
+        choices=[('', '---------')] + list(Afiliado.CargoComision.choices),
+        required=False,
+        label='Cargo en Comisión',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
     class Meta:
         model = Afiliado
         # ⚠️ IMPORTANTE: Ajustar la lista de campos
@@ -245,9 +251,20 @@ class AfiliadoForm(forms.ModelForm):
 
         if self.instance and self.instance.pk:
             self.fields['comision'].initial = self.instance.comisiones.first()
+            self.fields['cargo_en_comision'].initial = self.instance.cargo_en_comision
         
         # 🎨 Opcional: Renombrar la etiqueta del campo 'lider_vinculado'
         self.fields['lider_vinculado'].label = 'Líder (Afiliado Referente)'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        comision = cleaned_data.get('comision')
+        cargo = cleaned_data.get('cargo_en_comision')
+
+        if cargo and not comision:
+            cleaned_data['cargo_en_comision'] = ''
+
+        return cleaned_data
 
     def clean_comunidad(self):
         comunidad = self.cleaned_data.get('comunidad')
@@ -256,12 +273,18 @@ class AfiliadoForm(forms.ModelForm):
     def save(self, commit=True):
         afiliado = super().save(commit=commit)
 
-        if commit and 'comision' in self.data:
+        if commit:
             comision = self.cleaned_data.get('comision')
+            cargo = self.cleaned_data.get('cargo_en_comision')
+
             if comision:
                 afiliado.comisiones.set([comision])
+                afiliado.cargo_en_comision = cargo or None
             else:
                 afiliado.comisiones.clear()
+                afiliado.cargo_en_comision = None
+
+            afiliado.save(update_fields=['cargo_en_comision'])
 
         return afiliado
 
