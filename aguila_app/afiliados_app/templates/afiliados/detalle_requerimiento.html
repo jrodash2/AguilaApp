@@ -204,7 +204,7 @@ table.order-details th {
                   <tr>
 <td style="width: 40%">
   <span style="opacity: 0.8">Creado Por</span>
-  <h6>{{ requerimiento.creado_por.get_full_name|default:requerimiento.creado_por.username }}</h6>
+  <h6>{% if requerimiento.creado_por.get_full_name %}{{ requerimiento.creado_por.get_full_name }}{% elif requerimiento.creado_por.username %}{{ requerimiento.creado_por.username }}{% else %}{% endif %}</h6>
 </td>
  <td style="width: 40%">
                       <span style="opacity: 0.8">Numero Requerimiento:</span>

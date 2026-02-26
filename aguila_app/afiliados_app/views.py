@@ -108,6 +108,33 @@ from django.shortcuts import render
 from .models import TrepCentroResultado
 import json
 
+
+def safe_context(request, extra=None):
+    user_groups = []
+    es_admin = False
+
+    if request.user.is_authenticated:
+        user_groups = list(request.user.groups.values_list('name', flat=True))
+        es_admin = request.user.groups.filter(name='Administrador').exists()
+
+    base = {
+        'view_key': '',
+        'view_label': '',
+        'next_url': '',
+        'user_groups': user_groups,
+        'allowed_menu_keys': [],
+        'es_admin': es_admin,
+    }
+
+    if extra:
+        base.update(extra)
+
+    return base
+
+
+def render_safe(request, template_name, extra_context=None, **kwargs):
+    return render(request, template_name, safe_context(request, extra_context), **kwargs)
+
 @login_required
 def elecciones2023(request):
 
@@ -216,7 +243,7 @@ def elecciones2023(request):
         "votos_por_mesa": json.dumps(votos_por_mesa),
     }
 
-    return render(request, "afiliados/elecciones2023.html", context)
+    return render_safe(request, "afiliados/elecciones2023.html", context)
 
 
     
@@ -234,7 +261,7 @@ def editar_institucion(request):
     else:
         form = InstitucionForm(instance=institucion)
 
-    return render(request, 'afiliados/editar_institucion.html', {'form': form})
+    return render_safe(request, 'afiliados/editar_institucion.html', {'form': form})
 
 
 
@@ -268,7 +295,7 @@ def user_create(request):
         form = UserCreateForm()
 
     users = User.objects.all()
-    return render(request, 'afiliados/user_form_create.html', {'form': form, 'users': users})
+    return render_safe(request, 'afiliados/user_form_create.html', {'form': form, 'users': users})
 
 @login_required
 def user_edit(request, user_id):
@@ -288,7 +315,7 @@ def user_edit(request, user_id):
         'user': user,
         'users': User.objects.all(),
     }
-    return render(request, 'afiliados/user_form_edit.html', context)
+    return render_safe(request, 'afiliados/user_form_edit.html', context)
 
 
 
@@ -299,7 +326,7 @@ def user_delete(request, user_id):
     if request.method == 'POST':
         user.delete()
         return redirect('afiliados:user_create')  # Redirige a la misma página para mostrar la lista actualizada
-    return render(request, 'afiliados/user_confirm_delete.html', {'user': user})
+    return render_safe(request, 'afiliados/user_confirm_delete.html', {'user': user})
 
 
 @login_required
@@ -349,7 +376,7 @@ def administrar_roles(request):
         'permisos_asignados_ids': permisos_asignados_ids,
         'usuarios': usuarios,
     }
-    return render(request, 'afiliados/roles/administrar_roles.html', context)
+    return render_safe(request, 'afiliados/roles/administrar_roles.html', context)
 
 
 @login_required
@@ -433,11 +460,11 @@ def gestor_vistas(request):
         'menuviews_empty': menuviews_empty,
         'menuviews_total': menuviews_total,
     }
-    return render(request, 'afiliados/admin/gestor_vistas.html', context)
+    return render_safe(request, 'afiliados/admin/gestor_vistas.html', context)
 
 
 def home(request):
-    return render(request, 'afiliados/login.html')
+    return render_safe(request, 'afiliados/login.html')
 
 from datetime import timedelta
 from django.utils import timezone
@@ -587,7 +614,7 @@ def dahsboard(request):
         }, ensure_ascii=False),
     }
 
-    return render(request, 'afiliados/dahsboard.html', context)
+    return render_safe(request, 'afiliados/dahsboard.html', context)
 
 
 
@@ -618,7 +645,7 @@ def acceso_denegado(request, exception=None):
         'next_url': next_url,
         'user_groups': user_groups,
     }
-    return render(request, 'afiliados/acceso_denegado.html', context, status=403)
+    return render_safe(request, 'afiliados/acceso_denegado.html', context, status=403)
 
 
 
@@ -630,7 +657,7 @@ def signout(request):
 def signin(request):
     institucion = Institucion.objects.first()
     if request.method == 'GET':
-        return render(request, 'afiliados/login.html', {
+        return render_safe(request, 'afiliados/login.html', {
             'form': AuthenticationForm(),
             'institucion': institucion,
         })
@@ -654,7 +681,7 @@ def signin(request):
         messages.warning(request, 'Su usuario no tiene un rol asignado para operar en el sistema.')
         return redirect('afiliados:dahsboard')
 
-    return render(request, 'afiliados/login.html', {
+    return render_safe(request, 'afiliados/login.html', {
         'form': form,
         'error': 'Usuario o contraseña incorrectos',
         'institucion': institucion,
@@ -684,7 +711,7 @@ def dashboard_elecciones(request):
         reverse=True
     )
 
-    return render(request, "afiliados/elecciones2023.html", {
+    return render_safe(request, "afiliados/elecciones2023.html", {
         "centros": centros,
         "ranking_global": ranking_global,  # ⬅ nueva variable
     })
@@ -934,7 +961,7 @@ def padron_cargar(request):
     else:
         form = PadronUploadForm()
 
-    return render(request, 'afiliados/padron/cargar_padron.html', {'form': form})
+    return render_safe(request, 'afiliados/padron/cargar_padron.html', {'form': form})
 
 
 
@@ -1026,7 +1053,7 @@ def dashboard_filtros(request):
         'total_referidos': filtros['total_referidos'],
     }
 
-    return render(request, 'afiliados/filtros.html', context)
+    return render_safe(request, 'afiliados/filtros.html', context)
 
 
 def _rows_reporte_filtros(resultados):
@@ -1157,7 +1184,7 @@ def afiliado_lista(request):
             form.save()
             return redirect('afiliados:afiliado_lista')
 
-    return render(request, 'afiliados/lista.html', {
+    return render_safe(request, 'afiliados/lista.html', {
         'afiliados': afiliados,
         'form': form,  # Pasamos el formulario al template
         'TSE_CONSULTA_URL': settings.TSE_CONSULTA_URL,
@@ -1229,7 +1256,7 @@ def afiliado_nuevo(request):
         'form': form, # El formulario vacío o con errores
         'institucion': institucion
     }
-    return render(request, 'afiliados/afiliados_lista.html', context)
+    return render_safe(request, 'afiliados/afiliados_lista.html', context)
 
 # -------------------------------
 # EDITAR AFILIADO
@@ -1246,7 +1273,7 @@ def afiliado_editar(request, pk):
             return redirect('afiliados:afiliado_lista')
     else:
         form = AfiliadoForm(instance=afiliado)
-    return render(request, 'afiliados/form.html', {'form': form, 'afiliado': afiliado})
+    return render_safe(request, 'afiliados/form.html', {'form': form, 'afiliado': afiliado})
 
 @login_required
 # @grupo_requerido('Administrador') # Descomentar si usas este decorador
@@ -1272,7 +1299,7 @@ def lider_editar(request, pk):
         'afiliado': afiliado,
         'es_lider_edicion': True # Usar esta variable en el template para cambiar el título
     }
-    return render(request, 'afiliados/form.html', context)
+    return render_safe(request, 'afiliados/form.html', context)
 
 @login_required
 def lideres_lista(request):
@@ -1292,7 +1319,7 @@ def lideres_lista(request):
         'TSE_CONSULTA_URL': settings.TSE_CONSULTA_URL,
     }
     
-    return render(request, 'afiliados/lideres_lista.html', context)
+    return render_safe(request, 'afiliados/lideres_lista.html', context)
 
 # -------------------------------
 # ELIMINAR AFILIADO
@@ -1332,7 +1359,7 @@ def afiliado_detalle(request, pk):
         'TSE_CONSULTA_URL': settings.TSE_CONSULTA_URL,
     }
     
-    return render(request, 'afiliados/afiliado_detalle.html', context)
+    return render_safe(request, 'afiliados/afiliado_detalle.html', context)
 
 
 # -----------------------------------------
@@ -1345,7 +1372,7 @@ def comunidad_lista(request):
     comunidades = Comunidad.objects.all().order_by('nombre')
     form = ComunidadForm()  # Nuevo formulario vacío 
 
-    return render(request, 'afiliados/comunidad_lista.html', {
+    return render_safe(request, 'afiliados/comunidad_lista.html', {
         'form': form,
         'comunidades': comunidades
     })
@@ -1365,7 +1392,7 @@ def comunidad_nueva(request):
 
     comunidades = Comunidad.objects.all().order_by('nombre')
 
-    return render(request, 'afiliados/comunidad_lista.html', {
+    return render_safe(request, 'afiliados/comunidad_lista.html', {
         'form': form,
         'comunidades': comunidades
     })
@@ -1387,7 +1414,7 @@ def comunidad_editar(request, pk):
 
     comunidades = Comunidad.objects.all().order_by('nombre')
 
-    return render(request, 'afiliados/comunidad_lista.html', {
+    return render_safe(request, 'afiliados/comunidad_lista.html', {
         'form': form,
         'comunidad': comunidad,
         'comunidades': comunidades,
@@ -1425,7 +1452,7 @@ def sector_nueva(request):
 
     sectores = Sector.objects.all().order_by('nombre')
 
-    return render(request, 'afiliados/sector_lista.html', {
+    return render_safe(request, 'afiliados/sector_lista.html', {
         'form': form,
         'sectores': sectores
     })
@@ -1447,7 +1474,7 @@ def sector_editar(request, pk):
 
     sectores = Sector.objects.all().order_by('nombre')
 
-    return render(request, 'afiliados/sector_lista.html', {
+    return render_safe(request, 'afiliados/sector_lista.html', {
         'form': form,
         'sector': sector,
         'sectores': sectores
@@ -1481,7 +1508,7 @@ def centro_lista(request):
     centros = CentroVotacion.objects.all().order_by('nombre')
     form = CentroVotacionForm()  # formulario vacío para creación
 
-    return render(request, 'afiliados/centro_lista.html', {
+    return render_safe(request, 'afiliados/centro_lista.html', {
         'form': form,
         'centros': centros
     })
@@ -1502,7 +1529,7 @@ def centro_nuevo(request):
 
     centros = CentroVotacion.objects.all().order_by('nombre')
 
-    return render(request, 'afiliados/centro_lista.html', {
+    return render_safe(request, 'afiliados/centro_lista.html', {
         'form': form,
         'centros': centros
     })
@@ -1525,7 +1552,7 @@ def centro_editar(request, pk):
 
     centros = CentroVotacion.objects.all().order_by('nombre')
 
-    return render(request, 'afiliados/centro_lista.html', {
+    return render_safe(request, 'afiliados/centro_lista.html', {
         'form': form,
         'centro': centro,
         'centros': centros,
@@ -1557,7 +1584,7 @@ def comision_lista(request):
     comisiones = Comision.objects.all().order_by('nombre')
     form = ComisionForm()
 
-    return render(request, 'afiliados/comision_lista.html', {
+    return render_safe(request, 'afiliados/comision_lista.html', {
         'form': form,
         'comisiones': comisiones,
     })
@@ -1576,7 +1603,7 @@ def comision_nueva(request):
     comisiones = Comision.objects.all().order_by('nombre')
     form = ComisionForm()
 
-    return render(request, 'afiliados/comision_lista.html', {
+    return render_safe(request, 'afiliados/comision_lista.html', {
         'form': form,
         'comisiones': comisiones,
     })
@@ -1598,7 +1625,7 @@ def comision_editar(request, pk):
 
     comisiones = Comision.objects.all().order_by('nombre')
 
-    return render(request, 'afiliados/comision_lista.html', {
+    return render_safe(request, 'afiliados/comision_lista.html', {
         'form': form,
         'comision': comision,
         'comisiones': comisiones,
