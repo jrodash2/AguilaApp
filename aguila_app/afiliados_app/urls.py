@@ -30,6 +30,7 @@ path("dashboard/filtros/export/pdf/", views.exportar_filtros_pdf, name="exportar
     path('usuario/eliminar/<int:user_id>/', views.user_delete, name='user_delete'),
 
     path('editar_institucion/', views.editar_institucion, name='editar_institucion'),
+    path('roles/', views.administrar_roles, name='administrar_roles'),
     # Cambiar contraseña
     path('cambiar-contraseña/', auth_views.PasswordChangeView.as_view(
         template_name='afiliados/password_change_form.html',
@@ -80,8 +81,7 @@ path('comisiones/eliminar/<int:pk>/', views.comision_eliminar, name='comision_el
 
 path("elecciones2023/", views.elecciones2023, name="elecciones2023"),
 path("api/padron/", views.consultar_padron_local, name="consultar_padron_local"),
-
-
+path('padron/cargar/', views.padron_cargar, name='padron_cargar'),
 
 
 ]
