@@ -34,6 +34,7 @@ from django.contrib import messages
 import json
 from django.contrib.auth.models import Group
 from .utils import grupo_requerido
+from .permissions import permission_required_or_403
 from django.views.decorators.http import require_GET
 from django.db.models.functions import Coalesce
 from django.db import transaction, IntegrityError
@@ -71,6 +72,8 @@ from .forms import PadronUploadForm
 
 from .forms import PadronUploadForm
 
+from .forms import PadronUploadForm
+
 logger = logging.getLogger(__name__)
 
 
@@ -84,6 +87,7 @@ from django.shortcuts import render
 from .models import TrepCentroResultado
 import json
 
+@permission_required_or_403('afiliados_app.view_elecciones_2023')
 def elecciones2023(request):
 
     # 🔵 Filtros
@@ -196,8 +200,7 @@ def elecciones2023(request):
 
     
     
-@login_required
-@grupo_requerido('Administrador')
+@permission_required_or_403('afiliados_app.view_configuracion')
 def editar_institucion(request):
     institucion = Institucion.objects.first()  # Solo debería haber una
 
@@ -214,8 +217,7 @@ def editar_institucion(request):
 
 
 
-@login_required
-@grupo_requerido('Administrador', 'afiliados')
+@permission_required_or_403('afiliados_app.view_usuarios')
 def user_create(request):
     if request.method == 'POST':
         form = UserCreateForm(request.POST, request.FILES)
@@ -247,8 +249,7 @@ def user_create(request):
     users = User.objects.all()
     return render(request, 'afiliados/user_form_create.html', {'form': form, 'users': users})
 
-@login_required
-@grupo_requerido('Administrador', 'afiliados')
+@permission_required_or_403('afiliados_app.view_usuarios')
 def user_edit(request, user_id):
     user = get_object_or_404(User, pk=user_id)
 
@@ -271,8 +272,7 @@ def user_edit(request, user_id):
 
 
 
-@login_required
-@grupo_requerido('Administrador', 'afiliados')
+@permission_required_or_403('afiliados_app.view_usuarios')
 def user_delete(request, user_id):
     user = get_object_or_404(User, id=user_id)
     if request.method == 'POST':
@@ -294,8 +294,7 @@ from django.db.models.functions import Coalesce
 from django.db.models import Value, Count
 
 
-@login_required
-@grupo_requerido('Administrador', 'afiliados')
+@permission_required_or_403('afiliados_app.view_dashboard')
 def dahsboard(request):
 
     # === Totales ===
@@ -444,43 +443,38 @@ def signout(request):
     return redirect('afiliados:signin')
 
 
-def signin(request):  
+def signin(request):
     institucion = Institucion.objects.first()
     if request.method == 'GET':
-        # Deberías instanciar el AuthenticationForm correctamente
         return render(request, 'afiliados/login.html', {
             'form': AuthenticationForm(),
             'institucion': institucion,
         })
-    else:
-        # Se instancia AuthenticationForm con los datos del POST para mantener el estado
-        form = AuthenticationForm(request, data=request.POST)
-        
-        if form.is_valid():
-            # El método authenticate devuelve el usuario si es válido
-            user = form.get_user()
-            
-            # Si el usuario es encontrado, se inicia sesión
-            auth_login(request, user)
-            
-            # Ahora verificamos los grupos
-            for g in user.groups.all():
-                print(g.name)
-                if g.name == 'Administrador':
-                    return redirect('afiliados:dahsboard')
-                elif g.name == 'Departamento':
-                    return redirect('afiliados:crear_requerimiento')
-                elif g.name == 'afiliados':
-                    return redirect('afiliados:dahsboard')
-            # Si no se encuentra el grupo adecuado, se redirige a una página por defecto
+
+    form = AuthenticationForm(request, data=request.POST)
+    if form.is_valid():
+        user = form.get_user()
+        auth_login(request, user)
+
+        roles_validos = [
+            'Administrador',
+            'Gestor',
+            'Coordinador',
+            'Digitador',
+            'Consulta',
+            'afiliados',
+        ]
+        if user.is_superuser or user.groups.filter(name__in=roles_validos).exists():
             return redirect('afiliados:dahsboard')
-        else:
-            # Si el formulario no es válido, se retorna con el error
-            return render(request, 'afiliados/login.html', {
-                'form': form,  # Pasamos el formulario con los errores
-                'error': 'Usuario o contraseña incorrectos',
-                'institucion': institucion,
-            })
+
+        messages.warning(request, 'Su usuario no tiene un rol asignado para operar en el sistema.')
+        return redirect('afiliados:acceso_denegado')
+
+    return render(request, 'afiliados/login.html', {
+        'form': form,
+        'error': 'Usuario o contraseña incorrectos',
+        'institucion': institucion,
+    })
 
 def dashboard_elecciones(request):
 
@@ -714,8 +708,7 @@ def _importar_padron_desde_dataframe(df, replace=False):
     return resumen
 
 
-@login_required
-@grupo_requerido('Administrador')
+@permission_required_or_403('afiliados_app.view_cargar_padron')
 def padron_cargar(request):
     if request.method == 'POST':
         if 'archivo' not in request.FILES:
@@ -819,7 +812,7 @@ def _construir_filtros_afiliados(request):
     }
 
 
-@login_required
+@permission_required_or_403('afiliados_app.view_filtros')
 def dashboard_filtros(request):
     filtros = _construir_filtros_afiliados(request)
     page_obj = filtros['resultados']
