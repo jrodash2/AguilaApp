@@ -259,7 +259,7 @@
                     {% endif %}
 
                     {% if es_departamento %}
-                    <li class="sidebar-list {% if '/afiliados/dashboard/' in request.path and '/afiliados/dashboard/filtros/' not in request.path %}active{% endif %}">
+                    <li class="sidebar-list {% if '/afiliados/dashboard/' in request.path and '/afiliados/filtros/' not in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:dashboard_elecciones' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-widget' %}"></use></svg>
                             <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-widget' %}"></use></svg>
@@ -268,7 +268,7 @@
                     </li>
                     {% endif %}
 
-                    <li class="sidebar-list {% if '/afiliados/dashboard/filtros/' in request.path %}active{% endif %}">
+                    <li class="sidebar-list {% if '/afiliados/filtros/' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:dashboard_filtros' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-form' %}"></use></svg>
                             <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-form' %}"></use></svg>
