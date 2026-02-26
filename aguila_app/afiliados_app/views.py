@@ -34,7 +34,7 @@ from django.contrib import messages
 import json
 from django.contrib.auth.models import Group
 from .utils import grupo_requerido
-from .access import vista_requerida, user_has_view
+
 from django.views.decorators.http import require_GET
 from django.db.models.functions import Coalesce
 from django.db import transaction, IntegrityError
@@ -92,6 +92,9 @@ from afiliados_app.management.commands.seed_menuviews import MENU_ITEMS
 from .forms import PadronUploadForm
 from afiliados_app.management.commands.seed_menuviews import MENU_ITEMS
 
+from .forms import PadronUploadForm
+from afiliados_app.management.commands.seed_menuviews import MENU_ITEMS
+
 logger = logging.getLogger(__name__)
 
 
@@ -105,7 +108,7 @@ from django.shortcuts import render
 from .models import TrepCentroResultado
 import json
 
-@vista_requerida('elecciones_2023')
+@login_required
 def elecciones2023(request):
 
     # 🔵 Filtros
@@ -218,7 +221,7 @@ def elecciones2023(request):
 
     
     
-@vista_requerida('configuracion')
+@login_required
 def editar_institucion(request):
     institucion = Institucion.objects.first()  # Solo debería haber una
 
@@ -235,7 +238,7 @@ def editar_institucion(request):
 
 
 
-@vista_requerida('usuarios')
+@login_required
 def user_create(request):
     if request.method == 'POST':
         form = UserCreateForm(request.POST, request.FILES)
@@ -267,7 +270,7 @@ def user_create(request):
     users = User.objects.all()
     return render(request, 'afiliados/user_form_create.html', {'form': form, 'users': users})
 
-@vista_requerida('usuarios')
+@login_required
 def user_edit(request, user_id):
     user = get_object_or_404(User, pk=user_id)
 
@@ -290,7 +293,7 @@ def user_edit(request, user_id):
 
 
 
-@vista_requerida('usuarios')
+@login_required
 def user_delete(request, user_id):
     user = get_object_or_404(User, id=user_id)
     if request.method == 'POST':
@@ -299,7 +302,7 @@ def user_delete(request, user_id):
     return render(request, 'afiliados/user_confirm_delete.html', {'user': user})
 
 
-@vista_requerida('gestor_vistas')
+@login_required
 def administrar_roles(request):
     grupos_base = ['Administrador', 'Gestor', 'Coordinador', 'Digitador', 'Consulta']
     grupos = Group.objects.filter(name__in=grupos_base).order_by('name')
@@ -351,12 +354,6 @@ def administrar_roles(request):
 
 @login_required
 def gestor_vistas(request):
-    if not request.user.is_superuser and not request.user.groups.filter(name='Administrador').exists():
-        request.session['access_denied_view_key'] = 'gestor_vistas'
-        request.session['access_denied_view_label'] = 'Gestor de Vistas'
-        request.session['access_denied_next'] = request.get_full_path()
-        return redirect('afiliados:no_autorizado')
-
     groups = Group.objects.all().order_by('name')
 
     active_qs = MenuView.objects.filter(is_active=True).order_by('section', 'label')
@@ -452,7 +449,7 @@ from django.db.models.functions import Coalesce
 from django.db.models import Value, Count
 
 
-@vista_requerida('dashboard')
+@login_required
 def dahsboard(request):
 
     if settings.DEBUG and request.user.is_authenticated:
@@ -655,7 +652,7 @@ def signin(request):
             return redirect('afiliados:dahsboard')
 
         messages.warning(request, 'Su usuario no tiene un rol asignado para operar en el sistema.')
-        return redirect('afiliados:no_autorizado')
+        return redirect('afiliados:dahsboard')
 
     return render(request, 'afiliados/login.html', {
         'form': form,
@@ -895,7 +892,7 @@ def _importar_padron_desde_dataframe(df, replace=False):
     return resumen
 
 
-@vista_requerida('cargar_padron')
+@login_required
 def padron_cargar(request):
     if request.method == 'POST':
         if 'archivo' not in request.FILES:
