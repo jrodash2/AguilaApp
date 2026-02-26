@@ -21,7 +21,7 @@ def grupo_usuario(request):
     if not request.user.is_authenticated:
         return {}
     return {
-        'es_departamento': request.user.groups.filter(name='Departamento').exists(),
+        'es_gestor': request.user.groups.filter(name='Gestor').exists(),
         'es_administrador': request.user.groups.filter(name='Administrador').exists(),
         'es_afiliados': request.user.groups.filter(name='afiliados').exists(),
     }

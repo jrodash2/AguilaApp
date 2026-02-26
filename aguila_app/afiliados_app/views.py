@@ -478,8 +478,8 @@ def signin(request):
                 print(g.name)
                 if g.name == 'Administrador':
                     return redirect('afiliados:dahsboard')
-                elif g.name == 'Departamento':
-                    return redirect('afiliados:crear_requerimiento')
+                elif g.name == 'Gestor':
+                    return redirect('afiliados:dahsboard')
                 elif g.name == 'afiliados':
                     return redirect('afiliados:dahsboard')
             # Si no se encuentra el grupo adecuado, se redirige a una página por defecto
