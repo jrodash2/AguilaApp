@@ -1,10 +1,20 @@
-from django.contrib.auth.decorators import login_required
+from functools import wraps
+from django.http import HttpResponseForbidden
+from django.contrib.auth.decorators import user_passes_test
+from django.shortcuts import redirect
+from django.urls import reverse
 
 
-def grupo_requerido(*_nombres_grupos):
-    """Compatibilidad: sin bloqueo por grupo, solo requiere login."""
 
+def grupo_requerido(*nombres_grupos):
     def decorador(view_func):
-        return login_required(view_func)
-
+        @wraps(view_func)
+        def _wrapped_view(request, *args, **kwargs):
+            if request.user.is_authenticated and (
+                request.user.groups.filter(name__in=nombres_grupos).exists() or request.user.is_superuser
+            ):
+                return view_func(request, *args, **kwargs)
+            # Redirigir a la vista de acceso denegado
+            return redirect(reverse('afiliados:acceso_denegado'))
+        return _wrapped_view
     return decorador

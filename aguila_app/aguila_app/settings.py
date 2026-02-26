@@ -69,7 +69,6 @@ TEMPLATES = [
                 'afiliados_app.context_processors.frase_del_dia',  # Agregar el context processor personalizado
                 'afiliados_app.context_processors.grupo_usuario',
                 'afiliados_app.context_processors.datos_institucion',
-                'afiliados_app.context_processors.menu_access',
 
             ],
         },
