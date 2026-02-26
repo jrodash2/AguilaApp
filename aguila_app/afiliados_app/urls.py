@@ -15,6 +15,7 @@ urlpatterns = [
     path('logout/', views.signout, name='logout'),
 
     # Acceso denegado
+    path('no-autorizado/', views.acceso_denegado, name='no_autorizado'),
     path('no-autorizado/', views.acceso_denegado, name='acceso_denegado'),
     path("dashboard/", views.dashboard_elecciones, name="dashboard_elecciones"),
     path("dashboard/datos/", views.datos_centro, name="dashboard_datos_centro"),

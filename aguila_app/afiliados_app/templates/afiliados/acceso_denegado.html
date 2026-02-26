@@ -1,0 +1,68 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0">Acceso denegado</h4>
+        </div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'afiliados:dahsboard' %}">
+                <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-home"></use></svg>
+            </a></li>
+            <li class="breadcrumb-item active">No autorizado</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="mb-3 text-danger">No tienes permisos para acceder a esta sección.</h5>
+
+        <p class="mb-1"><strong>Usuario actual:</strong> {{ request.user.username|default:'Anónimo' }}</p>
+        <p class="mb-3"><strong>Tus grupos:</strong>
+          {% if user_groups %}
+            {{ user_groups|join:', ' }}
+          {% else %}
+            Sin grupos asignados
+          {% endif %}
+        </p>
+
+        <p class="mb-2"><strong>Intentaste acceder a:</strong> {{ next_url|default:'No disponible' }}</p>
+
+        <div class="alert alert-warning mt-3">
+          <strong>Permisos requeridos para esta sección:</strong>
+          {% if required_perm_labels %}
+            <ul class="mb-0 mt-2">
+              {% for label in required_perm_labels %}
+                <li>{{ label }}</li>
+              {% endfor %}
+            </ul>
+          {% elif required_groups %}
+            <ul class="mb-0 mt-2">
+              {% for group in required_groups %}
+                <li>Grupo requerido: {{ group }}</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="mb-0 mt-2">No se definieron permisos requeridos para esta sección.</p>
+          {% endif %}
+        </div>
+
+        <p class="text-muted mt-3 mb-4">Solicita al Administrador que te asigne los permisos indicados.</p>
+
+        <a href="{% url 'afiliados:dahsboard' %}" class="btn btn-primary me-2">Volver al dashboard</a>
+        <a href="{% url 'afiliados:logout' %}" class="btn btn-outline-danger">Cerrar sesión</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

@@ -34,7 +34,7 @@ from django.contrib import messages
 import json
 from django.contrib.auth.models import Group
 from .utils import grupo_requerido
-from .permissions import permission_required_or_403
+from .permissions import require_perms, require_group
 from django.views.decorators.http import require_GET
 from django.db.models.functions import Coalesce
 from django.db import transaction, IntegrityError
@@ -78,6 +78,8 @@ from .forms import PadronUploadForm
 
 from .forms import PadronUploadForm
 
+from .forms import PadronUploadForm
+
 logger = logging.getLogger(__name__)
 
 
@@ -91,7 +93,7 @@ from django.shortcuts import render
 from .models import TrepCentroResultado
 import json
 
-@permission_required_or_403('afiliados_app.view_elecciones_2023')
+@require_perms(['afiliados_app.view_elecciones_2023'])
 def elecciones2023(request):
 
     # 🔵 Filtros
@@ -204,7 +206,7 @@ def elecciones2023(request):
 
     
     
-@permission_required_or_403('afiliados_app.view_configuracion')
+@require_perms(['afiliados_app.view_configuracion'])
 def editar_institucion(request):
     institucion = Institucion.objects.first()  # Solo debería haber una
 
@@ -221,7 +223,7 @@ def editar_institucion(request):
 
 
 
-@permission_required_or_403('afiliados_app.view_usuarios')
+@require_perms(['afiliados_app.view_usuarios'])
 def user_create(request):
     if request.method == 'POST':
         form = UserCreateForm(request.POST, request.FILES)
@@ -253,7 +255,7 @@ def user_create(request):
     users = User.objects.all()
     return render(request, 'afiliados/user_form_create.html', {'form': form, 'users': users})
 
-@permission_required_or_403('afiliados_app.view_usuarios')
+@require_perms(['afiliados_app.view_usuarios'])
 def user_edit(request, user_id):
     user = get_object_or_404(User, pk=user_id)
 
@@ -276,7 +278,7 @@ def user_edit(request, user_id):
 
 
 
-@permission_required_or_403('afiliados_app.view_usuarios')
+@require_perms(['afiliados_app.view_usuarios'])
 def user_delete(request, user_id):
     user = get_object_or_404(User, id=user_id)
     if request.method == 'POST':
@@ -285,7 +287,7 @@ def user_delete(request, user_id):
     return render(request, 'afiliados/user_confirm_delete.html', {'user': user})
 
 
-@permission_required('auth.view_group', raise_exception=True)
+@require_perms(['auth.view_group'])
 def administrar_roles(request):
     grupos_base = ['Administrador', 'Gestor', 'Coordinador', 'Digitador', 'Consulta']
     grupos = Group.objects.filter(name__in=grupos_base).order_by('name')
@@ -487,8 +489,39 @@ def dahsboard(request):
 
 
 
+def _format_permission_label(perm_code):
+    labels = {
+        'afiliados_app.view_elecciones_2023': 'Ver Elección 2023',
+        'afiliados_app.view_cargar_padron': 'Cargar padrón electoral',
+        'afiliados_app.view_configuracion': 'Ver configuración',
+        'afiliados_app.view_usuarios': 'Gestionar usuarios',
+        'afiliados_app.view_filtros': 'Ver filtros',
+        'auth.view_group': 'Ver grupos y roles',
+    }
+    return labels.get(perm_code, perm_code)
+
+
 def acceso_denegado(request, exception=None):
-    return render(request, 'afiliados/403.html', status=403)
+    required_perms = request.session.pop('access_denied_required_perms', [])
+    required_groups = request.session.pop('access_denied_required_groups', [])
+    next_url = request.session.pop('access_denied_next', request.GET.get('next', ''))
+
+    if not required_perms:
+        query_perms = request.GET.getlist('perms')
+        required_perms = query_perms if query_perms else []
+
+    grupos_usuario = []
+    if request.user.is_authenticated:
+        grupos_usuario = list(request.user.groups.values_list('name', flat=True))
+
+    context = {
+        'next_url': next_url,
+        'required_perms': required_perms,
+        'required_perm_labels': [_format_permission_label(p) for p in required_perms],
+        'required_groups': required_groups,
+        'user_groups': grupos_usuario,
+    }
+    return render(request, 'afiliados/acceso_denegado.html', context, status=403)
 
 
 
@@ -522,7 +555,7 @@ def signin(request):
             return redirect('afiliados:dahsboard')
 
         messages.warning(request, 'Su usuario no tiene un rol asignado para operar en el sistema.')
-        return redirect('afiliados:acceso_denegado')
+        return redirect('afiliados:no_autorizado')
 
     return render(request, 'afiliados/login.html', {
         'form': form,
@@ -762,7 +795,7 @@ def _importar_padron_desde_dataframe(df, replace=False):
     return resumen
 
 
-@permission_required_or_403('afiliados_app.view_cargar_padron')
+@require_perms(['afiliados_app.view_cargar_padron'])
 def padron_cargar(request):
     if request.method == 'POST':
         if 'archivo' not in request.FILES:
@@ -866,7 +899,7 @@ def _construir_filtros_afiliados(request):
     }
 
 
-@permission_required_or_403('afiliados_app.view_filtros')
+@require_perms(['afiliados_app.view_filtros'])
 def dashboard_filtros(request):
     filtros = _construir_filtros_afiliados(request)
     page_obj = filtros['resultados']
@@ -1205,12 +1238,6 @@ def afiliado_detalle(request, pk):
     return render(request, 'afiliados/afiliado_detalle.html', context)
 
 
-# -------------------------------
-# ACCESO DENEGADO
-# -------------------------------
-@login_required
-def acceso_denegado(request):
-    return render(request, 'afiliados/acceso_denegado.html')
 # -----------------------------------------
 # CRUD - COMUNIDAD
 # -----------------------------------------
