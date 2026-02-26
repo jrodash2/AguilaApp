@@ -49,6 +49,10 @@
 
         {% if selected_group %}
           <p class="text-muted">Habilitadas {{ enabled_count }} de {{ total_views }} para <strong>{{ selected_group.name }}</strong>.</p>
+        {% if selected_group and selected_group.name == 'Administrador' %}
+          <div class="alert alert-info">El grupo <strong>Administrador</strong> siempre tiene acceso total. No es necesario editar sus vistas.</div>
+        {% endif %}
+
           <form method="post">
             {% csrf_token %}
             <input type="hidden" name="action" value="save_views">
@@ -71,7 +75,7 @@
               </div>
             {% endfor %}
 
-            <button type="submit" class="btn btn-success">Guardar cambios</button>
+            <button type="submit" class="btn btn-success" {% if selected_group and selected_group.name == "Administrador" %}disabled{% endif %}>Guardar cambios</button>
           </form>
         {% endif %}
       </div>

@@ -82,6 +82,8 @@ from .forms import PadronUploadForm
 
 from .forms import PadronUploadForm
 
+from .forms import PadronUploadForm
+
 logger = logging.getLogger(__name__)
 
 
@@ -366,6 +368,10 @@ def gestor_vistas(request):
                 return redirect('afiliados:gestor_vistas')
 
         if action == 'save_views' and selected_group:
+            if selected_group.name == 'Administrador':
+                messages.warning(request, 'El grupo Administrador siempre tiene acceso total y no requiere configuración.')
+                return redirect(f"{reverse('afiliados:gestor_vistas')}?group_id={selected_group.id}")
+
             selected_keys = set(request.POST.getlist('views'))
             selected_views = MenuView.objects.filter(key__in=selected_keys, is_active=True)
 
@@ -414,7 +420,7 @@ from django.db.models.functions import Coalesce
 from django.db.models import Value, Count
 
 
-@login_required
+@vista_requerida('dashboard')
 def dahsboard(request):
 
     # === Totales ===
