@@ -76,6 +76,8 @@ from .forms import PadronUploadForm
 
 from .forms import PadronUploadForm
 
+from .forms import PadronUploadForm
+
 logger = logging.getLogger(__name__)
 
 
@@ -346,7 +348,7 @@ from django.db.models.functions import Coalesce
 from django.db.models import Value, Count
 
 
-@permission_required_or_403('afiliados_app.view_dashboard')
+@login_required
 def dahsboard(request):
 
     # === Totales ===

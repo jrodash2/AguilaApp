@@ -258,7 +258,7 @@
                         </a>
                     </li>
 
-                    {% if perms.afiliados_app.view_elecciones_2023 %}
+                    {% if perms.auth.view_group %}
                     <li class="sidebar-list {% if '/afiliados/elecciones2023' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:elecciones2023' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
@@ -278,7 +278,7 @@
                     </li>
                     {% endif %}
 
-                    {% if perms.afiliados_app.view_cargar_padron %}
+                    {% if perms.auth.view_group %}
                     <li class="sidebar-list {% if '/afiliados/padron/cargar/' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:padron_cargar' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-file' %}"></use></svg>
@@ -288,7 +288,7 @@
                     </li>
                     {% endif %}
 
-                    {% if perms.afiliados_app.view_configuracion %}
+                    {% if perms.auth.view_group %}
                     <li class="sidebar-list {% if '/afiliados/editar_institucion' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:editar_institucion' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-setting' %}"></use></svg>
@@ -307,7 +307,7 @@
                     </li>
                     {% endif %}
 
-                    {% if perms.afiliados_app.view_usuarios %}
+                    {% if perms.auth.view_group %}
                     <li class="sidebar-list {% if '/afiliados/usuario/' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:user_create' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-user' %}"></use></svg>
