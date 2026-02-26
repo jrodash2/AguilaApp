@@ -200,6 +200,7 @@
 
                     {% if user.is_authenticated %}
 
+                    {% if 'dashboard' in allowed_menu_keys %}
                     <li class="sidebar-list {% if '/afiliados/dahsboard/' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:dahsboard' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-home' %}"></use></svg>
@@ -207,7 +208,9 @@
                             <span>Dashboard</span>
                         </a>
                     </li>
+                    {% endif %}
 
+                    {% if 'afiliados' in allowed_menu_keys %}
                     <li class="sidebar-list {% if '/afiliados/afiliado' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:afiliado_lista' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
@@ -215,7 +218,9 @@
                             <span>Afiliados</span>
                         </a>
                     </li>
+                    {% endif %}
 
+                    {% if 'lideres' in allowed_menu_keys %}
                     <li class="sidebar-list {% if '/afiliados/lideres' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:lideres_lista' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
@@ -223,7 +228,9 @@
                             <span>Líderes</span>
                         </a>
                     </li>
+                    {% endif %}
 
+                    {% if 'comunidades' in allowed_menu_keys %}
                     <li class="sidebar-list {% if '/afiliados/comunidad' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:comunidad_lista' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
@@ -231,7 +238,9 @@
                             <span>Comunidades</span>
                         </a>
                     </li>
+                    {% endif %}
 
+                    {% if 'sectores' in allowed_menu_keys %}
                     <li class="sidebar-list {% if '/afiliados/sector' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:sector_lista' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
@@ -239,7 +248,9 @@
                             <span>Sectores</span>
                         </a>
                     </li>
+                    {% endif %}
 
+                    {% if 'centros' in allowed_menu_keys %}
                     <li class="sidebar-list {% if '/afiliados/centro' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:centro_lista' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
@@ -247,7 +258,9 @@
                             <span>Centros de Votación</span>
                         </a>
                     </li>
+                    {% endif %}
 
+                    {% if 'comisiones' in allowed_menu_keys %}
                     <li class="sidebar-list {% if '/afiliados/comision' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:comision_lista' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
@@ -255,7 +268,9 @@
                             <span>Comisiones</span>
                         </a>
                     </li>
+                    {% endif %}
 
+                    {% if 'elecciones_2023' in allowed_menu_keys %}
                     <li class="sidebar-list {% if '/afiliados/elecciones2023' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:elecciones2023' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
@@ -263,7 +278,9 @@
                             <span>Elecciones 2023</span>
                         </a>
                     </li>
+                    {% endif %}
 
+                    {% if 'filtros' in allowed_menu_keys %}
                     <li class="sidebar-list {% if '/afiliados/dashboard/filtros/' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:dashboard_filtros' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-form' %}"></use></svg>
@@ -271,7 +288,19 @@
                             <span>Filtros</span>
                         </a>
                     </li>
+                    {% endif %}
 
+                    {% if 'cargar_padron' in allowed_menu_keys %}
+                    <li class="sidebar-list {% if '/afiliados/padron/cargar/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:padron_cargar' %}">
+                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-file' %}"></use></svg>
+                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-file' %}"></use></svg>
+                            <span>Cargar Padrón</span>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% if 'configuracion' in allowed_menu_keys %}
                     <li class="sidebar-list {% if '/afiliados/editar_institucion' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:editar_institucion' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-setting' %}"></use></svg>
@@ -279,7 +308,18 @@
                             <span>Configuración</span>
                         </a>
                     </li>
+                    {% endif %}
 
+                    {% if 'gestor_vistas' in allowed_menu_keys or es_administrador %}
+                    <li class="sidebar-list {% if '/afiliados/gestor-vistas/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:gestor_vistas' %}">
+                            <i data-feather="shield"></i>
+                            <span>Gestor de Vistas</span>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% if 'usuarios' in allowed_menu_keys %}
                     <li class="sidebar-list {% if '/afiliados/usuario/' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:user_create' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-user' %}"></use></svg>
@@ -287,9 +327,9 @@
                             <span>Usuarios</span>
                         </a>
                     </li>
-
                     {% endif %}
 
+                    {% endif %}
                 </ul>
             </div>
         </nav>
