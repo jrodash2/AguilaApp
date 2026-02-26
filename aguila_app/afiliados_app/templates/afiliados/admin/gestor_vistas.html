@@ -50,9 +50,6 @@
         {% if menuviews_empty %}
           <div class="alert alert-warning">
             No hay vistas registradas. Ejecuta: <code>python manage.py seed_menuviews</code>.
-            {% if debug %}
-              <a class="ms-2" href="{% url 'afiliados:gestor_vistas' %}?autoseed=1">Autoseed (solo DEBUG)</a>
-            {% endif %}
           </div>
         {% endif %}
 

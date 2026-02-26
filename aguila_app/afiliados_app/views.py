@@ -78,7 +78,6 @@ def safe_context(request, extra=None):
         "view_label": "",
         "next_url": "",
         "user_groups": [g.name for g in user.groups.all()] if is_authenticated else [],
-        "allowed_menu_keys": [],
         "es_admin": user.groups.filter(name="Administrador").exists() if is_authenticated else False,
     }
 
