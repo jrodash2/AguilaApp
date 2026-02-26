@@ -89,6 +89,9 @@ from .forms import PadronUploadForm
 from .forms import PadronUploadForm
 from afiliados_app.management.commands.seed_menuviews import MENU_ITEMS
 
+from .forms import PadronUploadForm
+from afiliados_app.management.commands.seed_menuviews import MENU_ITEMS
+
 logger = logging.getLogger(__name__)
 
 
@@ -354,11 +357,13 @@ def gestor_vistas(request):
         request.session['access_denied_next'] = request.get_full_path()
         return redirect('afiliados:no_autorizado')
 
-    grupos = Group.objects.all().order_by('name')
-    menu_views = MenuView.objects.filter(is_active=True).order_by('section', 'label')
+    groups = Group.objects.all().order_by('name')
+
+    active_qs = MenuView.objects.filter(is_active=True).order_by('section', 'label')
+    menuviews = active_qs if active_qs.exists() else MenuView.objects.all().order_by('section', 'label')
 
     menuviews_total = MenuView.objects.count()
-    menuviews_empty = menuviews_total == 0
+    menuviews_empty = not menuviews.exists()
 
     if menuviews_empty and settings.DEBUG and request.GET.get('autoseed') == '1':
         for item in MENU_ITEMS:
@@ -375,7 +380,7 @@ def gestor_vistas(request):
         return redirect('afiliados:gestor_vistas')
 
     selected_group_id = request.GET.get('group_id') or request.POST.get('group_id')
-    selected_group = grupos.filter(id=selected_group_id).first() if selected_group_id else grupos.first()
+    selected_group = groups.filter(id=selected_group_id).first() if selected_group_id else groups.first()
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -395,7 +400,7 @@ def gestor_vistas(request):
                 return redirect(f"{reverse('afiliados:gestor_vistas')}?group_id={selected_group.id}")
 
             selected_keys = set(request.POST.getlist('views'))
-            selected_views = MenuView.objects.filter(key__in=selected_keys, is_active=True)
+            selected_views = menuviews.filter(key__in=selected_keys)
 
             GroupMenuView.objects.filter(group=selected_group).exclude(view__in=selected_views).delete()
             for mv in selected_views:
@@ -406,24 +411,27 @@ def gestor_vistas(request):
 
     selected_keys = set()
     if selected_group and selected_group.name == 'Administrador':
-        selected_keys = set(menu_views.values_list('key', flat=True))
+        selected_keys = set(menuviews.values_list('key', flat=True))
     elif selected_group:
         selected_keys = set(
-            GroupMenuView.objects.filter(group=selected_group, view__is_active=True)
+            GroupMenuView.objects.filter(group=selected_group, view__in=menuviews)
             .values_list('view__key', flat=True)
         )
 
     sections = {}
-    for mv in menu_views:
+    for mv in menuviews:
         section = mv.section or 'General'
         sections.setdefault(section, []).append(mv)
 
     context = {
-        'grupos': grupos,
+        'groups': groups,
+        'grupos': groups,
         'selected_group': selected_group,
+        'menuviews': menuviews,
+        'assigned_keys': selected_keys,
         'sections': sections,
         'selected_keys': selected_keys,
-        'total_views': menu_views.count(),
+        'total_views': menuviews.count(),
         'enabled_count': len(selected_keys),
         'menuviews_empty': menuviews_empty,
         'menuviews_total': menuviews_total,
