@@ -33,7 +33,6 @@ from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 import json
 from django.contrib.auth.models import Group
-from .utils import grupo_requerido
 from django.views.decorators.http import require_GET
 from django.db.models.functions import Coalesce
 from django.db import transaction, IntegrityError
@@ -216,7 +215,6 @@ def elecciones2023(request):
     
     
 @login_required
-@grupo_requerido('Administrador')
 def editar_institucion(request):
     institucion = Institucion.objects.first()  # Solo debería haber una
 
@@ -234,7 +232,6 @@ def editar_institucion(request):
 
 
 @login_required
-@grupo_requerido('Administrador', 'afiliados')
 def user_create(request):
     if request.method == 'POST':
         form = UserCreateForm(request.POST, request.FILES)
@@ -267,7 +264,6 @@ def user_create(request):
     return safe_render(request, 'afiliados/user_form_create.html', {'form': form, 'users': users})
 
 @login_required
-@grupo_requerido('Administrador', 'afiliados')
 def user_edit(request, user_id):
     user = get_object_or_404(User, pk=user_id)
 
@@ -291,7 +287,6 @@ def user_edit(request, user_id):
 
 
 @login_required
-@grupo_requerido('Administrador', 'afiliados')
 def user_delete(request, user_id):
     user = get_object_or_404(User, id=user_id)
     if request.method == 'POST':
@@ -314,7 +309,6 @@ from django.db.models import Value, Count
 
 
 @login_required
-@grupo_requerido('Administrador', 'afiliados')
 def dahsboard(request):
 
     # === Totales ===
@@ -452,9 +446,6 @@ def dahsboard(request):
     return safe_render(request, 'afiliados/dahsboard.html', context)
 
 
-
-def acceso_denegado(request, exception=None):
-    return safe_render(request, 'afiliados/403.html', status=403)
 
 
 
@@ -734,7 +725,6 @@ def _importar_padron_desde_dataframe(df, replace=False):
 
 
 @login_required
-@grupo_requerido('Administrador')
 def padron_cargar(request):
     if request.method == 'POST':
         if 'archivo' not in request.FILES:
@@ -988,7 +978,6 @@ def exportar_filtros_pdf(request):
 
 
 @login_required
-@grupo_requerido('Administrador')
 def afiliado_lista(request):
     afiliados = Afiliado.objects.all().select_related('comunidad', 'centro_votacion')
     form = AfiliadoForm()  # Instancia vacía para el modal
@@ -1077,7 +1066,6 @@ def afiliado_nuevo(request):
 # EDITAR AFILIADO
 # -------------------------------
 @login_required
-@grupo_requerido('Administrador')
 def afiliado_editar(request, pk):
     afiliado = get_object_or_404(Afiliado, pk=pk)
     if request.method == 'POST':
@@ -1091,7 +1079,6 @@ def afiliado_editar(request, pk):
     return safe_render(request, 'afiliados/form.html', {'form': form, 'afiliado': afiliado})
 
 @login_required
-# @grupo_requerido('Administrador') # Descomentar si usas este decorador
 def lider_editar(request, pk):
     afiliado = get_object_or_404(Afiliado, pk=pk)
     
@@ -1140,7 +1127,6 @@ def lideres_lista(request):
 # ELIMINAR AFILIADO
 # -------------------------------
 @login_required
-@grupo_requerido('Administrador')
 def afiliado_eliminar(request, pk):
     afiliado = get_object_or_404(Afiliado, pk=pk)
 
@@ -1177,18 +1163,11 @@ def afiliado_detalle(request, pk):
     return safe_render(request, 'afiliados/afiliado_detalle.html', context)
 
 
-# -------------------------------
-# ACCESO DENEGADO
-# -------------------------------
-@login_required
-def acceso_denegado(request):
-    return safe_render(request, 'afiliados/acceso_denegado.html')
 # -----------------------------------------
 # CRUD - COMUNIDAD
 # -----------------------------------------
 
 @login_required
-@grupo_requerido('Administrador', 'afiliados')
 def comunidad_lista(request):
     comunidades = Comunidad.objects.all().order_by('nombre')
     form = ComunidadForm()  # Nuevo formulario vacío 
@@ -1200,7 +1179,6 @@ def comunidad_lista(request):
 
 
 @login_required
-@grupo_requerido('Administrador')
 def comunidad_nueva(request):
     if request.method == 'POST':
         form = ComunidadForm(request.POST)
@@ -1220,7 +1198,6 @@ def comunidad_nueva(request):
 
 
 @login_required
-@grupo_requerido('Administrador')
 def comunidad_editar(request, pk):
     comunidad = get_object_or_404(Comunidad, pk=pk)
 
@@ -1243,7 +1220,6 @@ def comunidad_editar(request, pk):
 
 
 @login_required
-@grupo_requerido('Administrador')
 def comunidad_eliminar(request, pk):
     comunidad = get_object_or_404(Comunidad, pk=pk)
 
@@ -1260,7 +1236,6 @@ def comunidad_eliminar(request, pk):
 # ------------------------
 
 @login_required
-@grupo_requerido('Administrador')
 def sector_nueva(request):
     if request.method == 'POST':
         form = SectorForm(request.POST)
@@ -1280,7 +1255,6 @@ def sector_nueva(request):
 
 
 @login_required
-@grupo_requerido('Administrador')
 def sector_editar(request, pk):
     sector = get_object_or_404(Sector, pk=pk)
 
@@ -1303,7 +1277,6 @@ def sector_editar(request, pk):
 
 
 @login_required
-@grupo_requerido('Administrador')
 def sector_eliminar(request, pk):
     sector = get_object_or_404(Sector, pk=pk)
 
@@ -1324,7 +1297,6 @@ def sector_eliminar(request, pk):
 # -----------------------------------------
 
 @login_required
-@grupo_requerido('Administrador', 'afiliados')
 def centro_lista(request):
     centros = CentroVotacion.objects.all().order_by('nombre')
     form = CentroVotacionForm()  # formulario vacío para creación
@@ -1336,7 +1308,6 @@ def centro_lista(request):
 
 
 @login_required
-@grupo_requerido('Administrador')
 def centro_nuevo(request):
     if request.method == 'POST':
         form = CentroVotacionForm(request.POST)
@@ -1357,7 +1328,6 @@ def centro_nuevo(request):
 
 
 @login_required
-@grupo_requerido('Administrador')
 def centro_editar(request, pk):
     centro = get_object_or_404(CentroVotacion, pk=pk)
 
@@ -1381,7 +1351,6 @@ def centro_editar(request, pk):
 
 
 @login_required
-@grupo_requerido('Administrador')
 def centro_eliminar(request, pk):
     centro = get_object_or_404(CentroVotacion, pk=pk)
 
@@ -1400,7 +1369,6 @@ def centro_eliminar(request, pk):
 # -----------------------------------------
 
 @login_required
-@grupo_requerido('Administrador', 'afiliados')
 def comision_lista(request):
     comisiones = Comision.objects.all().order_by('nombre')
     form = ComisionForm()
@@ -1412,7 +1380,6 @@ def comision_lista(request):
 
 
 @login_required
-@grupo_requerido('Administrador')
 def comision_nueva(request):
     if request.method == 'POST':
         form = ComisionForm(request.POST)
@@ -1431,7 +1398,6 @@ def comision_nueva(request):
 
 
 @login_required
-@grupo_requerido('Administrador')
 def comision_editar(request, pk):
     comision = get_object_or_404(Comision, pk=pk)
 
@@ -1454,7 +1420,6 @@ def comision_editar(request, pk):
 
 
 @login_required
-@grupo_requerido('Administrador')
 def comision_eliminar(request, pk):
     comision = get_object_or_404(Comision, pk=pk)
 
