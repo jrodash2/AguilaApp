@@ -272,6 +272,14 @@
                         </a>
                     </li>
 
+                    <li class="sidebar-list {% if '/afiliados/padron/cargar/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:padron_cargar' %}">
+                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-file' %}"></use></svg>
+                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-file' %}"></use></svg>
+                            <span>Cargar Padrón</span>
+                        </a>
+                    </li>
+
                     <li class="sidebar-list {% if '/afiliados/editar_institucion' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:editar_institucion' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-setting' %}"></use></svg>
