@@ -1,8 +1,26 @@
-# context_processors.py
 import random
+
+from django.conf import settings
 
 from .access import user_has_view
 from .models import FraseMotivacional, Institucion, MenuView
+
+
+MENU_KEYS_FALLBACK = {
+    'dashboard',
+    'afiliados',
+    'lideres',
+    'comunidades',
+    'sectores',
+    'centros',
+    'comisiones',
+    'elecciones_2023',
+    'filtros',
+    'cargar_padron',
+    'configuracion',
+    'usuarios',
+    'gestor_vistas',
+}
 
 
 def frase_del_dia(request):
@@ -26,16 +44,23 @@ def datos_institucion(request):
     return {'institucion': institucion}
 
 
-def allowed_menu_keys(request):
+def menu_access(request):
     if not request.user.is_authenticated:
-        return {'allowed_menu_keys': set()}
+        return {'es_admin': False, 'allowed_menu_keys': set(), 'debug': settings.DEBUG}
 
-    if request.user.is_superuser or request.user.groups.filter(name='Administrador').exists():
-        keys = set(MenuView.objects.filter(is_active=True).values_list('key', flat=True))
-        return {'allowed_menu_keys': keys}
+    es_admin = request.user.groups.filter(name='Administrador').exists() or request.user.is_superuser
 
-    keys = {
-        key for key in MenuView.objects.filter(is_active=True).values_list('key', flat=True)
-        if user_has_view(request.user, key)
-    }
-    return {'allowed_menu_keys': keys}
+    active_keys = set(MenuView.objects.filter(is_active=True).values_list('key', flat=True))
+
+    if es_admin:
+        # Admin siempre ve todo: catálogo activo o fallback completo.
+        allowed_keys = active_keys if active_keys else set(MENU_KEYS_FALLBACK)
+        return {'es_admin': True, 'allowed_menu_keys': allowed_keys, 'debug': settings.DEBUG}
+
+    if active_keys:
+        allowed_keys = {key for key in active_keys if user_has_view(request.user, key)}
+    else:
+        # Fallback mínimo para no-admin cuando no hay catálogo.
+        allowed_keys = {'dashboard', 'filtros'}
+
+    return {'es_admin': False, 'allowed_menu_keys': allowed_keys, 'debug': settings.DEBUG}

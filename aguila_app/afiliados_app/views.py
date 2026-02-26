@@ -84,6 +84,8 @@ from .forms import PadronUploadForm
 
 from .forms import PadronUploadForm
 
+from .forms import PadronUploadForm
+
 logger = logging.getLogger(__name__)
 
 
@@ -422,6 +424,9 @@ from django.db.models import Value, Count
 
 @vista_requerida('dashboard')
 def dahsboard(request):
+
+    if settings.DEBUG and request.user.is_authenticated:
+        logger.info('DEBUG dashboard user=%s grupos=%s', request.user.username, list(request.user.groups.values_list('name', flat=True)))
 
     # === Totales ===
     total_afiliados = Afiliado.objects.count()
