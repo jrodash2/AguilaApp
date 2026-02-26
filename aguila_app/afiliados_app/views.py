@@ -65,6 +65,32 @@ from django.views.generic.detail import DetailView
 from django.core.mail import BadHeaderError
 from smtplib import SMTPException
 from django.db.models.functions import ExtractYear, ExtractMonth
+from django.core.management import call_command
+from tempfile import NamedTemporaryFile
+
+from .forms import PadronUploadForm
+
+from .forms import PadronUploadForm
+
+from .forms import PadronUploadForm
+
+from .forms import PadronUploadForm
+
+from .forms import PadronUploadForm
+
+from .forms import PadronUploadForm
+
+from .forms import PadronUploadForm
+
+from .forms import PadronUploadForm
+
+from .forms import PadronUploadForm
+
+from .forms import PadronUploadForm
+from afiliados_app.management.commands.seed_menuviews import MENU_ITEMS
+
+from .forms import PadronUploadForm
+from afiliados_app.management.commands.seed_menuviews import MENU_ITEMS
 
 from .forms import PadronUploadForm
 from afiliados_app.management.commands.seed_menuviews import MENU_ITEMS
@@ -970,7 +996,7 @@ def _construir_filtros_afiliados(request):
     }
 
 
-@login_required
+@vista_requerida('filtros')
 def dashboard_filtros(request):
     filtros = _construir_filtros_afiliados(request)
     page_obj = filtros['resultados']
