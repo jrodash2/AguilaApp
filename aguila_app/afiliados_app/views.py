@@ -15,7 +15,7 @@ import pandas as pd
 import requests
 import unicodedata
 from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm
-from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral
+from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral, MenuView, GroupMenuView
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
@@ -34,7 +34,7 @@ from django.contrib import messages
 import json
 from django.contrib.auth.models import Group
 from .utils import grupo_requerido
-from .permissions import require_perms, require_group
+from .access import vista_requerida, user_has_view
 from django.views.decorators.http import require_GET
 from django.db.models.functions import Coalesce
 from django.db import transaction, IntegrityError
@@ -80,6 +80,8 @@ from .forms import PadronUploadForm
 
 from .forms import PadronUploadForm
 
+from .forms import PadronUploadForm
+
 logger = logging.getLogger(__name__)
 
 
@@ -93,7 +95,7 @@ from django.shortcuts import render
 from .models import TrepCentroResultado
 import json
 
-@require_perms(['afiliados_app.view_elecciones_2023'])
+@vista_requerida('elecciones_2023')
 def elecciones2023(request):
 
     # 🔵 Filtros
@@ -206,7 +208,7 @@ def elecciones2023(request):
 
     
     
-@require_perms(['afiliados_app.view_configuracion'])
+@vista_requerida('configuracion')
 def editar_institucion(request):
     institucion = Institucion.objects.first()  # Solo debería haber una
 
@@ -223,7 +225,7 @@ def editar_institucion(request):
 
 
 
-@require_perms(['afiliados_app.view_usuarios'])
+@vista_requerida('usuarios')
 def user_create(request):
     if request.method == 'POST':
         form = UserCreateForm(request.POST, request.FILES)
@@ -255,7 +257,7 @@ def user_create(request):
     users = User.objects.all()
     return render(request, 'afiliados/user_form_create.html', {'form': form, 'users': users})
 
-@require_perms(['afiliados_app.view_usuarios'])
+@vista_requerida('usuarios')
 def user_edit(request, user_id):
     user = get_object_or_404(User, pk=user_id)
 
@@ -278,7 +280,7 @@ def user_edit(request, user_id):
 
 
 
-@require_perms(['afiliados_app.view_usuarios'])
+@vista_requerida('usuarios')
 def user_delete(request, user_id):
     user = get_object_or_404(User, id=user_id)
     if request.method == 'POST':
@@ -287,7 +289,7 @@ def user_delete(request, user_id):
     return render(request, 'afiliados/user_confirm_delete.html', {'user': user})
 
 
-@require_perms(['auth.view_group'])
+@vista_requerida('gestor_vistas')
 def administrar_roles(request):
     grupos_base = ['Administrador', 'Gestor', 'Coordinador', 'Digitador', 'Consulta']
     grupos = Group.objects.filter(name__in=grupos_base).order_by('name')
@@ -335,6 +337,68 @@ def administrar_roles(request):
         'usuarios': usuarios,
     }
     return render(request, 'afiliados/roles/administrar_roles.html', context)
+
+
+@login_required
+def gestor_vistas(request):
+    if not request.user.is_superuser and not request.user.groups.filter(name='Administrador').exists():
+        request.session['access_denied_view_key'] = 'gestor_vistas'
+        request.session['access_denied_view_label'] = 'Gestor de Vistas'
+        request.session['access_denied_next'] = request.get_full_path()
+        return redirect('afiliados:no_autorizado')
+
+    grupos = Group.objects.all().order_by('name')
+    menu_views = MenuView.objects.filter(is_active=True).order_by('section', 'label')
+
+    selected_group_id = request.GET.get('group_id') or request.POST.get('group_id')
+    selected_group = grupos.filter(id=selected_group_id).first() if selected_group_id else grupos.first()
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create_group':
+            group_name = (request.POST.get('group_name') or '').strip()
+            if not group_name:
+                messages.error(request, 'Debe ingresar un nombre de grupo.')
+            else:
+                Group.objects.get_or_create(name=group_name)
+                messages.success(request, f'Grupo "{group_name}" creado correctamente.')
+                return redirect('afiliados:gestor_vistas')
+
+        if action == 'save_views' and selected_group:
+            selected_keys = set(request.POST.getlist('views'))
+            selected_views = MenuView.objects.filter(key__in=selected_keys, is_active=True)
+
+            GroupMenuView.objects.filter(group=selected_group).exclude(view__in=selected_views).delete()
+            for mv in selected_views:
+                GroupMenuView.objects.get_or_create(group=selected_group, view=mv)
+
+            messages.success(request, f'Vistas del grupo {selected_group.name} actualizadas.')
+            return redirect(f"{reverse('afiliados:gestor_vistas')}?group_id={selected_group.id}")
+
+    selected_keys = set()
+    if selected_group and selected_group.name == 'Administrador':
+        selected_keys = set(menu_views.values_list('key', flat=True))
+    elif selected_group:
+        selected_keys = set(
+            GroupMenuView.objects.filter(group=selected_group, view__is_active=True)
+            .values_list('view__key', flat=True)
+        )
+
+    sections = {}
+    for mv in menu_views:
+        section = mv.section or 'General'
+        sections.setdefault(section, []).append(mv)
+
+    context = {
+        'grupos': grupos,
+        'selected_group': selected_group,
+        'sections': sections,
+        'selected_keys': selected_keys,
+        'total_views': menu_views.count(),
+        'enabled_count': len(selected_keys),
+    }
+    return render(request, 'afiliados/admin/gestor_vistas.html', context)
 
 
 def home(request):
@@ -502,24 +566,19 @@ def _format_permission_label(perm_code):
 
 
 def acceso_denegado(request, exception=None):
-    required_perms = request.session.pop('access_denied_required_perms', [])
-    required_groups = request.session.pop('access_denied_required_groups', [])
+    view_key = request.session.pop('access_denied_view_key', request.GET.get('view_key', ''))
+    view_label = request.session.pop('access_denied_view_label', request.GET.get('view_label', ''))
     next_url = request.session.pop('access_denied_next', request.GET.get('next', ''))
 
-    if not required_perms:
-        query_perms = request.GET.getlist('perms')
-        required_perms = query_perms if query_perms else []
-
-    grupos_usuario = []
+    user_groups = []
     if request.user.is_authenticated:
-        grupos_usuario = list(request.user.groups.values_list('name', flat=True))
+        user_groups = list(request.user.groups.values_list('name', flat=True))
 
     context = {
+        'view_key': view_key,
+        'view_label': view_label,
         'next_url': next_url,
-        'required_perms': required_perms,
-        'required_perm_labels': [_format_permission_label(p) for p in required_perms],
-        'required_groups': required_groups,
-        'user_groups': grupos_usuario,
+        'user_groups': user_groups,
     }
     return render(request, 'afiliados/acceso_denegado.html', context, status=403)
 
@@ -795,7 +854,7 @@ def _importar_padron_desde_dataframe(df, replace=False):
     return resumen
 
 
-@require_perms(['afiliados_app.view_cargar_padron'])
+@vista_requerida('cargar_padron')
 def padron_cargar(request):
     if request.method == 'POST':
         if 'archivo' not in request.FILES:
@@ -899,7 +958,7 @@ def _construir_filtros_afiliados(request):
     }
 
 
-@require_perms(['afiliados_app.view_filtros'])
+@vista_requerida('filtros')
 def dashboard_filtros(request):
     filtros = _construir_filtros_afiliados(request)
     page_obj = filtros['resultados']

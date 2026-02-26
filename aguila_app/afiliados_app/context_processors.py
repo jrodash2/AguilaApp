@@ -1,21 +1,15 @@
 # context_processors.py
-from .models import FraseMotivacional
 import random
 
+from .access import user_has_view
+from .models import FraseMotivacional, Institucion, MenuView
+
+
 def frase_del_dia(request):
-    # Obtener todas las frases
     frases = FraseMotivacional.objects.all()
-    
-    # Verificar si hay frases disponibles
-    if frases.exists():
-        frase = random.choice(frases)
-    else:
-        # Si no hay frases, puedes devolver un valor predeterminado o None
-        frase = None
-    
-    return {
-        'frase_del_dia': frase
-    }
+    frase = random.choice(frases) if frases.exists() else None
+    return {'frase_del_dia': frase}
+
 
 def grupo_usuario(request):
     if not request.user.is_authenticated:
@@ -27,14 +21,21 @@ def grupo_usuario(request):
     }
 
 
-from .models import Institucion
-
 def datos_institucion(request):
-    try:
-        institucion = Institucion.objects.first()
-    except Institucion.DoesNotExist:
-        institucion = None
+    institucion = Institucion.objects.first()
+    return {'institucion': institucion}
 
-    return {
-        'institucion': institucion
+
+def allowed_menu_keys(request):
+    if not request.user.is_authenticated:
+        return {'allowed_menu_keys': set()}
+
+    if request.user.is_superuser or request.user.groups.filter(name='Administrador').exists():
+        keys = set(MenuView.objects.filter(is_active=True).values_list('key', flat=True))
+        return {'allowed_menu_keys': keys}
+
+    keys = {
+        key for key in MenuView.objects.filter(is_active=True).values_list('key', flat=True)
+        if user_has_view(request.user, key)
     }
+    return {'allowed_menu_keys': keys}

@@ -250,3 +250,30 @@ class PadronElectoral(models.Model):
 
     def __str__(self):
         return f"{self.nombre} - {self.identificacion}"
+
+
+class MenuView(models.Model):
+    key = models.CharField(max_length=100, unique=True)
+    label = models.CharField(max_length=120)
+    url_name = models.CharField(max_length=120)
+    section = models.CharField(max_length=120, null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['section', 'label']
+
+    def __str__(self):
+        return f"{self.section or 'General'} - {self.label}"
+
+
+class GroupMenuView(models.Model):
+    group = models.ForeignKey('auth.Group', on_delete=models.CASCADE, related_name='menu_views')
+    view = models.ForeignKey(MenuView, on_delete=models.CASCADE, related_name='group_links')
+
+    class Meta:
+        unique_together = ('group', 'view')
+        verbose_name = 'Vista habilitada por grupo'
+        verbose_name_plural = 'Vistas habilitadas por grupo'
+
+    def __str__(self):
+        return f"{self.group.name} -> {self.view.key}"

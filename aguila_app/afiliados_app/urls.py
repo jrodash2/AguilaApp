@@ -16,7 +16,7 @@ urlpatterns = [
 
     # Acceso denegado
     path('no-autorizado/', views.acceso_denegado, name='no_autorizado'),
-    path('no-autorizado/', views.acceso_denegado, name='acceso_denegado'),
+    path('acceso-denegado/', views.acceso_denegado, name='acceso_denegado'),
     path("dashboard/", views.dashboard_elecciones, name="dashboard_elecciones"),
     path("dashboard/datos/", views.datos_centro, name="dashboard_datos_centro"),
 
@@ -32,6 +32,7 @@ path("dashboard/filtros/export/pdf/", views.exportar_filtros_pdf, name="exportar
 
     path('editar_institucion/', views.editar_institucion, name='editar_institucion'),
     path('roles/', views.administrar_roles, name='administrar_roles'),
+    path('gestor-vistas/', views.gestor_vistas, name='gestor_vistas'),
     # Cambiar contraseña
     path('cambiar-contraseña/', auth_views.PasswordChangeView.as_view(
         template_name='afiliados/password_change_form.html',
