@@ -208,6 +208,7 @@
                         </a>
                     </li>
 
+                    {% if es_administrador or es_afiliados %}
                     <li class="sidebar-list {% if '/afiliados/afiliado' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:afiliado_lista' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
@@ -255,20 +256,22 @@
                             <span>Comisiones</span>
                         </a>
                     </li>
-
-                    <li class="sidebar-list {% if '/afiliados/elecciones2023' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:elecciones2023' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
-                            <span>Elecciones 2023</span>
-                        </a>
-                    </li>
+                    {% endif %}
 
                     <li class="sidebar-list {% if '/afiliados/dashboard/filtros/' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:dashboard_filtros' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-form' %}"></use></svg>
                             <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-form' %}"></use></svg>
                             <span>Filtros</span>
+                        </a>
+                    </li>
+
+                    {% if es_administrador %}
+                    <li class="sidebar-list {% if '/afiliados/elecciones2023' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:elecciones2023' %}">
+                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
+                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
+                            <span>Elecciones 2023</span>
                         </a>
                     </li>
 
@@ -295,6 +298,7 @@
                             <span>Usuarios</span>
                         </a>
                     </li>
+                    {% endif %}
 
                     {% endif %}
 

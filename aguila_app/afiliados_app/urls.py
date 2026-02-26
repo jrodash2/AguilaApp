@@ -5,17 +5,12 @@ from . import views
 
 app_name = 'afiliados'
 
-# Manejador global de errores (esto debe estar fuera de urlpatterns)
-handler403 = 'afiliados_app.views.acceso_denegado'  # Asegúrate que el nombre de tu app sea correcto
-
 urlpatterns = [
     path('', views.home, name='home'), 
     path('dahsboard/', views.dahsboard, name='dahsboard'),
     path('signin/', views.signin, name='signin'),
     path('logout/', views.signout, name='logout'),
 
-    # Acceso denegado
-    path('no-autorizado/', views.acceso_denegado, name='acceso_denegado'),
     path("dashboard/", views.dashboard_elecciones, name="dashboard_elecciones"),
     path("dashboard/datos/", views.datos_centro, name="dashboard_datos_centro"),
 
