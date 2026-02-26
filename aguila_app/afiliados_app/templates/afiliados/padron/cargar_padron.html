@@ -1,0 +1,142 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+
+<style>
+  #id_replace {
+    pointer-events: auto;
+    position: relative;
+    z-index: 2;
+    cursor: pointer;
+  }
+</style>
+
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0">Cargar Padrón Electoral</h4>
+        </div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'afiliados:dahsboard' %}">
+                <svg class="stroke-icon">
+                  <use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-home"></use>
+                </svg></a></li>
+            <li class="breadcrumb-item">Afiliados</li>
+            <li class="breadcrumb-item active">Cargar Padrón</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header pb-0">
+        <h5>Instrucciones del archivo</h5>
+      </div>
+      <div class="card-body">
+        <div class="alert alert-info" role="alert">
+          <h6 class="alert-heading">Formato obligatorio</h6>
+          <ul class="mb-2">
+            <li><strong>Formatos permitidos:</strong> <code>.xlsx</code> y <code>.csv</code>.</li>
+            <li><strong>Encabezado en fila 1 (exacto):</strong> <code>nombre</code>, <code>edad</code>, <code>identificacion</code>, <code>comunidad</code>, <code>departamento</code>, <code>municipio</code>.</li>
+            <li><strong>Reglas:</strong></li>
+            <li>La <code>identificacion</code> (DPI) debe venir como texto para conservar ceros a la izquierda.</li>
+            <li>La <code>edad</code> debe ser numérica; si viene vacía se permite.</li>
+            <li>No debe haber filas vacías entre registros.</li>
+            <li>Si hay DPI duplicado, se aplicará la lógica existente del sistema (actualizar/omitir).</li>
+          </ul>
+        </div>
+
+        <div class="table-responsive custom-scrollbar">
+          <table class="table table-bordered table-sm align-middle">
+            <thead>
+              <tr>
+                <th>nombre</th>
+                <th>edad</th>
+                <th>identificacion</th>
+                <th>comunidad</th>
+                <th>departamento</th>
+                <th>municipio</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>JUAN PEREZ</td>
+                <td>39</td>
+                <td>0102030405067</td>
+                <td>EL CENTRO</td>
+                <td>HUEHUETENANGO</td>
+                <td>CHIANTLA</td>
+              </tr>
+              <tr>
+                <td>MARIA LOPEZ</td>
+                <td></td>
+                <td>0011223344556</td>
+                <td>LAS FLORES</td>
+                <td>HUEHUETENANGO</td>
+                <td>MALACATANCITO</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header pb-0">
+        <h5>Subir archivo</h5>
+      </div>
+      <div class="card-body">
+        <form method="post" enctype="multipart/form-data" id="padronUploadForm">
+          {% csrf_token %}
+          <div class="mb-3">
+            <label for="{{ form.archivo.id_for_label }}" class="form-label">Archivo de padrón</label>
+            {{ form.archivo }}
+            {% if form.archivo.errors %}
+              <div class="text-danger mt-1">{{ form.archivo.errors|striptags }}</div>
+            {% endif %}
+          </div>
+
+          <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="id_replace" name="replace" {% if form.replace.value %}checked{% endif %}>
+            <label class="form-check-label" for="id_replace" style="cursor: pointer;">Reemplazar/Actualizar padrón existente</label>
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="btnProcesar">
+            <span class="btn-label">Procesar archivo</span>
+            <span class="spinner-border spinner-border-sm d-none" id="submitSpinner" role="status" aria-hidden="true"></span>
+            <span class="d-none" id="submitText">Procesando...</span>
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('padronUploadForm').addEventListener('submit', function () {
+    const spinner = document.getElementById('submitSpinner');
+    const submitText = document.getElementById('submitText');
+    const btnLabel = document.querySelector('#btnProcesar .btn-label');
+    const btn = document.getElementById('btnProcesar');
+
+    spinner.classList.remove('d-none');
+    submitText.classList.remove('d-none');
+    btnLabel.classList.add('d-none');
+    btn.setAttribute('disabled', 'disabled');
+  });
+</script>
+
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6"><h4 class="card-title mb-0">Gestor de Vistas</h4></div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'afiliados:dahsboard' %}"><svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-home"></use></svg></a></li>
+            <li class="breadcrumb-item active">Gestor de Vistas</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header pb-0"><h5>Crear grupo</h5></div>
+      <div class="card-body">
+        <form method="post" class="row g-3">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="create_group">
+          <div class="col-md-8"><input type="text" name="group_name" class="form-control" placeholder="Nombre del nuevo grupo"></div>
+          <div class="col-md-4"><button type="submit" class="btn btn-primary">Crear grupo</button></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header pb-0"><h5>Asignación de vistas por grupo</h5></div>
+      <div class="card-body">
+        <form method="get" class="mb-3">
+          <label class="form-label">Grupo</label>
+          <select name="group_id" class="form-select" onchange="this.form.submit()">
+            {% for g in grupos %}
+              <option value="{{ g.id }}" {% if selected_group and g.id == selected_group.id %}selected{% endif %}>{{ g.name }}</option>
+            {% endfor %}
+          </select>
+        </form>
+
+        {% if selected_group %}
+          <p class="text-muted">Habilitadas {{ enabled_count }} de {{ total_views }} para <strong>{{ selected_group.name }}</strong>.</p>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="save_views">
+            <input type="hidden" name="group_id" value="{{ selected_group.id }}">
+
+            {% for section, items in sections.items %}
+              <div class="mb-3">
+                <h6>{{ section }}</h6>
+                <div class="row">
+                  {% for item in items %}
+                    <div class="col-md-6 mb-2">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="views" value="{{ item.key }}" id="view_{{ item.key }}"
+                               {% if item.key in selected_keys %}checked{% endif %}>
+                        <label class="form-check-label" for="view_{{ item.key }}">{{ item.label }} <small class="text-muted">({{ item.key }})</small></label>
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+              </div>
+            {% endfor %}
+
+            <button type="submit" class="btn btn-success">Guardar cambios</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

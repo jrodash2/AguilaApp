@@ -5,16 +5,17 @@ from django.forms import IntegerField
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login as auth_login, logout
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import Group, User, Permission
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.urls import reverse
 import openpyxl
 from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 import requests
+import unicodedata
 from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm
-from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral
+from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral, MenuView, GroupMenuView
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
@@ -33,9 +34,10 @@ from django.contrib import messages
 import json
 from django.contrib.auth.models import Group
 from .utils import grupo_requerido
+from .access import vista_requerida, user_has_view
 from django.views.decorators.http import require_GET
 from django.db.models.functions import Coalesce
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import Sum
 from django.shortcuts import render
 from django.template.loader import render_to_string
@@ -53,7 +55,7 @@ import datetime
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils.html import strip_tags
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from datetime import datetime  
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
@@ -63,6 +65,8 @@ from django.views.generic.detail import DetailView
 from django.core.mail import BadHeaderError
 from smtplib import SMTPException
 from django.db.models.functions import ExtractYear, ExtractMonth
+
+from .forms import PadronUploadForm
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +81,7 @@ from django.shortcuts import render
 from .models import TrepCentroResultado
 import json
 
+@vista_requerida('elecciones_2023')
 def elecciones2023(request):
 
     # 🔵 Filtros
@@ -189,8 +194,7 @@ def elecciones2023(request):
 
     
     
-@login_required
-@grupo_requerido('Administrador')
+@vista_requerida('configuracion')
 def editar_institucion(request):
     institucion = Institucion.objects.first()  # Solo debería haber una
 
@@ -207,8 +211,7 @@ def editar_institucion(request):
 
 
 
-@login_required
-@grupo_requerido('Administrador', 'afiliados')
+@vista_requerida('usuarios')
 def user_create(request):
     if request.method == 'POST':
         form = UserCreateForm(request.POST, request.FILES)
@@ -240,8 +243,7 @@ def user_create(request):
     users = User.objects.all()
     return render(request, 'afiliados/user_form_create.html', {'form': form, 'users': users})
 
-@login_required
-@grupo_requerido('Administrador', 'afiliados')
+@vista_requerida('usuarios')
 def user_edit(request, user_id):
     user = get_object_or_404(User, pk=user_id)
 
@@ -264,14 +266,125 @@ def user_edit(request, user_id):
 
 
 
-@login_required
-@grupo_requerido('Administrador', 'afiliados')
+@vista_requerida('usuarios')
 def user_delete(request, user_id):
     user = get_object_or_404(User, id=user_id)
     if request.method == 'POST':
         user.delete()
         return redirect('afiliados:user_create')  # Redirige a la misma página para mostrar la lista actualizada
     return render(request, 'afiliados/user_confirm_delete.html', {'user': user})
+
+
+@vista_requerida('gestor_vistas')
+def administrar_roles(request):
+    grupos_base = ['Administrador', 'Gestor', 'Coordinador', 'Digitador', 'Consulta']
+    grupos = Group.objects.filter(name__in=grupos_base).order_by('name')
+
+    grupo_id = request.GET.get('grupo') or request.POST.get('group_id')
+    grupo_seleccionado = grupos.first()
+    if grupo_id:
+        grupo_seleccionado = grupos.filter(id=grupo_id).first() or grupo_seleccionado
+
+    permisos_qs = Permission.objects.select_related('content_type').order_by('content_type__app_label', 'codename')
+
+    if request.method == 'POST':
+        accion = request.POST.get('action')
+
+        if accion == 'update_permissions' and grupo_seleccionado:
+            permisos_ids = request.POST.getlist('permissions')
+            permisos = permisos_qs.filter(id__in=permisos_ids)
+            grupo_seleccionado.permissions.set(permisos)
+            messages.success(request, f'Permisos actualizados para el grupo {grupo_seleccionado.name}.')
+            return redirect(f"{reverse('afiliados:administrar_roles')}?grupo={grupo_seleccionado.id}")
+
+        if accion == 'update_user_group':
+            user_id = request.POST.get('user_id')
+            new_group_id = request.POST.get('new_group')
+            usuario = User.objects.filter(id=user_id).first()
+            nuevo_grupo = grupos.filter(id=new_group_id).first()
+            if not usuario or not nuevo_grupo:
+                messages.error(request, 'No se pudo actualizar el grupo del usuario.')
+            else:
+                usuario.groups.clear()
+                usuario.groups.add(nuevo_grupo)
+                messages.success(request, f'Grupo actualizado para {usuario.username}.')
+            redirect_group = grupo_seleccionado.id if grupo_seleccionado else ''
+            return redirect(f"{reverse('afiliados:administrar_roles')}?grupo={redirect_group}")
+
+    permisos_asignados_ids = set(grupo_seleccionado.permissions.values_list('id', flat=True)) if grupo_seleccionado else set()
+
+    usuarios = User.objects.all().prefetch_related('groups').order_by('username')
+
+    context = {
+        'grupos': grupos,
+        'grupo_seleccionado': grupo_seleccionado,
+        'permisos': permisos_qs,
+        'permisos_asignados_ids': permisos_asignados_ids,
+        'usuarios': usuarios,
+    }
+    return render(request, 'afiliados/roles/administrar_roles.html', context)
+
+
+@login_required
+def gestor_vistas(request):
+    if not request.user.is_superuser and not request.user.groups.filter(name='Administrador').exists():
+        request.session['access_denied_view_key'] = 'gestor_vistas'
+        request.session['access_denied_view_label'] = 'Gestor de Vistas'
+        request.session['access_denied_next'] = request.get_full_path()
+        return redirect('afiliados:no_autorizado')
+
+    grupos = Group.objects.all().order_by('name')
+    menu_views = MenuView.objects.filter(is_active=True).order_by('section', 'label')
+
+    selected_group_id = request.GET.get('group_id') or request.POST.get('group_id')
+    selected_group = grupos.filter(id=selected_group_id).first() if selected_group_id else grupos.first()
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create_group':
+            group_name = (request.POST.get('group_name') or '').strip()
+            if not group_name:
+                messages.error(request, 'Debe ingresar un nombre de grupo.')
+            else:
+                Group.objects.get_or_create(name=group_name)
+                messages.success(request, f'Grupo "{group_name}" creado correctamente.')
+                return redirect('afiliados:gestor_vistas')
+
+        if action == 'save_views' and selected_group:
+            selected_keys = set(request.POST.getlist('views'))
+            selected_views = MenuView.objects.filter(key__in=selected_keys, is_active=True)
+
+            GroupMenuView.objects.filter(group=selected_group).exclude(view__in=selected_views).delete()
+            for mv in selected_views:
+                GroupMenuView.objects.get_or_create(group=selected_group, view=mv)
+
+            messages.success(request, f'Vistas del grupo {selected_group.name} actualizadas.')
+            return redirect(f"{reverse('afiliados:gestor_vistas')}?group_id={selected_group.id}")
+
+    selected_keys = set()
+    if selected_group and selected_group.name == 'Administrador':
+        selected_keys = set(menu_views.values_list('key', flat=True))
+    elif selected_group:
+        selected_keys = set(
+            GroupMenuView.objects.filter(group=selected_group, view__is_active=True)
+            .values_list('view__key', flat=True)
+        )
+
+    sections = {}
+    for mv in menu_views:
+        section = mv.section or 'General'
+        sections.setdefault(section, []).append(mv)
+
+    context = {
+        'grupos': grupos,
+        'selected_group': selected_group,
+        'sections': sections,
+        'selected_keys': selected_keys,
+        'total_views': menu_views.count(),
+        'enabled_count': len(selected_keys),
+    }
+    return render(request, 'afiliados/admin/gestor_vistas.html', context)
 
 
 def home(request):
@@ -288,7 +401,6 @@ from django.db.models import Value, Count
 
 
 @login_required
-@grupo_requerido('Administrador', 'afiliados')
 def dahsboard(request):
 
     # === Totales ===
@@ -427,8 +539,34 @@ def dahsboard(request):
 
 
 
+def _format_permission_label(perm_code):
+    labels = {
+        'afiliados_app.view_elecciones_2023': 'Ver Elección 2023',
+        'afiliados_app.view_cargar_padron': 'Cargar padrón electoral',
+        'afiliados_app.view_configuracion': 'Ver configuración',
+        'afiliados_app.view_usuarios': 'Gestionar usuarios',
+        'afiliados_app.view_filtros': 'Ver filtros',
+        'auth.view_group': 'Ver grupos y roles',
+    }
+    return labels.get(perm_code, perm_code)
+
+
 def acceso_denegado(request, exception=None):
-    return render(request, 'afiliados/403.html', status=403)
+    view_key = request.session.pop('access_denied_view_key', request.GET.get('view_key', ''))
+    view_label = request.session.pop('access_denied_view_label', request.GET.get('view_label', ''))
+    next_url = request.session.pop('access_denied_next', request.GET.get('next', ''))
+
+    user_groups = []
+    if request.user.is_authenticated:
+        user_groups = list(request.user.groups.values_list('name', flat=True))
+
+    context = {
+        'view_key': view_key,
+        'view_label': view_label,
+        'next_url': next_url,
+        'user_groups': user_groups,
+    }
+    return render(request, 'afiliados/acceso_denegado.html', context, status=403)
 
 
 
@@ -437,43 +575,38 @@ def signout(request):
     return redirect('afiliados:signin')
 
 
-def signin(request):  
+def signin(request):
     institucion = Institucion.objects.first()
     if request.method == 'GET':
-        # Deberías instanciar el AuthenticationForm correctamente
         return render(request, 'afiliados/login.html', {
             'form': AuthenticationForm(),
             'institucion': institucion,
         })
-    else:
-        # Se instancia AuthenticationForm con los datos del POST para mantener el estado
-        form = AuthenticationForm(request, data=request.POST)
-        
-        if form.is_valid():
-            # El método authenticate devuelve el usuario si es válido
-            user = form.get_user()
-            
-            # Si el usuario es encontrado, se inicia sesión
-            auth_login(request, user)
-            
-            # Ahora verificamos los grupos
-            for g in user.groups.all():
-                print(g.name)
-                if g.name == 'Administrador':
-                    return redirect('afiliados:dahsboard')
-                elif g.name == 'Departamento':
-                    return redirect('afiliados:crear_requerimiento')
-                elif g.name == 'afiliados':
-                    return redirect('afiliados:dahsboard')
-            # Si no se encuentra el grupo adecuado, se redirige a una página por defecto
+
+    form = AuthenticationForm(request, data=request.POST)
+    if form.is_valid():
+        user = form.get_user()
+        auth_login(request, user)
+
+        roles_validos = [
+            'Administrador',
+            'Gestor',
+            'Coordinador',
+            'Digitador',
+            'Consulta',
+            'afiliados',
+        ]
+        if user.is_superuser or user.groups.filter(name__in=roles_validos).exists():
             return redirect('afiliados:dahsboard')
-        else:
-            # Si el formulario no es válido, se retorna con el error
-            return render(request, 'afiliados/login.html', {
-                'form': form,  # Pasamos el formulario con los errores
-                'error': 'Usuario o contraseña incorrectos',
-                'institucion': institucion,
-            })
+
+        messages.warning(request, 'Su usuario no tiene un rol asignado para operar en el sistema.')
+        return redirect('afiliados:no_autorizado')
+
+    return render(request, 'afiliados/login.html', {
+        'form': form,
+        'error': 'Usuario o contraseña incorrectos',
+        'institucion': institucion,
+    })
 
 def dashboard_elecciones(request):
 
@@ -593,6 +726,164 @@ def consultar_padron_local(request):
     })
 
 
+def _normalizar_columna(nombre_columna):
+    texto = str(nombre_columna or "").strip().lower()
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = "".join(ch for ch in texto if not unicodedata.combining(ch))
+    return texto
+
+
+def _leer_padron_dataframe(archivo_subido):
+    extension = archivo_subido.name.lower().strip()
+    if extension.endswith(".csv"):
+        return pd.read_csv(archivo_subido, dtype=str)
+    if extension.endswith(".xlsx"):
+        return pd.read_excel(archivo_subido, dtype=str)
+    raise ValueError("Formato inválido. Solo se permiten archivos .xlsx o .csv.")
+
+
+def _valor_nulo(valor):
+    if valor is None:
+        return None
+    texto = str(valor).strip()
+    if texto == "" or texto.lower() == "null" or texto.lower() == "nan":
+        return None
+    return texto
+
+
+def _normalizar_identificacion(valor):
+    valor = _valor_nulo(valor)
+    if not valor:
+        return None
+
+    texto = str(valor).strip()
+    if "e+" in texto.lower() or "e-" in texto.lower():
+        try:
+            texto = format(Decimal(texto), "f")
+        except (InvalidOperation, ValueError):
+            pass
+
+    if texto.endswith(".0"):
+        texto = texto[:-2]
+
+    return texto.strip()
+
+
+def _normalizar_edad(valor):
+    valor = _valor_nulo(valor)
+    if valor is None:
+        return None
+
+    try:
+        numero = int(float(str(valor).strip()))
+        if numero < 0:
+            raise ValueError
+        return numero
+    except (ValueError, TypeError):
+        raise ValueError(f"Edad inválida: {valor}")
+
+
+def _importar_padron_desde_dataframe(df, replace=False):
+    columnas_requeridas = {"nombre", "edad", "identificacion", "comunidad", "departamento", "municipio"}
+
+    columnas_mapeadas = {_normalizar_columna(col): col for col in df.columns}
+    faltantes = sorted(columnas_requeridas - set(columnas_mapeadas.keys()))
+    if faltantes:
+        recibidas = ", ".join(str(c) for c in df.columns)
+        raise ValueError(
+            "Encabezado inválido. Faltan columnas requeridas: "
+            f"{', '.join(faltantes)}. Encabezados recibidos: {recibidas}"
+        )
+
+    df = df.rename(columns={original: normalizada for normalizada, original in columnas_mapeadas.items()})
+
+    resumen = {"creados": 0, "actualizados": 0, "omitidos": 0, "errores": []}
+
+    with transaction.atomic():
+        if replace:
+            PadronElectoral.objects.all().delete()
+
+        for indice, fila in df.iterrows():
+            fila_excel = indice + 2
+            try:
+                identificacion = _normalizar_identificacion(fila.get("identificacion"))
+                if not identificacion:
+                    resumen["omitidos"] += 1
+                    resumen["errores"].append(f"Fila {fila_excel}: identificacion vacía")
+                    continue
+
+                nombre = _valor_nulo(fila.get("nombre"))
+                if not nombre:
+                    resumen["omitidos"] += 1
+                    resumen["errores"].append(f"Fila {fila_excel}: nombre vacío")
+                    continue
+
+                edad = _normalizar_edad(fila.get("edad"))
+                defaults = {
+                    "nombre": nombre,
+                    "edad": edad,
+                    "comunidad": _valor_nulo(fila.get("comunidad")),
+                    "departamento": _valor_nulo(fila.get("departamento")),
+                    "municipio": _valor_nulo(fila.get("municipio")),
+                }
+                _, creado = PadronElectoral.objects.update_or_create(
+                    identificacion=identificacion,
+                    defaults=defaults,
+                )
+                if creado:
+                    resumen["creados"] += 1
+                else:
+                    resumen["actualizados"] += 1
+            except (ValueError, IntegrityError) as exc:
+                resumen["errores"].append(f"Fila {fila_excel}: {exc}")
+
+    return resumen
+
+
+@vista_requerida('cargar_padron')
+def padron_cargar(request):
+    if request.method == 'POST':
+        if 'archivo' not in request.FILES:
+            messages.error(request, 'No llegó ningún archivo en la solicitud. Verifique el formulario e intente nuevamente.')
+            return redirect('afiliados:padron_cargar')
+
+        form = PadronUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = form.cleaned_data['archivo']
+            replace = form.cleaned_data.get('replace', False)
+
+            try:
+                resumen = _importar_padron_desde_dataframe(_leer_padron_dataframe(archivo), replace=replace)
+                mensaje = (
+                    f"Importación completada. Creados: {resumen['creados']}, "
+                    f"actualizados: {resumen['actualizados']}, omitidos: {resumen['omitidos']}, "
+                    f"errores: {len(resumen['errores'])}."
+                )
+                if replace:
+                    messages.warning(request, 'Modo reemplazo activo: se recargó el padrón desde el archivo enviado.')
+                messages.success(request, mensaje)
+                if resumen['errores']:
+                    messages.warning(request, 'Primeros errores: ' + ' | '.join(resumen['errores'][:10]))
+                return redirect('afiliados:padron_cargar')
+            except ValueError as exc:
+                logger.exception('Error de validación en importación de padrón')
+                messages.error(request, str(exc))
+            except IntegrityError as exc:
+                logger.exception('Error de integridad en importación de padrón')
+                messages.error(request, f'Error de integridad al guardar padrón: {exc}')
+            except Exception as exc:
+                logger.exception('Error inesperado al importar padrón electoral')
+                messages.error(request, f'Error inesperado al procesar archivo: {exc.__class__.__name__}')
+        else:
+            if 'archivo' in form.errors:
+                messages.error(request, f"Archivo inválido: {' '.join(form.errors['archivo'])}")
+            else:
+                messages.error(request, 'No se pudo validar el formulario de carga.')
+    else:
+        form = PadronUploadForm()
+
+    return render(request, 'afiliados/padron/cargar_padron.html', {'form': form})
+
 
 
 def _construir_filtros_afiliados(request):
@@ -653,7 +944,7 @@ def _construir_filtros_afiliados(request):
     }
 
 
-@login_required
+@vista_requerida('filtros')
 def dashboard_filtros(request):
     filtros = _construir_filtros_afiliados(request)
     page_obj = filtros['resultados']
@@ -992,12 +1283,6 @@ def afiliado_detalle(request, pk):
     return render(request, 'afiliados/afiliado_detalle.html', context)
 
 
-# -------------------------------
-# ACCESO DENEGADO
-# -------------------------------
-@login_required
-def acceso_denegado(request):
-    return render(request, 'afiliados/acceso_denegado.html')
 # -----------------------------------------
 # CRUD - COMUNIDAD
 # -----------------------------------------
