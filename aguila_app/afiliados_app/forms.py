@@ -12,13 +12,12 @@ class PadronUploadForm(forms.Form):
         ),
         help_text="Solo se permiten archivos .xlsx o .csv",
     )
-    reemplazar = forms.BooleanField(
+    replace = forms.BooleanField(
         required=False,
-        disabled=True,
         widget=forms.CheckboxInput(
             attrs={
                 "class": "form-check-input",
-                "title": "Próximamente",
+                "id": "id_replace",
             }
         ),
         label="Reemplazar/Actualizar padrón existente",
@@ -29,7 +28,7 @@ class PadronUploadForm(forms.Form):
         if not archivo:
             raise forms.ValidationError("Debe seleccionar un archivo para continuar.")
 
-        nombre = archivo.name.lower()
+        nombre = archivo.name.lower().strip()
         if not (nombre.endswith(".xlsx") or nombre.endswith(".csv")):
             raise forms.ValidationError("Formato inválido. Solo se permiten archivos .xlsx o .csv.")
 

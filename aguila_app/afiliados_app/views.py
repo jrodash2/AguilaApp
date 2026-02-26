@@ -13,6 +13,7 @@ import openpyxl
 from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 import requests
+import unicodedata
 from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm
 from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral
 from django.views.generic import CreateView
@@ -35,7 +36,7 @@ from django.contrib.auth.models import Group
 from .utils import grupo_requerido
 from django.views.decorators.http import require_GET
 from django.db.models.functions import Coalesce
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import Sum
 from django.shortcuts import render
 from django.template.loader import render_to_string
@@ -53,7 +54,7 @@ import datetime
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils.html import strip_tags
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from datetime import datetime  
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
@@ -65,6 +66,8 @@ from smtplib import SMTPException
 from django.db.models.functions import ExtractYear, ExtractMonth
 from django.core.management import call_command
 from tempfile import NamedTemporaryFile
+
+from .forms import PadronUploadForm
 
 from .forms import PadronUploadForm
 
@@ -597,46 +600,164 @@ def consultar_padron_local(request):
     })
 
 
-def _guardar_archivo_temporal(archivo_subido):
-    extension = ".csv" if archivo_subido.name.lower().endswith(".csv") else ".xlsx"
-    with NamedTemporaryFile(delete=False, suffix=extension) as tmp:
-        for chunk in archivo_subido.chunks():
-            tmp.write(chunk)
-        return tmp.name
+def _normalizar_columna(nombre_columna):
+    texto = str(nombre_columna or "").strip().lower()
+    texto = unicodedata.normalize("NFKD", texto)
+    texto = "".join(ch for ch in texto if not unicodedata.combining(ch))
+    return texto
+
+
+def _leer_padron_dataframe(archivo_subido):
+    extension = archivo_subido.name.lower().strip()
+    if extension.endswith(".csv"):
+        return pd.read_csv(archivo_subido, dtype=str)
+    if extension.endswith(".xlsx"):
+        return pd.read_excel(archivo_subido, dtype=str)
+    raise ValueError("Formato inválido. Solo se permiten archivos .xlsx o .csv.")
+
+
+def _valor_nulo(valor):
+    if valor is None:
+        return None
+    texto = str(valor).strip()
+    if texto == "" or texto.lower() == "null" or texto.lower() == "nan":
+        return None
+    return texto
+
+
+def _normalizar_identificacion(valor):
+    valor = _valor_nulo(valor)
+    if not valor:
+        return None
+
+    texto = str(valor).strip()
+    if "e+" in texto.lower() or "e-" in texto.lower():
+        try:
+            texto = format(Decimal(texto), "f")
+        except (InvalidOperation, ValueError):
+            pass
+
+    if texto.endswith(".0"):
+        texto = texto[:-2]
+
+    return texto.strip()
+
+
+def _normalizar_edad(valor):
+    valor = _valor_nulo(valor)
+    if valor is None:
+        return None
+
+    try:
+        numero = int(float(str(valor).strip()))
+        if numero < 0:
+            raise ValueError
+        return numero
+    except (ValueError, TypeError):
+        raise ValueError(f"Edad inválida: {valor}")
+
+
+def _importar_padron_desde_dataframe(df, replace=False):
+    columnas_requeridas = {"nombre", "edad", "identificacion", "comunidad", "departamento", "municipio"}
+
+    columnas_mapeadas = {_normalizar_columna(col): col for col in df.columns}
+    faltantes = sorted(columnas_requeridas - set(columnas_mapeadas.keys()))
+    if faltantes:
+        recibidas = ", ".join(str(c) for c in df.columns)
+        raise ValueError(
+            "Encabezado inválido. Faltan columnas requeridas: "
+            f"{', '.join(faltantes)}. Encabezados recibidos: {recibidas}"
+        )
+
+    df = df.rename(columns={original: normalizada for normalizada, original in columnas_mapeadas.items()})
+
+    resumen = {"creados": 0, "actualizados": 0, "omitidos": 0, "errores": []}
+
+    with transaction.atomic():
+        if replace:
+            PadronElectoral.objects.all().delete()
+
+        for indice, fila in df.iterrows():
+            fila_excel = indice + 2
+            try:
+                identificacion = _normalizar_identificacion(fila.get("identificacion"))
+                if not identificacion:
+                    resumen["omitidos"] += 1
+                    resumen["errores"].append(f"Fila {fila_excel}: identificacion vacía")
+                    continue
+
+                nombre = _valor_nulo(fila.get("nombre"))
+                if not nombre:
+                    resumen["omitidos"] += 1
+                    resumen["errores"].append(f"Fila {fila_excel}: nombre vacío")
+                    continue
+
+                edad = _normalizar_edad(fila.get("edad"))
+                defaults = {
+                    "nombre": nombre,
+                    "edad": edad,
+                    "comunidad": _valor_nulo(fila.get("comunidad")),
+                    "departamento": _valor_nulo(fila.get("departamento")),
+                    "municipio": _valor_nulo(fila.get("municipio")),
+                }
+                _, creado = PadronElectoral.objects.update_or_create(
+                    identificacion=identificacion,
+                    defaults=defaults,
+                )
+                if creado:
+                    resumen["creados"] += 1
+                else:
+                    resumen["actualizados"] += 1
+            except (ValueError, IntegrityError) as exc:
+                resumen["errores"].append(f"Fila {fila_excel}: {exc}")
+
+    return resumen
 
 
 @login_required
 @grupo_requerido('Administrador')
 def padron_cargar(request):
     if request.method == 'POST':
+        if 'archivo' not in request.FILES:
+            messages.error(request, 'No llegó ningún archivo en la solicitud. Verifique el formulario e intente nuevamente.')
+            return redirect('afiliados:padron_cargar')
+
         form = PadronUploadForm(request.POST, request.FILES)
         if form.is_valid():
             archivo = form.cleaned_data['archivo']
-            ruta_temporal = _guardar_archivo_temporal(archivo)
+            replace = form.cleaned_data.get('replace', False)
 
             try:
-                call_command('importar_padron', file=ruta_temporal)
-                messages.success(request, 'Archivo procesado correctamente. El padrón fue actualizado.')
-                return redirect('afiliados:padron_cargar')
-            except Exception:
-                logger.exception('Error inesperado al importar padrón electoral')
-                messages.error(
-                    request,
-                    'No se pudo procesar el archivo. Verifique formato, encabezados y contenido, e intente nuevamente.',
+                resumen = _importar_padron_desde_dataframe(_leer_padron_dataframe(archivo), replace=replace)
+                mensaje = (
+                    f"Importación completada. Creados: {resumen['creados']}, "
+                    f"actualizados: {resumen['actualizados']}, omitidos: {resumen['omitidos']}, "
+                    f"errores: {len(resumen['errores'])}."
                 )
-            finally:
-                try:
-                    import os
-                    os.remove(ruta_temporal)
-                except OSError:
-                    logger.warning('No se pudo eliminar archivo temporal de padrón: %s', ruta_temporal)
+                if replace:
+                    messages.warning(request, 'Modo reemplazo activo: se recargó el padrón desde el archivo enviado.')
+                messages.success(request, mensaje)
+                if resumen['errores']:
+                    messages.warning(request, 'Primeros errores: ' + ' | '.join(resumen['errores'][:10]))
+                return redirect('afiliados:padron_cargar')
+            except ValueError as exc:
+                logger.exception('Error de validación en importación de padrón')
+                messages.error(request, str(exc))
+            except IntegrityError as exc:
+                logger.exception('Error de integridad en importación de padrón')
+                messages.error(request, f'Error de integridad al guardar padrón: {exc}')
+            except Exception as exc:
+                logger.exception('Error inesperado al importar padrón electoral')
+                messages.error(request, f'Error inesperado al procesar archivo: {exc.__class__.__name__}')
         else:
-            messages.error(request, 'Archivo inválido. Revise que sea .xlsx o .csv e intente de nuevo.')
+            if 'archivo' in form.errors:
+                messages.error(request, f"Archivo inválido: {' '.join(form.errors['archivo'])}")
+            else:
+                messages.error(request, 'No se pudo validar el formulario de carga.')
     else:
         form = PadronUploadForm()
 
     return render(request, 'afiliados/padron/cargar_padron.html', {'form': form})
-
 
 
 
