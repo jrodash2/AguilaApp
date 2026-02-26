@@ -63,6 +63,10 @@ from django.views.generic.detail import DetailView
 from django.core.mail import BadHeaderError
 from smtplib import SMTPException
 from django.db.models.functions import ExtractYear, ExtractMonth
+from django.core.management import call_command
+from tempfile import NamedTemporaryFile
+
+from .forms import PadronUploadForm
 
 logger = logging.getLogger(__name__)
 
@@ -591,6 +595,47 @@ def consultar_padron_local(request):
         },
         "message": "Encontrado en padrón local",
     })
+
+
+def _guardar_archivo_temporal(archivo_subido):
+    extension = ".csv" if archivo_subido.name.lower().endswith(".csv") else ".xlsx"
+    with NamedTemporaryFile(delete=False, suffix=extension) as tmp:
+        for chunk in archivo_subido.chunks():
+            tmp.write(chunk)
+        return tmp.name
+
+
+@login_required
+@grupo_requerido('Administrador')
+def padron_cargar(request):
+    if request.method == 'POST':
+        form = PadronUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            archivo = form.cleaned_data['archivo']
+            ruta_temporal = _guardar_archivo_temporal(archivo)
+
+            try:
+                call_command('importar_padron', file=ruta_temporal)
+                messages.success(request, 'Archivo procesado correctamente. El padrón fue actualizado.')
+                return redirect('afiliados:padron_cargar')
+            except Exception:
+                logger.exception('Error inesperado al importar padrón electoral')
+                messages.error(
+                    request,
+                    'No se pudo procesar el archivo. Verifique formato, encabezados y contenido, e intente nuevamente.',
+                )
+            finally:
+                try:
+                    import os
+                    os.remove(ruta_temporal)
+                except OSError:
+                    logger.warning('No se pudo eliminar archivo temporal de padrón: %s', ruta_temporal)
+        else:
+            messages.error(request, 'Archivo inválido. Revise que sea .xlsx o .csv e intente de nuevo.')
+    else:
+        form = PadronUploadForm()
+
+    return render(request, 'afiliados/padron/cargar_padron.html', {'form': form})
 
 
 
