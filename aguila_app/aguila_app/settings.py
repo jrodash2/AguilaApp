@@ -66,7 +66,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'afiliados_app.context_processors.frase_del_dia',  # Agregar el context processor personalizado
+                'afiliados_app.context_processors.frase_del_dia',
                 'afiliados_app.context_processors.grupo_usuario',
                 'afiliados_app.context_processors.datos_institucion',
 

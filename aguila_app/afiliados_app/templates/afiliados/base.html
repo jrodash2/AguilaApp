@@ -198,7 +198,7 @@
             <div id="sidebar-menu">
                 <ul class="sidebar-links" id="simple-bar">
 
-                    {% if user.is_authenticated %}
+                    {% if request.user.is_authenticated %}
 
                     <li class="sidebar-list {% if '/afiliados/dahsboard/' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:dahsboard' %}">
@@ -208,7 +208,7 @@
                         </a>
                     </li>
 
-                    {% if es_administrador or es_afiliados %}
+                    {% if es_administrador or es_afiliados or es_gestor %}
                     <li class="sidebar-list {% if '/afiliados/afiliado' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:afiliado_lista' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
@@ -254,6 +254,16 @@
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
                             <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
                             <span>Comisiones</span>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% if es_departamento %}
+                    <li class="sidebar-list {% if '/afiliados/dashboard/' in request.path and '/afiliados/dashboard/filtros/' not in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:dashboard_elecciones' %}">
+                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-widget' %}"></use></svg>
+                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-widget' %}"></use></svg>
+                            <span>Departamento</span>
                         </a>
                     </li>
                     {% endif %}

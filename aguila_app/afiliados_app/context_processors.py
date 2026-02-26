@@ -18,12 +18,13 @@ def frase_del_dia(request):
     }
 
 def grupo_usuario(request):
-    if not request.user.is_authenticated:
-        return {}
+    is_authenticated = bool(getattr(request, 'user', None) and request.user.is_authenticated)
+
     return {
-        'es_gestor': request.user.groups.filter(name='Gestor').exists(),
-        'es_administrador': request.user.groups.filter(name='Administrador').exists(),
-        'es_afiliados': request.user.groups.filter(name='afiliados').exists(),
+        'es_gestor': request.user.groups.filter(name='Gestor').exists() if is_authenticated else False,
+        'es_administrador': request.user.groups.filter(name='Administrador').exists() if is_authenticated else False,
+        'es_departamento': request.user.groups.filter(name='Departamento').exists() if is_authenticated else False,
+        'es_afiliados': request.user.groups.filter(name='afiliados').exists() if is_authenticated else False,
     }
 
 
