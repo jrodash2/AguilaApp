@@ -1,21 +1,33 @@
-# context_processors.py
-from .models import FraseMotivacional
 import random
 
+from django.conf import settings
+
+from .access import user_has_view
+from .models import FraseMotivacional, Institucion, MenuView
+
+
+MENU_KEYS_FALLBACK = {
+    'dashboard',
+    'afiliados',
+    'lideres',
+    'comunidades',
+    'sectores',
+    'centros',
+    'comisiones',
+    'elecciones_2023',
+    'filtros',
+    'cargar_padron',
+    'configuracion',
+    'usuarios',
+    'gestor_vistas',
+}
+
+
 def frase_del_dia(request):
-    # Obtener todas las frases
     frases = FraseMotivacional.objects.all()
-    
-    # Verificar si hay frases disponibles
-    if frases.exists():
-        frase = random.choice(frases)
-    else:
-        # Si no hay frases, puedes devolver un valor predeterminado o None
-        frase = None
-    
-    return {
-        'frase_del_dia': frase
-    }
+    frase = random.choice(frases) if frases.exists() else None
+    return {'frase_del_dia': frase}
+
 
 def grupo_usuario(request):
     if not request.user.is_authenticated:
@@ -27,14 +39,28 @@ def grupo_usuario(request):
     }
 
 
-from .models import Institucion
-
 def datos_institucion(request):
-    try:
-        institucion = Institucion.objects.first()
-    except Institucion.DoesNotExist:
-        institucion = None
+    institucion = Institucion.objects.first()
+    return {'institucion': institucion}
 
-    return {
-        'institucion': institucion
-    }
+
+def menu_access(request):
+    if not request.user.is_authenticated:
+        return {'es_admin': False, 'allowed_menu_keys': set(), 'debug': settings.DEBUG}
+
+    es_admin = request.user.groups.filter(name='Administrador').exists() or request.user.is_superuser
+
+    active_keys = set(MenuView.objects.filter(is_active=True).values_list('key', flat=True))
+
+    if es_admin:
+        # Admin siempre ve todo: catálogo activo o fallback completo.
+        allowed_keys = active_keys if active_keys else set(MENU_KEYS_FALLBACK)
+        return {'es_admin': True, 'allowed_menu_keys': allowed_keys, 'debug': settings.DEBUG}
+
+    if active_keys:
+        allowed_keys = {key for key in active_keys if user_has_view(request.user, key)}
+    else:
+        # Fallback mínimo para no-admin cuando no hay catálogo.
+        allowed_keys = {'dashboard', 'filtros'}
+
+    return {'es_admin': False, 'allowed_menu_keys': allowed_keys, 'debug': settings.DEBUG}
