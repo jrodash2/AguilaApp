@@ -5,9 +5,9 @@ from django.forms import IntegerField
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login as auth_login, logout
 from django.contrib.auth.forms import AuthenticationForm
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import Group, User, Permission
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.urls import reverse
 import openpyxl
 from django.views.decorators.csrf import csrf_exempt
@@ -67,6 +67,8 @@ from smtplib import SMTPException
 from django.db.models.functions import ExtractYear, ExtractMonth
 from django.core.management import call_command
 from tempfile import NamedTemporaryFile
+
+from .forms import PadronUploadForm
 
 from .forms import PadronUploadForm
 
@@ -279,6 +281,56 @@ def user_delete(request, user_id):
         user.delete()
         return redirect('afiliados:user_create')  # Redirige a la misma página para mostrar la lista actualizada
     return render(request, 'afiliados/user_confirm_delete.html', {'user': user})
+
+
+@permission_required('auth.view_group', raise_exception=True)
+def administrar_roles(request):
+    grupos_base = ['Administrador', 'Gestor', 'Coordinador', 'Digitador', 'Consulta']
+    grupos = Group.objects.filter(name__in=grupos_base).order_by('name')
+
+    grupo_id = request.GET.get('grupo') or request.POST.get('group_id')
+    grupo_seleccionado = grupos.first()
+    if grupo_id:
+        grupo_seleccionado = grupos.filter(id=grupo_id).first() or grupo_seleccionado
+
+    permisos_qs = Permission.objects.select_related('content_type').order_by('content_type__app_label', 'codename')
+
+    if request.method == 'POST':
+        accion = request.POST.get('action')
+
+        if accion == 'update_permissions' and grupo_seleccionado:
+            permisos_ids = request.POST.getlist('permissions')
+            permisos = permisos_qs.filter(id__in=permisos_ids)
+            grupo_seleccionado.permissions.set(permisos)
+            messages.success(request, f'Permisos actualizados para el grupo {grupo_seleccionado.name}.')
+            return redirect(f"{reverse('afiliados:administrar_roles')}?grupo={grupo_seleccionado.id}")
+
+        if accion == 'update_user_group':
+            user_id = request.POST.get('user_id')
+            new_group_id = request.POST.get('new_group')
+            usuario = User.objects.filter(id=user_id).first()
+            nuevo_grupo = grupos.filter(id=new_group_id).first()
+            if not usuario or not nuevo_grupo:
+                messages.error(request, 'No se pudo actualizar el grupo del usuario.')
+            else:
+                usuario.groups.clear()
+                usuario.groups.add(nuevo_grupo)
+                messages.success(request, f'Grupo actualizado para {usuario.username}.')
+            redirect_group = grupo_seleccionado.id if grupo_seleccionado else ''
+            return redirect(f"{reverse('afiliados:administrar_roles')}?grupo={redirect_group}")
+
+    permisos_asignados_ids = set(grupo_seleccionado.permissions.values_list('id', flat=True)) if grupo_seleccionado else set()
+
+    usuarios = User.objects.all().prefetch_related('groups').order_by('username')
+
+    context = {
+        'grupos': grupos,
+        'grupo_seleccionado': grupo_seleccionado,
+        'permisos': permisos_qs,
+        'permisos_asignados_ids': permisos_asignados_ids,
+        'usuarios': usuarios,
+    }
+    return render(request, 'afiliados/roles/administrar_roles.html', context)
 
 
 def home(request):

@@ -298,6 +298,15 @@
                     </li>
                     {% endif %}
 
+                    {% if perms.auth.view_group %}
+                    <li class="sidebar-list {% if '/afiliados/roles/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:administrar_roles' %}">
+                            <i data-feather="shield"></i>
+                            <span>Roles y Permisos</span>
+                        </a>
+                    </li>
+                    {% endif %}
+
                     {% if perms.afiliados_app.view_usuarios %}
                     <li class="sidebar-list {% if '/afiliados/usuario/' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:user_create' %}">
