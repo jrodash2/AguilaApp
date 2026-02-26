@@ -26,6 +26,16 @@ class Institucion(models.Model):
     logo = models.ImageField(upload_to='logos/', blank=True, null=True)
     logo2 = models.ImageField(upload_to='logos/', blank=True, null=True)
 
+    class Meta:
+        permissions = (
+            ("view_elecciones_2023", "Puede ver el módulo de Elecciones 2023"),
+            ("view_cargar_padron", "Puede ver y usar la carga de padrón"),
+            ("view_configuracion", "Puede ver configuración institucional"),
+            ("view_usuarios", "Puede gestionar usuarios"),
+            ("view_filtros", "Puede ver el módulo de filtros"),
+            ("view_dashboard", "Puede ver el dashboard principal"),
+        )
+
     def __str__(self):
         return self.nombre
 
