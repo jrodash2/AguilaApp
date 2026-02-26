@@ -30,7 +30,7 @@
         <p><strong>Vista requerida:</strong> {{ view_label|default:'No definida' }} ({{ view_key|default:'N/A' }})</p>
 
         <div class="alert alert-warning mb-4">
-          Solicita al Administrador que te habilite la vista: <strong>{{ view_label|default:view_key|default:'(sin dato)' }}</strong>.
+          Solicita al Administrador que te habilite la vista: <strong>{% if view_label %}{{ view_label }}{% elif view_key %}{{ view_key }}{% else %}(sin dato){% endif %}</strong>.
         </div>
 
         <a href="{% url 'afiliados:dahsboard' %}" class="btn btn-primary me-2">Volver al dashboard</a>
