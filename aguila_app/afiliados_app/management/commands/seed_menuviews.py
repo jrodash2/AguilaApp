@@ -24,8 +24,11 @@ class Command(BaseCommand):
     help = 'Crea/actualiza el catálogo MenuView para control de acceso por vistas.'
 
     def handle(self, *args, **options):
+        created_count = 0
+        updated_count = 0
+
         for item in MENU_ITEMS:
-            MenuView.objects.update_or_create(
+            _, created = MenuView.objects.update_or_create(
                 key=item['key'],
                 defaults={
                     'label': item['label'],
@@ -34,4 +37,11 @@ class Command(BaseCommand):
                     'is_active': True,
                 },
             )
-        self.stdout.write(self.style.SUCCESS(f'Seed completado. Total vistas: {len(MENU_ITEMS)}'))
+            if created:
+                created_count += 1
+            else:
+                updated_count += 1
+
+        self.stdout.write(self.style.SUCCESS(
+            f'Seed completado. Creadas: {created_count} | Actualizadas: {updated_count} | Total catálogo: {len(MENU_ITEMS)}'
+        ))

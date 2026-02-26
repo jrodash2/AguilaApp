@@ -86,6 +86,9 @@ from .forms import PadronUploadForm
 
 from .forms import PadronUploadForm
 
+from .forms import PadronUploadForm
+from afiliados_app.management.commands.seed_menuviews import MENU_ITEMS
+
 logger = logging.getLogger(__name__)
 
 
@@ -354,6 +357,23 @@ def gestor_vistas(request):
     grupos = Group.objects.all().order_by('name')
     menu_views = MenuView.objects.filter(is_active=True).order_by('section', 'label')
 
+    menuviews_total = MenuView.objects.count()
+    menuviews_empty = menuviews_total == 0
+
+    if menuviews_empty and settings.DEBUG and request.GET.get('autoseed') == '1':
+        for item in MENU_ITEMS:
+            MenuView.objects.update_or_create(
+                key=item['key'],
+                defaults={
+                    'label': item['label'],
+                    'url_name': item['url_name'],
+                    'section': item.get('section'),
+                    'is_active': True,
+                },
+            )
+        messages.info(request, 'Catálogo MenuView autogenerado en DEBUG.')
+        return redirect('afiliados:gestor_vistas')
+
     selected_group_id = request.GET.get('group_id') or request.POST.get('group_id')
     selected_group = grupos.filter(id=selected_group_id).first() if selected_group_id else grupos.first()
 
@@ -405,6 +425,8 @@ def gestor_vistas(request):
         'selected_keys': selected_keys,
         'total_views': menu_views.count(),
         'enabled_count': len(selected_keys),
+        'menuviews_empty': menuviews_empty,
+        'menuviews_total': menuviews_total,
     }
     return render(request, 'afiliados/admin/gestor_vistas.html', context)
 
