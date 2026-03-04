@@ -618,9 +618,17 @@ def consultar_padron_local(request):
 @require_GET
 def verificar_empadronamiento(request):
     """
-    Alias explícito para producción/local, reutiliza la lógica existente sin duplicarla.
+    Endpoint estable para frontend (local/cPanel) reutilizando la lógica vigente.
+    Siempre intenta responder JSON para facilitar diagnóstico en producción.
     """
-    return consultar_padron_local(request)
+    try:
+        return consultar_padron_local(request)
+    except Exception as exc:
+        logger.exception('Error en verificar_empadronamiento')
+        return JsonResponse({
+            'ok': False,
+            'error': f'Error interno al verificar empadronamiento: {exc.__class__.__name__}',
+        }, status=500)
 
 def _normalizar_columna(nombre_columna):
     texto = str(nombre_columna or "").strip().lower()

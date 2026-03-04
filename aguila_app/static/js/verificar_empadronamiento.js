@@ -1,6 +1,8 @@
 (function () {
   'use strict';
 
+  console.log('empadronamiento.js cargado');
+
   function byId(id) {
     return document.getElementById(id);
   }
@@ -9,107 +11,136 @@
     return (valor || '').replace(/\D/g, '');
   }
 
-  function renderResultado(mensaje, tipo) {
-    var contenedor = byId('resultado_tse') || byId('resultadoEmpadronamiento');
-    if (!contenedor) return;
-    contenedor.innerHTML = '<div class="alert alert-' + tipo + ' mb-0 py-2">' + mensaje + '</div>';
+  function getDpiInput() {
+    return byId('dpi_afiliado') || document.querySelector('input[name="dpi"]');
+  }
+
+  function setDebug(lines) {
+    var debug = byId('emp_debug');
+    if (!debug) return;
+    debug.textContent = (lines || []).join('\n');
+  }
+
+  function setResultado(message, type) {
+    var output = byId('resultado_tse');
+    if (!output) return;
+    output.innerHTML = '<div class="alert alert-' + type + ' mb-0 py-2">' + message + '</div>';
   }
 
   function completarSiVacio(id, valor) {
-    var campo = byId(id);
-    if (!campo || !valor) return;
-    if (!campo.value) {
-      campo.value = valor;
+    var field = byId(id);
+    if (!field || !valor) return;
+    if (!field.value) {
+      field.value = valor;
     }
   }
 
-  async function onVerificarClick(event) {
-    event.preventDefault();
-    event.stopPropagation();
+  async function manejarClickVerificar(btn) {
+    var dpiInput = getDpiInput();
+    var endpoint = (btn.dataset.url || '').trim();
+    var dpi = limpiarDpi(dpiInput ? dpiInput.value : '');
 
-    var boton = event.currentTarget;
-    var dpiInput = byId('dpi_afiliado') || byId('id_dpi');
-    var endpoint = boton.dataset.url;
+    var debugLines = [
+      'JS OK',
+      'URL: ' + (endpoint || '(vacía)'),
+      'DPI: ' + (dpi || '(vacío)')
+    ];
 
     if (!endpoint) {
-      renderResultado('No se encontró la URL de verificación.', 'danger');
+      setDebug(debugLines.concat(['ERROR: data-url ausente']));
+      setResultado('No se encontró la URL de verificación.', 'danger');
       return;
     }
 
-    var dpi = limpiarDpi(dpiInput ? dpiInput.value : '');
-    if (!dpi || dpi.length !== 13) {
-      renderResultado('Ingrese un DPI válido (13 dígitos).', 'warning');
+    if (!dpi) {
+      setDebug(debugLines.concat(['ERROR: DPI vacío']));
+      setResultado('Ingrese DPI primero.', 'warning');
       return;
     }
 
-    var textoOriginal = boton.textContent;
-    boton.disabled = true;
-    boton.textContent = 'Consultando...';
-    renderResultado('Consultando padrón local...', 'info');
+    var originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Consultando...';
+    setResultado('Consultando padrón local...', 'info');
+    setDebug(debugLines.concat(['Solicitando...']));
 
     try {
       var response = await fetch(endpoint + '?dpi=' + encodeURIComponent(dpi), {
         method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest'
-        },
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
         credentials: 'same-origin'
       });
 
-      var data;
+      var responseText = await response.text();
+      var finalUrl = response.url || endpoint;
+      var redirected = !!response.redirected;
+      var statusLine = 'HTTP: ' + response.status + ' ' + response.statusText;
+
+      var parseado = null;
       try {
-        data = await response.json();
+        parseado = responseText ? JSON.parse(responseText) : null;
       } catch (_e) {
-        data = { ok: false, error: 'Respuesta inválida del servidor.' };
+        parseado = null;
       }
 
-      if (!response.ok) {
-        if (response.status === 404) {
-          renderResultado('Endpoint no disponible (404).', 'danger');
-        } else if (response.status === 403) {
-          renderResultado('Sesión expirada o acceso denegado (403).', 'danger');
-        } else if (response.status >= 500) {
-          renderResultado('Error interno del servidor (500).', 'danger');
-        } else {
-          renderResultado(data.error || data.message || 'No fue posible verificar el empadronamiento.', 'danger');
-        }
-        var emp = byId('id_empadronado');
-        if (emp) emp.checked = false;
+      var extra = [statusLine, 'Final URL: ' + finalUrl, 'Redirected: ' + redirected];
+
+      if (redirected || /\/signin\/?$/i.test(finalUrl)) {
+        setResultado('Sesión expirada o redirección a login.', 'warning');
+        setDebug(debugLines.concat(extra, ['Detalle: redirección detectada']));
         return;
       }
 
-      var empadronado = !!(data.ok && (data.empadronado || data.found));
+      if (!response.ok) {
+        if (response.status === 403) {
+          setResultado('CSRF o permiso denegado (403).', 'danger');
+        } else if (response.status === 404) {
+          setResultado('Endpoint no encontrado (404).', 'danger');
+        } else if (response.status >= 500) {
+          setResultado('Error del servidor (500).', 'danger');
+        } else {
+          var msg = (parseado && (parseado.error || parseado.message || parseado.mensaje)) || 'Error en verificación.';
+          setResultado(msg, 'danger');
+        }
+
+        setDebug(debugLines.concat(extra, ['Body: ' + (responseText || '(vacío)')]));
+        return;
+      }
+
+      if (!parseado) {
+        setResultado('Respuesta no JSON del servidor.', 'danger');
+        setDebug(debugLines.concat(extra, ['Body: ' + (responseText || '(vacío)')]));
+        return;
+      }
+
+      var empadronado = !!(parseado.ok && (parseado.empadronado || parseado.found));
       var checkbox = byId('id_empadronado');
       if (checkbox) checkbox.checked = empadronado;
 
       if (empadronado) {
-        var persona = data.data || {};
+        var persona = parseado.data || {};
         completarSiVacio('id_nombre_completo', persona.nombre_completo);
         completarSiVacio('id_direccion', persona.municipio);
-        renderResultado('Empadronado: SÍ. ' + (data.message || 'Encontrado en padrón local.'), 'success');
+        setResultado('Empadronado: SÍ. ' + (parseado.message || parseado.mensaje || ''), 'success');
       } else {
-        renderResultado('Empadronado: NO. ' + (data.message || 'No se encontró en padrón local.'), 'warning');
+        setResultado('Empadronado: NO. ' + (parseado.message || parseado.error || parseado.mensaje || ''), 'warning');
       }
+
+      setDebug(debugLines.concat(extra, ['JSON: ' + JSON.stringify(parseado)]));
     } catch (error) {
-      renderResultado('Error de red al consultar padrón. Intente nuevamente.', 'danger');
-      var empadronadoInput = byId('id_empadronado');
-      if (empadronadoInput) empadronadoInput.checked = false;
+      setResultado('Error de red al consultar padrón.', 'danger');
+      setDebug(debugLines.concat(['ERROR de red: ' + (error && error.message ? error.message : error)]));
     } finally {
-      boton.disabled = false;
-      boton.textContent = textoOriginal;
+      btn.disabled = false;
+      btn.textContent = originalText;
     }
   }
 
-  function init() {
-    var boton = byId('btnVerificarEmpadronamiento');
-    if (!boton) return;
-    boton.addEventListener('click', onVerificarClick);
-  }
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('#btnVerificarEmpadronamiento');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    manejarClickVerificar(btn);
+  });
 })();

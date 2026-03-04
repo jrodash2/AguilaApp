@@ -204,7 +204,10 @@
                 </div>
                 
             </div>
-            <div id="resultadoEmpadronamiento" class="mb-3"><div id="resultado_tse"></div></div>
+            <div id="resultadoEmpadronamiento" class="mb-3">
+              <div id="resultado_tse" class="mt-2"></div>
+              <div id="emp_debug" class="small text-muted mt-2" style="white-space:pre-wrap;"></div>
+            </div>
 
             <div class="row">
               <div class="col-md-6 mb-3">
@@ -380,7 +383,7 @@ $(document).on('click', '.btn-eliminar', function(e){
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 {% block extra_js %}
-<script src="{% static 'js/verificar_empadronamiento.js' %}"></script>
+<script src="{% static 'js/verificar_empadronamiento.js' %}?v=1"></script>
 {% endblock %}
 
 {% endblock %}
