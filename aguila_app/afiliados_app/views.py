@@ -21,6 +21,7 @@ from django.views.generic import ListView
 from django.urls import reverse_lazy
 from django.http import Http404, HttpResponseNotAllowed, JsonResponse
 from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.contrib import messages
 from django.views.decorators.http import require_POST
@@ -36,6 +37,7 @@ from django.contrib.auth.models import Group
 from django.views.decorators.http import require_GET
 from django.db.models.functions import Coalesce
 from django.db import transaction, IntegrityError
+from django.db.models.deletion import ProtectedError
 from django.db.models import Sum
 from django.shortcuts import render
 from django.template.loader import render_to_string
@@ -377,10 +379,12 @@ def dahsboard(request):
 # ==============================================================
     afiliados_por_mes = (
         Afiliado.objects
+        .filter(fecha_creacion__isnull=False)
         .annotate(
             anio=ExtractYear('fecha_creacion'),
             mes_num=ExtractMonth('fecha_creacion')
         )
+        .exclude(mes_num__isnull=True)
         .values('anio', 'mes_num')
         .annotate(total=Count('id'))
         .order_by('anio', 'mes_num')
@@ -394,11 +398,19 @@ def dahsboard(request):
 
     afiliados_por_mes_list = []
     for item in afiliados_por_mes:
+        mes_num = item.get("mes_num")
+        if mes_num is None:
+            logger.warning("Dashboard: se omite registro sin mes_num. item=%s", item)
+            continue
+        if not 1 <= mes_num <= 12:
+            logger.warning("Dashboard: se omite registro con mes_num fuera de rango (%s). item=%s", mes_num, item)
+            continue
+
         afiliados_por_mes_list.append({
-        "mes": meses_nombre[item["mes_num"] - 1],
-        "anio": item["anio"],
-        "total": item["total"]
-    })
+            "mes": meses_nombre[mes_num - 1],
+            "anio": item.get("anio"),
+            "total": item.get("total", 0)
+        })
     if not afiliados_por_mes_list:
         logger.info("Dashboard sin afiliados registrados por mes.")
 
@@ -1196,13 +1208,56 @@ def lideres_lista(request):
 def afiliado_eliminar(request, pk):
     afiliado = get_object_or_404(Afiliado, pk=pk)
 
-    if request.method == 'POST':
-        afiliado.delete()
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'exito': True, 'mensaje': 'Afiliado eliminado exitosamente.'})
-        return redirect('afiliados:afiliado_lista')
+    if request.method != 'POST':
+        return JsonResponse({
+            'ok': False,
+            'exito': False,
+            'mensaje': 'Método no permitido. Use POST para eliminar.'
+        }, status=405)
 
-    return JsonResponse({'exito': False, 'mensaje': 'Método no permitido.'}, status=400)
+    referidos_count = afiliado.referidos.count()
+    if referidos_count > 0:
+        return JsonResponse({
+            'ok': False,
+            'exito': False,
+            'mensaje': f'No se puede eliminar porque tiene {referidos_count} referido(s) asociado(s).',
+            'referidos': referidos_count,
+            'puede_desactivar': False,
+        }, status=400)
+
+    try:
+        afiliado.delete()
+    except ProtectedError as e:
+        relacionados = len(getattr(e, 'protected_objects', []))
+        return JsonResponse({
+            'ok': False,
+            'exito': False,
+            'mensaje': f'No se puede eliminar porque tiene {relacionados} dependencia(s) protegida(s).'
+        }, status=400)
+    except IntegrityError:
+        logger.exception('IntegrityError al eliminar afiliado id=%s', pk)
+        return JsonResponse({
+            'ok': False,
+            'exito': False,
+            'mensaje': 'No se puede eliminar el afiliado por restricciones de integridad en la base de datos.'
+        }, status=400)
+    except PermissionDenied:
+        return JsonResponse({
+            'ok': False,
+            'exito': False,
+            'mensaje': 'No tiene permisos para eliminar este afiliado.'
+        }, status=403)
+    except Exception:
+        logger.exception('Error inesperado al eliminar afiliado id=%s', pk)
+        return JsonResponse({
+            'ok': False,
+            'exito': False,
+            'mensaje': 'Error inesperado al intentar eliminar el afiliado.'
+        }, status=500)
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'ok': True, 'exito': True, 'mensaje': 'Afiliado eliminado exitosamente.'})
+    return redirect('afiliados:afiliado_lista')
 
 # En tu archivo afiliados_app/views.py
 
