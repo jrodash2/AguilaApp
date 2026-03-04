@@ -193,7 +193,11 @@
                 </div>
 
                 <div class="col-md-6 d-flex flex-column align-items-end justify-content-center gap-2">
-                    <button type="button" class="btn btn-info w-75" id="btnVerificarEmpadronamiento">
+                    <button
+                        type="button"
+                        class="btn btn-info w-75"
+                        id="btnVerificarEmp"
+                        data-url="{% url 'afiliados:verificar_empadronamiento' %}">
                         Verificar Empadronamiento
                     </button>
                     <a href="https://www.tse.org.gt/reg-ciudadanos/sistema-de-estadisticas/consulta-de-afiliacion" class="btn btn-outline-secondary w-75" id="btnTSE" target="_blank" rel="noopener noreferrer">TSE</a>
@@ -251,50 +255,6 @@ $(document).ready(function() {
         $('input[name="nombre_completo"]').attr('id', 'id_nombre_completo');
         // Asegura que los campos de selección múltiple (Comisiones) se inicien si usan plugin como Select2
         // $('.form-control[multiple]').select2(); // Descomentar si usas Select2
-    });
-
-    function limpiarDpi(valor) {
-        return (valor || '').replace(/\D/g, '');
-    }
-
-    // --- VERIFICAR EMPADRONAMIENTO LOCAL ---
-    $('#btnVerificarEmpadronamiento').click(function() {
-        const dpiLimpio = limpiarDpi($('#id_dpi').val());
-
-        if (!dpiLimpio) {
-            $('#resultadoEmpadronamiento').html('<div class="alert alert-warning">Ingrese DPI</div>');
-            return;
-        }
-
-        $('#resultadoEmpadronamiento').html('<div class="alert alert-info">Consultando padrón local...</div>');
-
-        fetch(`{% url 'afiliados:consultar_padron_local' %}?dpi=${encodeURIComponent(dpiLimpio)}`)
-            .then(async (response) => {
-                const data = await response.json();
-                return { status: response.status, data };
-            })
-            .then(({ status, data }) => {
-                if (!data.ok) {
-                    $('#id_empadronado').prop('checked', false);
-                    $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">' + (data.error || 'Error al consultar padrón local') + '</div>');
-                    return;
-                }
-
-                if (data.found) {
-                    const persona = data.data || {};
-                    if (persona.nombre_completo) $('#id_nombre_completo').val(persona.nombre_completo);
-                    if (persona.municipio) $('#id_direccion').val(persona.municipio);
-                    $('#id_empadronado').prop('checked', true);
-                    $('#resultadoEmpadronamiento').html('<div class="alert alert-success">Encontrado en padrón local</div>');
-                } else {
-                    $('#id_empadronado').prop('checked', false);
-                    $('#resultadoEmpadronamiento').html('<div class="alert alert-warning">' + data.message + '</div>');
-                }
-            })
-            .catch(() => {
-                $('#id_empadronado').prop('checked', false);
-                $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">Error al consultar padrón local.</div>');
-            });
     });
 
 
@@ -419,5 +379,8 @@ $(document).on('click', '.btn-eliminar', function(e){
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+{% block extra_js %}
+<script src="{% static 'js/empadronamiento.js' %}"></script>
+{% endblock %}
 
 {% endblock %}

@@ -582,6 +582,7 @@ def consultar_padron_local(request):
         return JsonResponse({
             "ok": False,
             "found": False,
+            "empadronado": False,
             "error": "DPI inválido. Debe contener exactamente 13 dígitos.",
         }, status=400)
 
@@ -591,12 +592,14 @@ def consultar_padron_local(request):
         return JsonResponse({
             "ok": True,
             "found": False,
+            "empadronado": False,
             "message": "No aparece en padrón local: podría estar vecindado en otro municipio o no empadronado. Consulte TSE.",
         })
 
     return JsonResponse({
         "ok": True,
         "found": True,
+        "empadronado": True,
         "data": {
             "dpi": persona.identificacion,
             "nombre_completo": persona.nombre,
