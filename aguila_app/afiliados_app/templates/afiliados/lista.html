@@ -316,6 +316,21 @@ $(document).ready(function() {
 <script>
 $(document).ready(function(){
 
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 // --- ELIMINAR AFILIADO ---
 $(document).on('click', '.btn-eliminar', function(e){
     e.preventDefault();
@@ -336,7 +351,7 @@ $(document).on('click', '.btn-eliminar', function(e){
                 url: `/afiliados/eliminar/${afiliadoId}/`,
                 method: 'POST', 
                 headers: {
-                    'X-CSRFToken': '{{ csrf_token }}', 
+                    'X-CSRFToken': getCookie('csrftoken'),
                     'X-Requested-With': 'XMLHttpRequest'
                 },
                 success: function(response){
@@ -361,10 +376,16 @@ $(document).on('click', '.btn-eliminar', function(e){
                         });
                     }
                 },
-                error: function(){
+                error: function(xhr){
+                    let mensaje = 'Error al intentar eliminar el afiliado.';
+                    if (xhr.status === 403) {
+                        mensaje = 'Sesión expirada o CSRF inválido. Recargue la página e intente de nuevo.';
+                    } else if (xhr.responseJSON && xhr.responseJSON.mensaje) {
+                        mensaje = xhr.responseJSON.mensaje;
+                    }
                     Swal.fire({
                         icon: 'error',
-                        title: 'Error al intentar eliminar el afiliado.'
+                        title: mensaje
                     });
                 }
             });

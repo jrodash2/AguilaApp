@@ -21,6 +21,7 @@ from django.views.generic import ListView
 from django.urls import reverse_lazy
 from django.http import Http404, HttpResponseNotAllowed, JsonResponse
 from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.contrib import messages
 from django.views.decorators.http import require_POST
@@ -36,6 +37,7 @@ from django.contrib.auth.models import Group
 from django.views.decorators.http import require_GET
 from django.db.models.functions import Coalesce
 from django.db import transaction, IntegrityError
+from django.db.models.deletion import ProtectedError
 from django.db.models import Sum
 from django.shortcuts import render
 from django.template.loader import render_to_string
@@ -1196,13 +1198,56 @@ def lideres_lista(request):
 def afiliado_eliminar(request, pk):
     afiliado = get_object_or_404(Afiliado, pk=pk)
 
-    if request.method == 'POST':
-        afiliado.delete()
-        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
-            return JsonResponse({'exito': True, 'mensaje': 'Afiliado eliminado exitosamente.'})
-        return redirect('afiliados:afiliado_lista')
+    if request.method != 'POST':
+        return JsonResponse({
+            'ok': False,
+            'exito': False,
+            'mensaje': 'Método no permitido. Use POST para eliminar.'
+        }, status=405)
 
-    return JsonResponse({'exito': False, 'mensaje': 'Método no permitido.'}, status=400)
+    referidos_count = afiliado.referidos.count()
+    if referidos_count > 0:
+        return JsonResponse({
+            'ok': False,
+            'exito': False,
+            'mensaje': f'No se puede eliminar porque tiene {referidos_count} referido(s) asociado(s).',
+            'referidos': referidos_count,
+            'puede_desactivar': False,
+        }, status=400)
+
+    try:
+        afiliado.delete()
+    except ProtectedError as e:
+        relacionados = len(getattr(e, 'protected_objects', []))
+        return JsonResponse({
+            'ok': False,
+            'exito': False,
+            'mensaje': f'No se puede eliminar porque tiene {relacionados} dependencia(s) protegida(s).'
+        }, status=400)
+    except IntegrityError:
+        logger.exception('IntegrityError al eliminar afiliado id=%s', pk)
+        return JsonResponse({
+            'ok': False,
+            'exito': False,
+            'mensaje': 'No se puede eliminar el afiliado por restricciones de integridad en la base de datos.'
+        }, status=400)
+    except PermissionDenied:
+        return JsonResponse({
+            'ok': False,
+            'exito': False,
+            'mensaje': 'No tiene permisos para eliminar este afiliado.'
+        }, status=403)
+    except Exception:
+        logger.exception('Error inesperado al eliminar afiliado id=%s', pk)
+        return JsonResponse({
+            'ok': False,
+            'exito': False,
+            'mensaje': 'Error inesperado al intentar eliminar el afiliado.'
+        }, status=500)
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        return JsonResponse({'ok': True, 'exito': True, 'mensaje': 'Afiliado eliminado exitosamente.'})
+    return redirect('afiliados:afiliado_lista')
 
 # En tu archivo afiliados_app/views.py
 
