@@ -379,10 +379,12 @@ def dahsboard(request):
 # ==============================================================
     afiliados_por_mes = (
         Afiliado.objects
+        .filter(fecha_creacion__isnull=False)
         .annotate(
             anio=ExtractYear('fecha_creacion'),
             mes_num=ExtractMonth('fecha_creacion')
         )
+        .exclude(mes_num__isnull=True)
         .values('anio', 'mes_num')
         .annotate(total=Count('id'))
         .order_by('anio', 'mes_num')
@@ -396,11 +398,19 @@ def dahsboard(request):
 
     afiliados_por_mes_list = []
     for item in afiliados_por_mes:
+        mes_num = item.get("mes_num")
+        if mes_num is None:
+            logger.warning("Dashboard: se omite registro sin mes_num. item=%s", item)
+            continue
+        if not 1 <= mes_num <= 12:
+            logger.warning("Dashboard: se omite registro con mes_num fuera de rango (%s). item=%s", mes_num, item)
+            continue
+
         afiliados_por_mes_list.append({
-        "mes": meses_nombre[item["mes_num"] - 1],
-        "anio": item["anio"],
-        "total": item["total"]
-    })
+            "mes": meses_nombre[mes_num - 1],
+            "anio": item.get("anio"),
+            "total": item.get("total", 0)
+        })
     if not afiliados_por_mes_list:
         logger.info("Dashboard sin afiliados registrados por mes.")
 
