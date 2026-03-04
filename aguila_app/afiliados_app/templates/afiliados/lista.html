@@ -2,10 +2,6 @@
 {% load static %}
 {% block content %}
 
-<script src="{% static 'assets/js/jquery.min.js' %}"></script>
-<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
-<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
-
 <div class="page-body">
   <div class="container-fluid">
     <div class="page-title">
@@ -49,13 +45,13 @@
               {% endif %}
 
               <div class="table-responsive custom-scrollbar">
-                <table class="display" id="basic-9">
+                <table class="display datatable" id="tabla-afiliados">
                   <thead>
                     <tr>
                       <th>Nombre</th>
                       <th>DPI</th>
                       <th>Comunidad</th>
-                      <th>Centro Votación</th>
+                      <th>Centro de Votación</th>
                       <th>Empadronado</th>
                       <th>Fecha Creación</th>
                       <th>Acciones</th>
@@ -66,8 +62,8 @@
                     <tr>
                       <td>{{ a.nombre_completo }}</td>
                       <td>{{ a.dpi }}</td>
-                      <td>{{ a.comunidad }}</td>
-                      <td>{{ a.centro_votacion }}</td>
+                      <td>{{ a.comunidad|default:"—" }}</td>
+                      <td>{{ a.centro_votacion_resuelto.nombre|default:"—" }}</td>
                       <td>{{ a.empadronado|yesno:"Sí,No" }}</td>
                       <td>{{ a.fecha_creacion|date:"d/m/Y H:i" }}</td>
                       <td>
@@ -107,7 +103,7 @@
                       <th>Nombre</th>
                       <th>DPI</th>
                       <th>Comunidad</th>
-                      <th>Centro Votación</th>
+                      <th>Centro de Votación</th>
                       <th>Empadronado</th>
                       <th>Fecha Creación</th>
                       <th>Acciones</th>
