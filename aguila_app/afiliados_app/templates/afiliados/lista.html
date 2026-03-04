@@ -147,8 +147,8 @@
 
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label for="id_dpi" class="form-label">DPI</label>
-                <input type="text" id="id_dpi" name="dpi" class="form-control" required>
+                <label for="dpi_afiliado" class="form-label">DPI</label>
+                <input type="text" id="dpi_afiliado" name="dpi" class="form-control" required>
               </div>
               <div class="col-md-6 mb-3">
                 <label for="id_fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
@@ -196,7 +196,7 @@
                     <button
                         type="button"
                         class="btn btn-info w-75"
-                        id="btnVerificarEmp"
+                        id="btnVerificarEmpadronamiento"
                         data-url="{% url 'afiliados:verificar_empadronamiento' %}">
                         Verificar Empadronamiento
                     </button>
@@ -204,7 +204,7 @@
                 </div>
                 
             </div>
-            <div id="resultadoEmpadronamiento" class="mb-3"></div>
+            <div id="resultadoEmpadronamiento" class="mb-3"><div id="resultado_tse"></div></div>
 
             <div class="row">
               <div class="col-md-6 mb-3">
@@ -380,7 +380,7 @@ $(document).on('click', '.btn-eliminar', function(e){
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 {% block extra_js %}
-<script src="{% static 'js/empadronamiento.js' %}"></script>
+<script src="{% static 'js/verificar_empadronamiento.js' %}"></script>
 {% endblock %}
 
 {% endblock %}

@@ -612,6 +612,16 @@ def consultar_padron_local(request):
     })
 
 
+
+
+@login_required
+@require_GET
+def verificar_empadronamiento(request):
+    """
+    Alias explícito para producción/local, reutiliza la lógica existente sin duplicarla.
+    """
+    return consultar_padron_local(request)
+
 def _normalizar_columna(nombre_columna):
     texto = str(nombre_columna or "").strip().lower()
     texto = unicodedata.normalize("NFKD", texto)
