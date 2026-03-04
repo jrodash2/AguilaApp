@@ -105,7 +105,7 @@
           {% else %}
             <h6 class="mb-2">Líderes dependientes</h6>
             <div class="table-responsive custom-scrollbar mb-4">
-              <table class="table table-striped">
+              <table class="table table-striped datatable" id="tabla-filtros-dependientes">
                 <thead>
                   <tr>
                     <th>DPI</th>
@@ -124,7 +124,7 @@
                       <td>{{ afiliado.nombre_completo }}</td>
                       <td>{{ afiliado.comunidad|default:"-" }}</td>
                       <td>{{ afiliado.sector|default:"-" }}</td>
-                      <td>{{ afiliado.centro_votacion|default:"-" }}</td>
+                      <td>{{ afiliado.centro_votacion_resuelto.nombre|default:"—" }}</td>
                       <td>{{ afiliado.lider_vinculado|default:"-" }}</td>
                       <td>{{ afiliado.es_lider_comunitario|yesno:"Sí,No" }}</td>
                     </tr>
@@ -138,7 +138,7 @@
             <h6 class="mb-2">Afiliados referidos</h6>
             <p class="text-muted mb-2">Mostrando afiliados referidos por los líderes dependientes de {{ lider_principal.nombre_completo|default:"-" }}. Dependientes: {{ total_dependientes }} | Referidos: {{ total_referidos }}</p>
             <div class="table-responsive custom-scrollbar">
-              <table class="table table-striped">
+              <table class="table table-striped datatable" id="tabla-filtros-referidos">
                 <thead>
                   <tr>
                     <th>DPI</th>
@@ -157,7 +157,7 @@
                       <td>{{ afiliado.nombre_completo }}</td>
                       <td>{{ afiliado.comunidad|default:"-" }}</td>
                       <td>{{ afiliado.sector|default:"-" }}</td>
-                      <td>{{ afiliado.centro_votacion|default:"-" }}</td>
+                      <td>{{ afiliado.centro_votacion_resuelto.nombre|default:"—" }}</td>
                       <td>{{ afiliado.lider_vinculado|default:"-" }}</td>
                       <td>{{ afiliado.es_lider_comunitario|yesno:"Sí,No" }}</td>
                     </tr>
@@ -170,7 +170,7 @@
           {% endif %}
         {% else %}
         <div class="table-responsive custom-scrollbar">
-          <table class="table table-striped">
+          <table class="table table-striped datatable" id="tabla-filtros-resultados">
             <thead>
               <tr>
                 <th>DPI</th>
@@ -189,7 +189,7 @@
                   <td>{{ afiliado.nombre_completo }}</td>
                   <td>{{ afiliado.comunidad|default:"-" }}</td>
                   <td>{{ afiliado.sector|default:"-" }}</td>
-                  <td>{{ afiliado.centro_votacion|default:"-" }}</td>
+                  <td>{{ afiliado.centro_votacion_resuelto.nombre|default:"—" }}</td>
                   <td>{{ afiliado.lider_vinculado|default:"-" }}</td>
                   <td>{{ afiliado.es_lider_comunitario|yesno:"Sí,No" }}</td>
                 </tr>

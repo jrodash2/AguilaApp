@@ -2,10 +2,6 @@
 {% load static %}
 {% block content %}
 
-<script src="{% static 'assets/js/jquery.min.js' %}"></script>
-<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
-<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
-
 <div class="page-body">
   <div class="container-fluid">
     <div class="page-title">
@@ -49,13 +45,13 @@
               {% endif %}
 
               <div class="table-responsive custom-scrollbar">
-                <table class="display" id="basic-9">
+                <table class="display datatable" id="tabla-afiliados">
                   <thead>
                     <tr>
                       <th>Nombre</th>
                       <th>DPI</th>
                       <th>Comunidad</th>
-                      <th>Centro Votación</th>
+                      <th>Centro de Votación</th>
                       <th>Empadronado</th>
                       <th>Fecha Creación</th>
                       <th>Acciones</th>
@@ -66,8 +62,8 @@
                     <tr>
                       <td>{{ a.nombre_completo }}</td>
                       <td>{{ a.dpi }}</td>
-                      <td>{{ a.comunidad }}</td>
-                      <td>{{ a.centro_votacion }}</td>
+                      <td>{{ a.comunidad|default:"—" }}</td>
+                      <td>{{ a.centro_votacion_resuelto.nombre|default:"—" }}</td>
                       <td>{{ a.empadronado|yesno:"Sí,No" }}</td>
                       <td>{{ a.fecha_creacion|date:"d/m/Y H:i" }}</td>
                       <td>
@@ -107,7 +103,7 @@
                       <th>Nombre</th>
                       <th>DPI</th>
                       <th>Comunidad</th>
-                      <th>Centro Votación</th>
+                      <th>Centro de Votación</th>
                       <th>Empadronado</th>
                       <th>Fecha Creación</th>
                       <th>Acciones</th>
@@ -151,8 +147,8 @@
 
             <div class="row">
               <div class="col-md-6 mb-3">
-                <label for="id_dpi" class="form-label">DPI</label>
-                <input type="text" id="id_dpi" name="dpi" class="form-control" required>
+                <label for="dpi_afiliado" class="form-label">DPI</label>
+                <input type="text" id="dpi_afiliado" name="dpi" class="form-control" required>
               </div>
               <div class="col-md-6 mb-3">
                 <label for="id_fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
@@ -197,14 +193,18 @@
                 </div>
 
                 <div class="col-md-6 d-flex flex-column align-items-end justify-content-center gap-2">
-                    <button type="button" class="btn btn-info w-75" id="btnVerificarEmpadronamiento">
+                    <button
+                        type="button"
+                        class="btn btn-info w-75"
+                        id="btnVerificarEmpadronamiento"
+                        data-url="{% url 'afiliados:verificar_empadronamiento' %}">
                         Verificar Empadronamiento
                     </button>
                     <a href="https://www.tse.org.gt/reg-ciudadanos/sistema-de-estadisticas/consulta-de-afiliacion" class="btn btn-outline-secondary w-75" id="btnTSE" target="_blank" rel="noopener noreferrer">TSE</a>
                 </div>
                 
             </div>
-            <div id="resultadoEmpadronamiento" class="mb-3"></div>
+            <div id="resultadoEmpadronamiento" class="mb-3"><div id="resultado_tse"></div></div>
 
             <div class="row">
               <div class="col-md-6 mb-3">
@@ -255,50 +255,6 @@ $(document).ready(function() {
         $('input[name="nombre_completo"]').attr('id', 'id_nombre_completo');
         // Asegura que los campos de selección múltiple (Comisiones) se inicien si usan plugin como Select2
         // $('.form-control[multiple]').select2(); // Descomentar si usas Select2
-    });
-
-    function limpiarDpi(valor) {
-        return (valor || '').replace(/\D/g, '');
-    }
-
-    // --- VERIFICAR EMPADRONAMIENTO LOCAL ---
-    $('#btnVerificarEmpadronamiento').click(function() {
-        const dpiLimpio = limpiarDpi($('#id_dpi').val());
-
-        if (!dpiLimpio) {
-            $('#resultadoEmpadronamiento').html('<div class="alert alert-warning">Ingrese DPI</div>');
-            return;
-        }
-
-        $('#resultadoEmpadronamiento').html('<div class="alert alert-info">Consultando padrón local...</div>');
-
-        fetch(`{% url 'afiliados:consultar_padron_local' %}?dpi=${encodeURIComponent(dpiLimpio)}`)
-            .then(async (response) => {
-                const data = await response.json();
-                return { status: response.status, data };
-            })
-            .then(({ status, data }) => {
-                if (!data.ok) {
-                    $('#id_empadronado').prop('checked', false);
-                    $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">' + (data.error || 'Error al consultar padrón local') + '</div>');
-                    return;
-                }
-
-                if (data.found) {
-                    const persona = data.data || {};
-                    if (persona.nombre_completo) $('#id_nombre_completo').val(persona.nombre_completo);
-                    if (persona.municipio) $('#id_direccion').val(persona.municipio);
-                    $('#id_empadronado').prop('checked', true);
-                    $('#resultadoEmpadronamiento').html('<div class="alert alert-success">Encontrado en padrón local</div>');
-                } else {
-                    $('#id_empadronado').prop('checked', false);
-                    $('#resultadoEmpadronamiento').html('<div class="alert alert-warning">' + data.message + '</div>');
-                }
-            })
-            .catch(() => {
-                $('#id_empadronado').prop('checked', false);
-                $('#resultadoEmpadronamiento').html('<div class="alert alert-danger">Error al consultar padrón local.</div>');
-            });
     });
 
 
@@ -423,5 +379,8 @@ $(document).on('click', '.btn-eliminar', function(e){
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+{% block extra_js %}
+<script src="{% static 'js/verificar_empadronamiento.js' %}"></script>
+{% endblock %}
 
 {% endblock %}

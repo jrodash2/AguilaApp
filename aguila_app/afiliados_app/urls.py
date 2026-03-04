@@ -75,6 +75,8 @@ path('comisiones/eliminar/<int:pk>/', views.comision_eliminar, name='comision_el
 
 path("elecciones2023/", views.elecciones2023, name="elecciones2023"),
 path("api/padron/", views.consultar_padron_local, name="consultar_padron_local"),
+path("api/padron/verificar/", views.consultar_padron_local, name="consultar_padron_verificar"),
+path("verificar-empadronamiento/", views.verificar_empadronamiento, name="verificar_empadronamiento"),
 path('padron/cargar/', views.padron_cargar, name='padron_cargar'),
 
 
