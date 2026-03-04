@@ -26,7 +26,7 @@ from django.contrib import messages
 from django.views.decorators.http import require_POST
 from django.views.generic import ListView, CreateView, UpdateView, DeleteView
 from django.db import models
-from django.db.models import Sum, F, Value, Count, Q, Case, When, OuterRef, Subquery, IntegerField
+from django.db.models import Sum, F, Value, Count, Q, Case, When, OuterRef, Subquery, IntegerField, Prefetch
 from django.contrib.auth.decorators import login_required, user_passes_test
 from collections import defaultdict
 from django.shortcuts import get_object_or_404, redirect
@@ -63,6 +63,7 @@ from django.views.generic.detail import DetailView
 from django.core.mail import BadHeaderError
 from smtplib import SMTPException
 from django.db.models.functions import ExtractYear, ExtractMonth
+from django.core.serializers.json import DjangoJSONEncoder
 
 from .forms import PadronUploadForm
 
@@ -164,9 +165,15 @@ def elecciones2023(request):
     resumen_partidos = {}
     for fila in qs:
         for partido, votos in fila.partidos.items():
-            resumen_partidos[partido] = resumen_partidos.get(partido, 0) + votos
+            votos_int = int(votos or 0)
+            resumen_partidos[partido] = int(resumen_partidos.get(partido, 0)) + votos_int
 
-    ranking = sorted(resumen_partidos.items(), key=lambda x: x[1], reverse=True)
+    resumen_partidos_fix = {
+        str(partido): int(votos or 0)
+        for partido, votos in resumen_partidos.items()
+    }
+
+    ranking = sorted(resumen_partidos_fix.items(), key=lambda x: x[1], reverse=True)
 
     # ============================================================
     # 🟦 2. VOTOS POR MESA (PARA GRÁFICA 2)
@@ -175,18 +182,32 @@ def elecciones2023(request):
 
     for fila in qs:
         mesa = fila.mesa
-        if mesa not in votos_por_mesa:
-            votos_por_mesa[mesa] = {}
+        mesa_key = str(mesa)
+
+        if mesa_key not in votos_por_mesa:
+            votos_por_mesa[mesa_key] = {}
 
         for partido, votos in fila.partidos.items():
-            votos_por_mesa[mesa][partido] = (
-                votos_por_mesa[mesa].get(partido, 0) + votos
+            votos_int = int(votos or 0)
+            votos_por_mesa[mesa_key][partido] = (
+                int(votos_por_mesa[mesa_key].get(partido, 0)) + votos_int
             )
 
+    votos_por_mesa_fix = {
+        str(mesa): {
+            str(partido): int(votos or 0)
+            for partido, votos in datos_partidos.items()
+        }
+        for mesa, datos_partidos in votos_por_mesa.items()
+    }
+
     try:
-        votos_por_mesa = dict(sorted(votos_por_mesa.items(), key=lambda x: int(x[0])))
+        votos_por_mesa_fix = dict(sorted(votos_por_mesa_fix.items(), key=lambda x: int(x[0])))
     except:
         pass
+
+    resumen_partidos_json = json.dumps(resumen_partidos_fix, cls=DjangoJSONEncoder)
+    votos_por_mesa_json = json.dumps(votos_por_mesa_fix, cls=DjangoJSONEncoder)
 
     # ============================================================
     # CONTEXTO
@@ -203,9 +224,11 @@ def elecciones2023(request):
         "centro": centro,
         "centro_nombre": centro_nombre,   # <<<<<< AQUI LO AGREGAMOS
 
-        "resumen_partidos": json.dumps(resumen_partidos),
+        "resumen_partidos": resumen_partidos_json,
+        "resumen_partidos_json": resumen_partidos_json,
         "ranking": ranking,
-        "votos_por_mesa": json.dumps(votos_por_mesa),
+        "votos_por_mesa": votos_por_mesa_json,
+        "votos_por_mesa_json": votos_por_mesa_json,
     }
 
     return safe_render(request, "afiliados/elecciones2023.html", context)
@@ -582,6 +605,7 @@ def consultar_padron_local(request):
         return JsonResponse({
             "ok": False,
             "found": False,
+            "empadronado": False,
             "error": "DPI inválido. Debe contener exactamente 13 dígitos.",
         }, status=400)
 
@@ -591,12 +615,14 @@ def consultar_padron_local(request):
         return JsonResponse({
             "ok": True,
             "found": False,
+            "empadronado": False,
             "message": "No aparece en padrón local: podría estar vecindado en otro municipio o no empadronado. Consulte TSE.",
         })
 
     return JsonResponse({
         "ok": True,
         "found": True,
+        "empadronado": True,
         "data": {
             "dpi": persona.identificacion,
             "nombre_completo": persona.nombre,
@@ -608,6 +634,24 @@ def consultar_padron_local(request):
         "message": "Encontrado en padrón local",
     })
 
+
+
+
+@login_required
+@require_GET
+def verificar_empadronamiento(request):
+    """
+    Endpoint estable para frontend (local/cPanel) reutilizando la lógica vigente.
+    Siempre intenta responder JSON para facilitar diagnóstico en producción.
+    """
+    try:
+        return consultar_padron_local(request)
+    except Exception as exc:
+        logger.exception('Error en verificar_empadronamiento')
+        return JsonResponse({
+            'ok': False,
+            'error': f'Error interno al verificar empadronamiento: {exc.__class__.__name__}',
+        }, status=500)
 
 def _normalizar_columna(nombre_columna):
     texto = str(nombre_columna or "").strip().lower()
@@ -777,7 +821,17 @@ def _construir_filtros_afiliados(request):
     centro_votacion_id = request.GET.get('centro_votacion_id')
     comision_id = request.GET.get('comision_id')
 
-    base_qs = Afiliado.objects.select_related('comunidad__sector', 'centro_votacion', 'lider_vinculado').order_by('nombre_completo')
+    base_qs = (
+        Afiliado.objects
+        .select_related('comunidad__sector', 'centro_votacion', 'lider_vinculado')
+        .prefetch_related(
+            Prefetch(
+                'comunidad__sector__centros',
+                queryset=CentroVotacion.objects.only('id', 'nombre').order_by('nombre')
+            )
+        )
+        .order_by('nombre_completo')
+    )
 
     if comunidad_id:
         base_qs = base_qs.filter(comunidad_id=comunidad_id)
@@ -827,6 +881,25 @@ def _construir_filtros_afiliados(request):
     }
 
 
+def _centro_votacion_desde_afiliado(afiliado):
+    """
+    Resuelve el centro de votación priorizando el centro enlazado al sector de la comunidad.
+    Si no existe, usa el centro asignado directamente al afiliado.
+    """
+    comunidad = getattr(afiliado, 'comunidad', None)
+    sector = getattr(comunidad, 'sector', None) if comunidad else None
+    if sector:
+        centros_sector = list(sector.centros.all())
+        if centros_sector:
+            return centros_sector[0]
+    return getattr(afiliado, 'centro_votacion', None)
+
+
+def _adjuntar_centro_votacion_resuelto(items):
+    for item in items:
+        item.centro_votacion_resuelto = _centro_votacion_desde_afiliado(item)
+
+
 @login_required
 def dashboard_filtros(request):
     filtros = _construir_filtros_afiliados(request)
@@ -835,6 +908,12 @@ def dashboard_filtros(request):
         paginator = Paginator(filtros['resultados'], 25)
         page_number = request.GET.get('page')
         page_obj = paginator.get_page(page_number)
+
+    if filtros['modo'] == 'dependientes_y_referidos':
+        _adjuntar_centro_votacion_resuelto(filtros['dependientes'])
+        _adjuntar_centro_votacion_resuelto(filtros['referidos'])
+    else:
+        _adjuntar_centro_votacion_resuelto(page_obj)
 
     context = {
         'comunidades': Comunidad.objects.all().order_by('nombre'),
@@ -863,12 +942,13 @@ def dashboard_filtros(request):
 def _rows_reporte_filtros(resultados):
     rows = []
     for afiliado in resultados:
+        centro_resuelto = _centro_votacion_desde_afiliado(afiliado)
         rows.append([
             afiliado.dpi,
             afiliado.nombre_completo,
             afiliado.comunidad.nombre if afiliado.comunidad else '',
             afiliado.sector.nombre if afiliado.sector else '',
-            afiliado.centro_votacion.nombre if afiliado.centro_votacion else '',
+            centro_resuelto.nombre if centro_resuelto else '',
             afiliado.lider_vinculado.nombre_completo if afiliado.lider_vinculado else '',
             'Sí' if afiliado.es_lider_comunitario else 'No',
         ])
@@ -978,7 +1058,17 @@ def exportar_filtros_pdf(request):
 
 @login_required
 def afiliado_lista(request):
-    afiliados = Afiliado.objects.all().select_related('comunidad', 'centro_votacion')
+    afiliados = (
+        Afiliado.objects
+        .select_related('comunidad__sector', 'centro_votacion')
+        .prefetch_related(
+            Prefetch(
+                'comunidad__sector__centros',
+                queryset=CentroVotacion.objects.only('id', 'nombre').order_by('nombre')
+            )
+        )
+    )
+    _adjuntar_centro_votacion_resuelto(afiliados)
     form = AfiliadoForm()  # Instancia vacía para el modal
 
     if request.method == 'POST':

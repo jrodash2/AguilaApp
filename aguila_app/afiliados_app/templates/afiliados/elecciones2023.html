@@ -116,13 +116,21 @@
 </div>
 </div>
 
+<script src="{% static 'vendor/apexcharts/apexcharts.min.js' %}"></script>
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
 {% if tipo and resumen_partidos %}
 <script>
 
-let resumen = {{ resumen_partidos|safe }};
-let votosMesas = {{ votos_por_mesa|safe }};
+let resumen = {{ resumen_partidos_json|safe }};
+let votosMesas = {{ votos_por_mesa_json|safe }};
+
+console.log('resumen', resumen);
+console.log('votosMesas', votosMesas);
+
+if (typeof ApexCharts === 'undefined') {
+    console.error('ApexCharts no está definido. Verifique CDN/static en producción.');
+}
 
 
 // --------------------------------------------------------------------
@@ -132,7 +140,7 @@ new ApexCharts(document.querySelector("#grafica_partidos"), {
     chart: { type: 'bar', height: 320, toolbar: { show: false }},
     plotOptions: { bar: { horizontal: true, borderRadius: 6 }},
     dataLabels: { enabled: true },
-    series: [{ name: "Votos", data: Object.values(resumen) }],
+    series: [{ name: "Votos", data: Object.values(resumen).map(v => Number(v) || 0) }],
     xaxis: { categories: Object.keys(resumen) }
 }).render();
 
@@ -154,7 +162,7 @@ if (Object.keys(votosMesas).length === 0) {
 
     let seriesApilado = partidos.map(partido => ({
         name: partido,
-        data: mesas.map(mesa => votosMesas[mesa][partido] || 0)
+        data: mesas.map(mesa => Number((votosMesas[mesa] || {})[partido]) || 0)
     }));
 
     new ApexCharts(contenedorMesas, {
