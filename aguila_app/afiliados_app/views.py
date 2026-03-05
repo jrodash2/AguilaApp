@@ -65,7 +65,6 @@ from django.views.generic.detail import DetailView
 from django.core.mail import BadHeaderError
 from smtplib import SMTPException
 from django.db.models.functions import ExtractYear, ExtractMonth
-from django.db.models.functions import Upper, Trim
 from django.core.serializers.json import DjangoJSONEncoder
 
 from .forms import PadronUploadForm
@@ -403,180 +402,82 @@ def signin(request):
 
 def resumen_elecciones_2023(request):
     TOP_CENTROS = 8
-    partidos_fallback = [
-        "todos", "cambio", "morena", "vamos", "pin", "renovador",
-        "valor", "azul", "une", "fcn_nacion", "podemos", "uc",
-    ]
 
-    PARTIDOS = list(partidos_fallback)
-    ejemplo_row = None
+    qs_alcalde = TrepCentroResultado.objects.filter(tipo="ALCALDE")
+    qs_dipu = TrepCentroResultado.objects.filter(tipo="DIPUTADOS")
+
+    # Detectar partidos reales a partir del JSON de ambos tipos (muestra acotada para rendimiento).
+    partidos_detectados = set()
+    for fila in qs_alcalde.only("partidos")[:50]:
+        partidos_detectados.update((fila.partidos or {}).keys())
+    for fila in qs_dipu.only("partidos")[:50]:
+        partidos_detectados.update((fila.partidos or {}).keys())
+
+    if not partidos_detectados:
+        partidos_detectados = {
+            "todos", "cambio", "morena", "vamos", "pin", "renovador",
+            "valor", "azul", "une", "fcn_nacion", "podemos", "uc",
+        }
+
+    partidos_orden = sorted(partidos_detectados)
+
+    def normalizar_partido(nombre):
+        return str(nombre or "").strip().upper()
+
+    totales = {
+        normalizar_partido(p): {"alcalde": 0, "diputado": 0}
+        for p in partidos_orden
+    }
 
     centros_map = {}
 
-    # DEBUG temporal para diagnosticar valores reales en producción.
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT COALESCE(TRIM(tipo), '') AS tipo, COUNT(*) FROM elecciones_2023 GROUP BY COALESCE(TRIM(tipo), '') ORDER BY COUNT(*) DESC"
-            )
-            tipos_debug = cursor.fetchall()
-            logger.info("Resumen Elecciones 2023 - tipos disponibles en elecciones_2023: %s", tipos_debug)
-    except Exception as exc:
-        logger.warning("Resumen Elecciones 2023 - no se pudo consultar tipos en elecciones_2023: %s", exc)
+    def acumular_fila(fila, bucket):
+        centro_codigo = str(fila.centro_codigo or "").strip()
+        centro_nombre = (fila.centro_nombre or centro_codigo or "Sin centro").strip()
+        centro_key = centro_codigo or centro_nombre
 
-    try:
-        ejemplo_row = Eleccion2023.objects.values().first()
-        logger.info("Resumen Elecciones 2023 - ejemplo elecciones_2023.values().first(): %s", ejemplo_row)
-    except Exception as exc:
-        logger.warning("Resumen Elecciones 2023 - no se pudo leer ejemplo de elecciones_2023: %s", exc)
+        if centro_key not in centros_map:
+            centros_map[centro_key] = {
+                "centro_codigo": centro_codigo,
+                "centro_nombre": centro_nombre,
+                "partidos": {
+                    normalizar_partido(p): {"alcalde": 0, "diputado": 0}
+                    for p in partidos_orden
+                },
+                "total_general": 0,
+            }
 
-    if ejemplo_row:
-        campos_no_partido = {
-            "id", "mesa", "votos_blanco", "votos_nulos", "votos_invalidos", "total",
-            "impugnaciones", "observaciones", "centro_votacion", "secnum", "tipo",
-        }
-        partidos_detectados = [
-            k for k in ejemplo_row.keys()
-            if k not in campos_no_partido
-        ]
-        if partidos_detectados:
-            PARTIDOS = partidos_detectados
+        partidos_json = fila.partidos or {}
+        for partido_raw, votos_raw in partidos_json.items():
+            partido = normalizar_partido(partido_raw)
+            if partido not in totales:
+                totales[partido] = {"alcalde": 0, "diputado": 0}
+                for c in centros_map.values():
+                    c["partidos"].setdefault(partido, {"alcalde": 0, "diputado": 0})
 
-    partidos_labels = [p.upper() for p in PARTIDOS]
-    totales_globales = {
-        partido: {"alcalde": 0, "diputado": 0}
-        for partido in partidos_labels
-    }
+            votos = int(votos_raw or 0)
+            totales[partido][bucket] += votos
+            centros_map[centro_key]["partidos"][partido][bucket] += votos
+            centros_map[centro_key]["total_general"] += votos
 
-    # 1) Intentar leer desde elecciones_2023 si existe columna tipo en DB.
-    tabla_elecciones = Eleccion2023._meta.db_table
-    tiene_tipo_en_elecciones = False
+    for fila in qs_alcalde.iterator():
+        acumular_fila(fila, "alcalde")
 
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                """
-                SELECT 1
-                FROM information_schema.columns
-                WHERE table_name = %s AND column_name = 'tipo'
-                LIMIT 1
-                """,
-                [tabla_elecciones],
-            )
-            tiene_tipo_en_elecciones = cursor.fetchone() is not None
-    except Exception as exc:
-        logger.warning("Resumen Elecciones 2023 - no se pudo verificar columna tipo: %s", exc)
-
-    if tiene_tipo_en_elecciones:
-        try:
-            # Totales globales por partido, normalizando tipo (TRIM/UPPER y DIPUT*)
-            for partido_col in PARTIDOS:
-                with connection.cursor() as cursor:
-                    cursor.execute(
-                        f"""
-                        SELECT
-                            COALESCE(SUM(CASE WHEN UPPER(TRIM(tipo)) = 'ALCALDE' THEN COALESCE({partido_col}, 0) ELSE 0 END), 0) AS alcalde,
-                            COALESCE(SUM(CASE WHEN UPPER(TRIM(tipo)) LIKE 'DIPUT%%' THEN COALESCE({partido_col}, 0) ELSE 0 END), 0) AS diputado
-                        FROM {tabla_elecciones}
-                        """
-                    )
-                    alcalde, diputado = cursor.fetchone() or (0, 0)
-                    partido = partido_col.upper()
-                    totales_globales[partido]["alcalde"] = int(alcalde or 0)
-                    totales_globales[partido]["diputado"] = int(diputado or 0)
-
-            # Totales por centro, agrupando variantes DIPUT*
-            expresiones_partidos = ",\n".join(
-                [
-                    f"COALESCE(SUM(CASE WHEN UPPER(TRIM(tipo)) = 'ALCALDE' THEN COALESCE({p}, 0) ELSE 0 END), 0) AS {p}_alcalde, COALESCE(SUM(CASE WHEN UPPER(TRIM(tipo)) LIKE 'DIPUT%%' THEN COALESCE({p}, 0) ELSE 0 END), 0) AS {p}_diputado"
-                    for p in PARTIDOS
-                ]
-            )
-
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    f"""
-                    SELECT
-                        COALESCE(NULLIF(TRIM(centro_votacion), ''), 'Sin centro') AS centro_nombre,
-                        {expresiones_partidos}
-                    FROM {tabla_elecciones}
-                    GROUP BY COALESCE(NULLIF(TRIM(centro_votacion), ''), 'Sin centro')
-                    """
-                )
-                rows = cursor.fetchall()
-                columns = [col[0] for col in cursor.description]
-
-            for row in rows:
-                item = dict(zip(columns, row))
-                centro_nombre = str(item.get("centro_nombre") or "Sin centro")
-                partidos_centro = {}
-                total_general = 0
-
-                for p in PARTIDOS:
-                    key = p.upper()
-                    a = int(item.get(f"{p}_alcalde") or 0)
-                    d = int(item.get(f"{p}_diputado") or 0)
-                    partidos_centro[key] = {"alcalde": a, "diputado": d}
-                    total_general += a + d
-
-                centros_map[centro_nombre] = {
-                    "centro_nombre": centro_nombre,
-                    "centro_codigo": "",
-                    "partidos": partidos_centro,
-                    "total_general": total_general,
-                }
-        except Exception as exc:
-            logger.exception("Resumen Elecciones 2023 - error agregando desde elecciones_2023: %s", exc)
-
-    # 2) Fallback robusto: TrepCentroResultado (con tipo nativo)
-    if not any(v["alcalde"] or v["diputado"] for v in totales_globales.values()):
-        qs = TrepCentroResultado.objects.annotate(tipo_norm=Upper(Trim("tipo")))
-
-        def bucket_tipo(tipo_norm):
-            tipo_norm = (tipo_norm or "").strip().upper()
-            if tipo_norm == "ALCALDE":
-                return "alcalde"
-            if tipo_norm.startswith("DIPUT"):
-                return "diputado"
-            return None
-
-        for fila in qs:
-            bucket = bucket_tipo(fila.tipo)
-            if not bucket:
-                continue
-
-            centro_codigo = str(fila.centro_codigo or "").strip()
-            centro_nombre = (fila.centro_nombre or centro_codigo or "Sin centro").strip()
-            centro_key = centro_codigo or centro_nombre
-
-            if centro_key not in centros_map:
-                centros_map[centro_key] = {
-                    "centro_nombre": centro_nombre,
-                    "centro_codigo": centro_codigo,
-                    "partidos": {p: {"alcalde": 0, "diputado": 0} for p in partidos_labels},
-                    "total_general": 0,
-                }
-
-            fila_partidos = fila.partidos or {}
-            for partido_col in PARTIDOS:
-                partido = partido_col.upper()
-                votos = int(fila_partidos.get(partido_col, 0) or 0)
-                totales_globales[partido][bucket] += votos
-                centros_map[centro_key]["partidos"][partido][bucket] += votos
-                centros_map[centro_key]["total_general"] += votos
+    for fila in qs_dipu.iterator():
+        acumular_fila(fila, "diputado")
 
     ranking_partidos = sorted(
-        partidos_labels,
-        key=lambda p: int(totales_globales[p]["alcalde"] or 0) + int(totales_globales[p]["diputado"] or 0),
+        totales.keys(),
+        key=lambda p: int(totales[p]["alcalde"] or 0) + int(totales[p]["diputado"] or 0),
         reverse=True,
     )
 
-    totales_globales_ordenados = {p: totales_globales[p] for p in ranking_partidos}
+    totales_ordenados = {p: totales[p] for p in ranking_partidos}
 
     tabla_totales = []
     for partido in ranking_partidos:
-        alcalde = int(totales_globales[partido]["alcalde"] or 0)
-        diputado = int(totales_globales[partido]["diputado"] or 0)
+        alcalde = int(totales[partido]["alcalde"] or 0)
+        diputado = int(totales[partido]["diputado"] or 0)
         tabla_totales.append(
             {
                 "partido": partido,
@@ -592,13 +493,13 @@ def resumen_elecciones_2023(request):
     centros_top = centros_data[:TOP_CENTROS]
 
     for centro in centros_top:
-        centro["partidos"] = {p: centro["partidos"][p] for p in ranking_partidos}
+        centro["partidos"] = {p: centro["partidos"].get(p, {"alcalde": 0, "diputado": 0}) for p in ranking_partidos}
 
     context = {
         "top_centros": TOP_CENTROS,
         "tabla_totales": tabla_totales,
         "centros_top": centros_top,
-        "totales_globales_json": json.dumps(totales_globales_ordenados, cls=DjangoJSONEncoder),
+        "totales_globales_json": json.dumps(totales_ordenados, cls=DjangoJSONEncoder),
         "centros_data_json": json.dumps(centros_top, cls=DjangoJSONEncoder),
     }
 
