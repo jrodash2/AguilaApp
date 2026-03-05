@@ -14,7 +14,7 @@ urlpatterns = [
     path("dashboard/", views.dashboard_elecciones, name="dashboard_elecciones"),
     path("dashboard/datos/", views.datos_centro, name="dashboard_datos_centro"),
 
-    path("resumen-elecciones-2023/", views.resumen_elecciones_2023, name="resumen_elecciones_2023"),
+    path("elecciones/", views.elecciones_dashboard, name="elecciones_dashboard"),
 
 path("filtros/", views.dashboard_filtros, name="dashboard_filtros"),
 path("filtros/export/excel/", views.exportar_filtros_excel, name="exportar_filtros_excel"),

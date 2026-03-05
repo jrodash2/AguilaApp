@@ -400,110 +400,108 @@ def signin(request):
 
 
 
-def resumen_elecciones_2023(request):
+def elecciones_dashboard(request):
     TOP_CENTROS = 8
+    TOP_MESAS = 30
+    TOP_PARTIDOS_CENTRO = 6
+    TOP_PARTIDOS_GLOBAL = 12
 
-    qs_alcalde = TrepCentroResultado.objects.filter(tipo="ALCALDE")
-    qs_dipu = TrepCentroResultado.objects.filter(tipo="DIPUTADOS")
+    tipo = (request.GET.get("tipo") or "ALCALDE").strip().upper()
+    if tipo not in {"ALCALDE", "DIPUTADOS"}:
+        tipo = "ALCALDE"
 
-    # Detectar partidos reales a partir del JSON de ambos tipos (muestra acotada para rendimiento).
-    partidos_detectados = set()
-    for fila in qs_alcalde.only("partidos")[:50]:
-        partidos_detectados.update((fila.partidos or {}).keys())
-    for fila in qs_dipu.only("partidos")[:50]:
-        partidos_detectados.update((fila.partidos or {}).keys())
+    qs = TrepCentroResultado.objects.filter(tipo=tipo)
 
-    if not partidos_detectados:
-        partidos_detectados = {
-            "todos", "cambio", "morena", "vamos", "pin", "renovador",
-            "valor", "azul", "une", "fcn_nacion", "podemos", "uc",
-        }
-
-    partidos_orden = sorted(partidos_detectados)
-
-    def normalizar_partido(nombre):
-        return str(nombre or "").strip().upper()
-
-    totales = {
-        normalizar_partido(p): {"alcalde": 0, "diputado": 0}
-        for p in partidos_orden
-    }
-
+    totales_raw = {}
     centros_map = {}
+    mesas_data = []
 
-    def acumular_fila(fila, bucket):
-        centro_codigo = str(fila.centro_codigo or "").strip()
-        centro_nombre = (fila.centro_nombre or centro_codigo or "Sin centro").strip()
+    for row in qs.iterator():
+        partidos_row = row.partidos or {}
+
+        centro_codigo = str(row.centro_codigo or "").strip()
+        centro_nombre = (row.centro_nombre or centro_codigo or "Sin centro").strip()
         centro_key = centro_codigo or centro_nombre
-
         if centro_key not in centros_map:
             centros_map[centro_key] = {
                 "centro_codigo": centro_codigo,
                 "centro_nombre": centro_nombre,
-                "partidos": {
-                    normalizar_partido(p): {"alcalde": 0, "diputado": 0}
-                    for p in partidos_orden
-                },
-                "total_general": 0,
+                "partidos": {},
+                "total": 0,
             }
 
-        partidos_json = fila.partidos or {}
-        for partido_raw, votos_raw in partidos_json.items():
-            partido = normalizar_partido(partido_raw)
-            if partido not in totales:
-                totales[partido] = {"alcalde": 0, "diputado": 0}
-                for c in centros_map.values():
-                    c["partidos"].setdefault(partido, {"alcalde": 0, "diputado": 0})
+        total_mesa = 0
+        top_partido = "-"
+        top_partido_votos = -1
 
-            votos = int(votos_raw or 0)
-            totales[partido][bucket] += votos
-            centros_map[centro_key]["partidos"][partido][bucket] += votos
-            centros_map[centro_key]["total_general"] += votos
+        for partido, votos in partidos_row.items():
+            partido_key = str(partido or "").strip().upper()
+            votos_num = int(votos or 0)
 
-    for fila in qs_alcalde.iterator():
-        acumular_fila(fila, "alcalde")
+            totales_raw[partido_key] = totales_raw.get(partido_key, 0) + votos_num
+            centros_map[centro_key]["partidos"][partido_key] = centros_map[centro_key]["partidos"].get(partido_key, 0) + votos_num
+            centros_map[centro_key]["total"] += votos_num
 
-    for fila in qs_dipu.iterator():
-        acumular_fila(fila, "diputado")
+            total_mesa += votos_num
+            if votos_num > top_partido_votos:
+                top_partido_votos = votos_num
+                top_partido = partido_key
 
-    ranking_partidos = sorted(
-        totales.keys(),
-        key=lambda p: int(totales[p]["alcalde"] or 0) + int(totales[p]["diputado"] or 0),
-        reverse=True,
-    )
+        mesas_data.append({
+            "mesa": str(row.mesa or "-"),
+            "centro_nombre": centro_nombre,
+            "total_mesa": int(total_mesa),
+            "top_partido": top_partido,
+        })
 
-    totales_ordenados = {p: totales[p] for p in ranking_partidos}
+    ranking_global = sorted(totales_raw.items(), key=lambda x: x[1], reverse=True)
+    total_votos_global = sum(v for _, v in ranking_global)
 
-    tabla_totales = []
-    for partido in ranking_partidos:
-        alcalde = int(totales[partido]["alcalde"] or 0)
-        diputado = int(totales[partido]["diputado"] or 0)
-        tabla_totales.append(
-            {
-                "partido": partido,
-                "alcalde": alcalde,
-                "diputado": diputado,
-                "diferencia": alcalde - diputado,
-                "total": alcalde + diputado,
-            }
-        )
+    ranking_global = ranking_global[:TOP_PARTIDOS_GLOBAL]
+    resto_global = sum(v for _, v in sorted(totales_raw.items(), key=lambda x: x[1], reverse=True)[TOP_PARTIDOS_GLOBAL:])
+    if resto_global > 0:
+        ranking_global.append(("OTROS", int(resto_global)))
 
-    centros_data = list(centros_map.values())
-    centros_data.sort(key=lambda c: int(c.get("total_general", 0)), reverse=True)
-    centros_top = centros_data[:TOP_CENTROS]
+    tabla_global = []
+    global_totales = {}
+    for partido, votos in ranking_global:
+        votos_int = int(votos)
+        porcentaje = round((votos_int / total_votos_global) * 100, 2) if total_votos_global else 0
+        tabla_global.append({"partido": partido, "votos": votos_int, "porcentaje": porcentaje})
+        global_totales[partido] = votos_int
 
-    for centro in centros_top:
-        centro["partidos"] = {p: centro["partidos"].get(p, {"alcalde": 0, "diputado": 0}) for p in ranking_partidos}
+    centros_ordenados = sorted(centros_map.values(), key=lambda c: c["total"], reverse=True)[:TOP_CENTROS]
+    centros_data = []
+    for c in centros_ordenados:
+        partidos_sorted = sorted(c["partidos"].items(), key=lambda x: x[1], reverse=True)
+        top_partidos = partidos_sorted[:TOP_PARTIDOS_CENTRO]
+        otros = sum(v for _, v in partidos_sorted[TOP_PARTIDOS_CENTRO:])
+
+        partidos_final = [{"partido": p, "votos": int(v)} for p, v in top_partidos]
+        if otros > 0:
+            partidos_final.append({"partido": "OTROS", "votos": int(otros)})
+
+        centros_data.append({
+            "centro_codigo": c["centro_codigo"],
+            "centro_nombre": c["centro_nombre"],
+            "total": int(c["total"]),
+            "partidos": partidos_final,
+        })
+
+    mesas_data = sorted(mesas_data, key=lambda m: m["total_mesa"], reverse=True)[:TOP_MESAS]
 
     context = {
+        "tipo": tipo,
+        "tabla_global": tabla_global,
         "top_centros": TOP_CENTROS,
-        "tabla_totales": tabla_totales,
-        "centros_top": centros_top,
-        "totales_globales_json": json.dumps(totales_ordenados, cls=DjangoJSONEncoder),
-        "centros_data_json": json.dumps(centros_top, cls=DjangoJSONEncoder),
+        "top_mesas": TOP_MESAS,
+        "mesas_chart_enabled": len(mesas_data) <= 30,
+        "global_json": json.dumps({"totales": global_totales, "total": int(total_votos_global)}, cls=DjangoJSONEncoder),
+        "centros_json": json.dumps(centros_data, cls=DjangoJSONEncoder),
+        "mesas_json": json.dumps(mesas_data, cls=DjangoJSONEncoder),
     }
 
-    return safe_render(request, "afiliados/resumen_elecciones_2023.html", context)
+    return safe_render(request, "afiliados/elecciones_dashboard.html", context)
 
 def dashboard_elecciones(request):
 

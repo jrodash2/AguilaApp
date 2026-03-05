@@ -276,11 +276,11 @@
                         </a>
                     </li>
 
-                    <li class="sidebar-list {% if '/afiliados/resumen-elecciones-2023/' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:resumen_elecciones_2023' %}">
+                    <li class="sidebar-list {% if '/afiliados/elecciones/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:elecciones_dashboard' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-widget' %}"></use></svg>
                             <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-widget' %}"></use></svg>
-                            <span>Resumen Elecciones</span>
+                            <span>Elecciones</span>
                         </a>
                     </li>
 
