@@ -16,6 +16,8 @@ urlpatterns = [
 
     path("elecciones/", views.elecciones_dashboard, name="elecciones_dashboard"),
 
+    path("elecciones/centro/<str:centro_codigo>/datos/", views.elecciones_centro_datos, name="elecciones_centro_datos"),
+
 path("filtros/", views.dashboard_filtros, name="dashboard_filtros"),
 path("filtros/export/excel/", views.exportar_filtros_excel, name="exportar_filtros_excel"),
 path("filtros/export/pdf/", views.exportar_filtros_pdf, name="exportar_filtros_pdf"),

@@ -401,9 +401,6 @@ def signin(request):
 
 
 def elecciones_dashboard(request):
-    TOP_CENTROS = 8
-    TOP_MESAS = 30
-    TOP_PARTIDOS_CENTRO = 6
     TOP_PARTIDOS_GLOBAL = 12
 
     tipo = (request.GET.get("tipo") or "ALCALDE").strip().upper()
@@ -414,48 +411,12 @@ def elecciones_dashboard(request):
     qs_count = qs.count()
 
     totales = {}
-    centros_map = {}
-    mesas_data = []
-
     for row in qs.iterator():
-        partidos_row = row.partidos or {}
-
-        centro_codigo = str(row.centro_codigo or "").strip()
-        centro_nombre = (row.centro_nombre or centro_codigo or "Sin centro").strip()
-        centro_key = centro_codigo or centro_nombre
-        if centro_key not in centros_map:
-            centros_map[centro_key] = {
-                "centro_codigo": centro_codigo,
-                "centro_nombre": centro_nombre,
-                "partidos": {},
-                "total": 0,
-            }
-
-        total_mesa = 0
-        top_partido = "-"
-        top_partido_votos = -1
-
-        for partido, votos in partidos_row.items():
+        for partido, votos in (row.partidos or {}).items():
             partido_key = str(partido or "").strip().upper()
-            votos_num = int(votos or 0)
+            totales[partido_key] = totales.get(partido_key, 0) + int(votos or 0)
 
-            totales[partido_key] = totales.get(partido_key, 0) + votos_num
-            centros_map[centro_key]["partidos"][partido_key] = centros_map[centro_key]["partidos"].get(partido_key, 0) + votos_num
-            centros_map[centro_key]["total"] += votos_num
-
-            total_mesa += votos_num
-            if votos_num > top_partido_votos:
-                top_partido_votos = votos_num
-                top_partido = partido_key
-
-        mesas_data.append({
-            "mesa": str(row.mesa or "-"),
-            "centro_nombre": centro_nombre,
-            "total_mesa": int(total_mesa),
-            "top_partido": top_partido,
-        })
-
-    # Fuente única: ranking y gráfica global salen del mismo dict `totales`.
+    # Fuente única para tabla + gráfica global.
     ranking = sorted(totales.items(), key=lambda x: x[1], reverse=True)
     total_votos_global = int(sum(v for _, v in ranking))
 
@@ -472,48 +433,99 @@ def elecciones_dashboard(request):
         tabla_global.append({"partido": partido, "votos": votos_int, "porcentaje": porcentaje})
         totales_chart[partido] = votos_int
 
+    centros = list(
+        qs.exclude(centro_codigo__isnull=True)
+        .exclude(centro_codigo="")
+        .values("centro_codigo", "centro_nombre")
+        .distinct()
+        .order_by("centro_nombre", "centro_codigo")
+    )
+
+    for c in centros:
+        if not c.get("centro_nombre"):
+            c["centro_nombre"] = c.get("centro_codigo")
+
+    centro_default = centros[0]["centro_codigo"] if centros else ""
+
     if settings.DEBUG:
         logger.info(
-            "Elecciones dashboard -> tipo=%s qs_count=%s total_votos=%s len_totales=%s",
+            "Elecciones dashboard -> tipo=%s qs_count=%s total_votos=%s len_totales=%s centros=%s",
             tipo,
             qs_count,
             total_votos_global,
             len(totales),
+            len(centros),
         )
-
-    centros_ordenados = sorted(centros_map.values(), key=lambda c: c["total"], reverse=True)[:TOP_CENTROS]
-    centros_data = []
-    for c in centros_ordenados:
-        partidos_sorted = sorted(c["partidos"].items(), key=lambda x: x[1], reverse=True)
-        top_partidos = partidos_sorted[:TOP_PARTIDOS_CENTRO]
-        otros = sum(v for _, v in partidos_sorted[TOP_PARTIDOS_CENTRO:])
-
-        partidos_final = [{"partido": p, "votos": int(v)} for p, v in top_partidos]
-        if otros > 0:
-            partidos_final.append({"partido": "OTROS", "votos": int(otros)})
-
-        centros_data.append({
-            "centro_codigo": c["centro_codigo"],
-            "centro_nombre": c["centro_nombre"],
-            "total": int(c["total"]),
-            "partidos": partidos_final,
-        })
-
-    mesas_data = sorted(mesas_data, key=lambda m: m["total_mesa"], reverse=True)[:TOP_MESAS]
 
     global_payload = {"totales": totales_chart, "total": total_votos_global}
     context = {
         "tipo": tipo,
         "tabla_global": tabla_global,
-        "top_centros": TOP_CENTROS,
-        "top_mesas": TOP_MESAS,
-        "mesas_chart_enabled": len(mesas_data) <= 30,
         "global_json": json.dumps(global_payload, cls=DjangoJSONEncoder),
-        "centros_json": json.dumps(centros_data, cls=DjangoJSONEncoder),
-        "mesas_json": json.dumps(mesas_data, cls=DjangoJSONEncoder),
+        "centros": centros,
+        "centro_default": centro_default,
     }
 
     return safe_render(request, "afiliados/elecciones_dashboard.html", context)
+
+
+def elecciones_centro_datos(request, centro_codigo):
+    tipo = (request.GET.get("tipo") or "ALCALDE").strip().upper()
+    if tipo not in {"ALCALDE", "DIPUTADOS"}:
+        tipo = "ALCALDE"
+
+    qs = TrepCentroResultado.objects.filter(tipo=tipo, centro_codigo=centro_codigo)
+
+    totales = {}
+    mesas = []
+    centro_nombre = ""
+
+    for row in qs.iterator():
+        centro_nombre = row.centro_nombre or row.centro_codigo or centro_codigo
+        partidos_row = row.partidos or {}
+
+        total_mesa = 0
+        top_partido = "-"
+        top_partido_votos = -1
+
+        for p, v in partidos_row.items():
+            key = str(p or "").strip().upper()
+            votos = int(v or 0)
+            totales[key] = totales.get(key, 0) + votos
+            total_mesa += votos
+            if votos > top_partido_votos:
+                top_partido_votos = votos
+                top_partido = key
+
+        mesas.append({
+            "mesa": str(row.mesa or "-"),
+            "total": int(total_mesa),
+            "top_partido": top_partido,
+        })
+
+    total_votos = int(sum(totales.values()))
+    ranking = [
+        {
+            "partido": k,
+            "votos": int(v),
+            "pct": round((int(v) / total_votos) * 100, 2) if total_votos else 0,
+        }
+        for k, v in sorted(totales.items(), key=lambda x: x[1], reverse=True)
+    ]
+
+    mesas.sort(key=lambda x: x["total"], reverse=True)
+
+    return JsonResponse(
+        {
+            "centro_codigo": centro_codigo,
+            "centro_nombre": centro_nombre or centro_codigo,
+            "total_votos": total_votos,
+            "totales_partidos": totales,
+            "ranking": ranking,
+            "mesas": mesas,
+        },
+        safe=True,
+    )
 
 def dashboard_elecciones(request):
 
