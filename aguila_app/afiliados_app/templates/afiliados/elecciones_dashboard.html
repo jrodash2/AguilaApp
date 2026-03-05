@@ -99,16 +99,19 @@
     const centrosEl = document.getElementById("centros-data");
     const mesasEl = document.getElementById("mesas-data");
 
-    const globalData = globalEl ? JSON.parse(globalEl.textContent) : { totales: {}, total: 0 };
+    const globalParsed = globalEl ? JSON.parse(globalEl.textContent) : { totales: {}, total: 0 };
+    const globalData = (typeof globalParsed === "string") ? JSON.parse(globalParsed) : globalParsed;
     const centrosData = centrosEl ? JSON.parse(centrosEl.textContent) : [];
     const mesasData = mesasEl ? JSON.parse(mesasEl.textContent) : [];
 
-    const partidos = Object.keys(globalData.totales || {});
-    const votos = partidos.map((p) => Number((globalData.totales || {})[p]) || 0);
+    const totales = (globalData && globalData.totales) ? globalData.totales : {};
+    const partidos = Object.keys(totales);
+    const votos = partidos.map((p) => Number(totales[p]) || 0);
+    const sumaGlobal = votos.reduce((a, b) => a + b, 0);
 
     const chartGlobal = document.querySelector("#chart-global");
     if (chartGlobal) {
-      if (partidos.length > 0) {
+      if (partidos.length > 0 && sumaGlobal > 0) {
         new ApexCharts(chartGlobal, {
           chart: { type: "bar", height: 380, toolbar: { show: false }, animations: { enabled: false } },
           plotOptions: { bar: { horizontal: true, borderRadius: 4 } },
