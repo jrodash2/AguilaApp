@@ -36,7 +36,7 @@ import json
 from django.contrib.auth.models import Group
 from django.views.decorators.http import require_GET
 from django.db.models.functions import Coalesce
-from django.db import transaction, IntegrityError
+from django.db import transaction, IntegrityError, connection
 from django.db.models.deletion import ProtectedError
 from django.db.models import Sum
 from django.shortcuts import render
