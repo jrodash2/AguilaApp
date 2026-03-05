@@ -1,0 +1,176 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0">Elecciones</h4>
+        </div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'afiliados:dahsboard' %}">
+              <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-home"></use></svg>
+            </a></li>
+            <li class="breadcrumb-item">Dashboard</li>
+            <li class="breadcrumb-item active">Elecciones</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    <div class="card">
+      <div class="card-body">
+        <div class="btn-group" role="group" aria-label="Tipo elección">
+          <a href="{% url 'afiliados:elecciones_dashboard' %}?tipo=ALCALDE" class="btn {% if tipo == 'ALCALDE' %}btn-primary{% else %}btn-outline-primary{% endif %}">ALCALDE</a>
+          <a href="{% url 'afiliados:elecciones_dashboard' %}?tipo=DIPUTADOS" class="btn {% if tipo == 'DIPUTADOS' %}btn-primary{% else %}btn-outline-primary{% endif %}">DIPUTADOS</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header pb-0"><h4>Total de votos por partido ({{ tipo }})</h4></div>
+      <div class="card-body"><div id="chart-global" style="height: 380px;"></div></div>
+      <div class="card-body">
+        <div class="table-responsive custom-scrollbar">
+          <table class="table table-striped">
+            <thead><tr><th>Partido</th><th>Votos</th><th>%</th></tr></thead>
+            <tbody>
+              {% for fila in tabla_global %}
+                <tr><td>{{ fila.partido }}</td><td>{{ fila.votos }}</td><td>{{ fila.porcentaje }}%</td></tr>
+              {% empty %}
+                <tr><td colspan="3" class="text-center text-muted">Sin datos para mostrar.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header pb-0"><h4>Centros de Votación (Top {{ top_centros }})</h4></div>
+      <div class="card-body">
+        <div class="row">
+          {% for centro in centros_top %}
+            <div class="col-12 col-xl-6 mb-4">
+              <div class="border rounded p-3 h-100">
+                <h5 class="mb-1">{{ centro.centro_nombre }}</h5>
+                {% if centro.centro_codigo %}<p class="text-muted mb-2">Código: {{ centro.centro_codigo }}</p>{% endif %}
+                <p class="mb-3"><strong>Total votos:</strong> {{ centro.total }}</p>
+                <div id="chart-centro-{{ forloop.counter }}" style="height: 280px;"></div>
+              </div>
+            </div>
+          {% empty %}
+            <div class="col-12"><p class="text-center text-muted mb-0">No hay centros para mostrar.</p></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header pb-0"><h4>Top {{ top_mesas }} mesas por total de votos</h4></div>
+      <div class="card-body">
+        <div id="chart-mesas" style="height: 320px;"></div>
+        <div class="table-responsive custom-scrollbar mt-3">
+          <table class="table table-striped">
+            <thead><tr><th>Mesa</th><th>Centro</th><th>Total</th><th>Top partido</th></tr></thead>
+            <tbody id="tabla-mesas-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    {{ global_json|json_script:"global-data" }}
+    {{ centros_json|json_script:"centros-data" }}
+    {{ mesas_json|json_script:"mesas-data" }}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const globalEl = document.getElementById("global-data");
+    const centrosEl = document.getElementById("centros-data");
+    const mesasEl = document.getElementById("mesas-data");
+
+    const globalData = globalEl ? JSON.parse(globalEl.textContent) : { totales: {}, total: 0 };
+    const centrosData = centrosEl ? JSON.parse(centrosEl.textContent) : [];
+    const mesasData = mesasEl ? JSON.parse(mesasEl.textContent) : [];
+
+    const partidos = Object.keys(globalData.totales || {});
+    const votos = partidos.map((p) => Number((globalData.totales || {})[p]) || 0);
+
+    const chartGlobal = document.querySelector("#chart-global");
+    if (chartGlobal) {
+      if (partidos.length > 0) {
+        new ApexCharts(chartGlobal, {
+          chart: { type: "bar", height: 380, toolbar: { show: false }, animations: { enabled: false } },
+          plotOptions: { bar: { horizontal: true, borderRadius: 4 } },
+          dataLabels: { enabled: false },
+          series: [{ name: "Votos", data: votos }],
+          xaxis: { categories: partidos }
+        }).render();
+      } else {
+        chartGlobal.innerHTML = "<p class='text-center text-muted'>No hay datos globales.</p>";
+      }
+    }
+
+    centrosData.forEach(function (centro, idx) {
+      const el = document.querySelector(`#chart-centro-${idx + 1}`);
+      if (!el) return;
+
+      const labels = (centro.partidos || []).map((item) => item.partido);
+      const data = (centro.partidos || []).map((item) => Number(item.votos) || 0);
+
+      if (labels.length === 0) {
+        el.innerHTML = "<p class='text-center text-muted'>Sin datos.</p>";
+        return;
+      }
+
+      new ApexCharts(el, {
+        chart: { type: "bar", height: 280, toolbar: { show: false }, animations: { enabled: false } },
+        plotOptions: { bar: { horizontal: true, barHeight: "60%" } },
+        dataLabels: { enabled: false },
+        series: [{ name: "Votos", data: data }],
+        xaxis: { categories: labels }
+      }).render();
+    });
+
+    const tablaMesasBody = document.querySelector("#tabla-mesas-body");
+    if (tablaMesasBody) {
+      if (mesasData.length > 0) {
+        tablaMesasBody.innerHTML = mesasData.map((m) => `
+          <tr>
+            <td>${m.mesa}</td>
+            <td>${m.centro_nombre}</td>
+            <td>${Number(m.total_mesa) || 0}</td>
+            <td>${m.top_partido || "-"}</td>
+          </tr>
+        `).join("");
+      } else {
+        tablaMesasBody.innerHTML = "<tr><td colspan='4' class='text-center text-muted'>Sin datos de mesas.</td></tr>";
+      }
+    }
+
+    const chartMesas = document.querySelector("#chart-mesas");
+    if (chartMesas) {
+      if (mesasData.length > 0 && mesasData.length <= 30) {
+        new ApexCharts(chartMesas, {
+          chart: { type: "bar", height: 320, toolbar: { show: false }, animations: { enabled: false } },
+          dataLabels: { enabled: false },
+          series: [{ name: "Total", data: mesasData.map((m) => Number(m.total_mesa) || 0) }],
+          xaxis: { categories: mesasData.map((m) => `Mesa ${m.mesa}`) }
+        }).render();
+      } else {
+        chartMesas.innerHTML = "<p class='text-center text-muted'>Gráfica de mesas omitida por volumen; revisa la tabla.</p>";
+      }
+    }
+  });
+</script>
+{% endblock %}

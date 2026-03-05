@@ -65,6 +65,7 @@ from django.views.generic.detail import DetailView
 from django.core.mail import BadHeaderError
 from smtplib import SMTPException
 from django.db.models.functions import ExtractYear, ExtractMonth
+from django.core.serializers.json import DjangoJSONEncoder
 
 from .forms import PadronUploadForm
 
@@ -104,113 +105,7 @@ from .models import TrepCentroResultado
 import json
 
 def elecciones2023(request):
-
-    # 🔵 Filtros
-    tipo = request.GET.get("tipo", "")
-    departamento = request.GET.get("departamento", "")
-    municipio = request.GET.get("municipio", "")
-    centro = request.GET.get("centro", "")
-
-    qs = TrepCentroResultado.objects.all()
-
-    # ---- Aplicar filtros ----
-    if tipo:
-        qs = qs.filter(tipo=tipo)
-
-    if departamento:
-        qs = qs.filter(departamento=departamento)
-
-    if municipio:
-        qs = qs.filter(municipio=municipio)
-
-    if centro:
-        qs = qs.filter(centro_codigo=centro)
-
-    # 🔹 Listas dinámicas
-    tipos = ["PRESIDENTE", "ALCALDE", "DIPUTADOS", "PARLACEN"]
-
-    departamentos = (
-        TrepCentroResultado.objects.values_list("departamento", flat=True)
-        .distinct().order_by("departamento")
-    )
-
-    municipios = []
-    if departamento:
-        municipios = (
-            TrepCentroResultado.objects
-            .filter(departamento=departamento)
-            .values_list("municipio", flat=True)
-            .distinct().order_by("municipio")
-        )
-
-    centros = (
-        TrepCentroResultado.objects
-        .filter(municipio=municipio) if municipio else TrepCentroResultado.objects
-    ).values(
-        "centro_codigo", "centro_nombre"
-    ).distinct().order_by("centro_nombre")
-
-    # ============================================================
-    # 🟢 OBTENER NOMBRE DEL CENTRO SELECCIONADO
-    # ============================================================
-    centro_nombre = ""
-
-    if centro:
-        fila_centro = TrepCentroResultado.objects.filter(centro_codigo=centro).first()
-        if fila_centro:
-            centro_nombre = fila_centro.centro_nombre
-
-    # ============================================================
-    # 🟢 1. RESUMEN DE PARTIDOS (GLOBAL O FILTRADO)
-    # ============================================================
-    resumen_partidos = {}
-    for fila in qs:
-        for partido, votos in fila.partidos.items():
-            resumen_partidos[partido] = resumen_partidos.get(partido, 0) + votos
-
-    ranking = sorted(resumen_partidos.items(), key=lambda x: x[1], reverse=True)
-
-    # ============================================================
-    # 🟦 2. VOTOS POR MESA (PARA GRÁFICA 2)
-    # ============================================================
-    votos_por_mesa = {}
-
-    for fila in qs:
-        mesa = fila.mesa
-        if mesa not in votos_por_mesa:
-            votos_por_mesa[mesa] = {}
-
-        for partido, votos in fila.partidos.items():
-            votos_por_mesa[mesa][partido] = (
-                votos_por_mesa[mesa].get(partido, 0) + votos
-            )
-
-    try:
-        votos_por_mesa = dict(sorted(votos_por_mesa.items(), key=lambda x: int(x[0])))
-    except:
-        pass
-
-    # ============================================================
-    # CONTEXTO
-    # ============================================================
-    context = {
-        "tipos": tipos,
-        "departamentos": departamentos,
-        "municipios": municipios,
-        "centros": centros,
-
-        "tipo": tipo,
-        "departamento": departamento,
-        "municipio": municipio,
-        "centro": centro,
-        "centro_nombre": centro_nombre,   # <<<<<< AQUI LO AGREGAMOS
-
-        "resumen_partidos": json.dumps(resumen_partidos),
-        "ranking": ranking,
-        "votos_por_mesa": json.dumps(votos_por_mesa),
-    }
-
-    return safe_render(request, "afiliados/elecciones2023.html", context)
+    raise Http404()
 
 
     
@@ -502,6 +397,111 @@ def signin(request):
                 'error': 'Usuario o contraseña incorrectos',
                 'institucion': institucion,
             })
+
+
+
+def elecciones_dashboard(request):
+    TOP_CENTROS = 8
+    TOP_MESAS = 30
+    TOP_PARTIDOS_CENTRO = 6
+    TOP_PARTIDOS_GLOBAL = 12
+
+    tipo = (request.GET.get("tipo") or "ALCALDE").strip().upper()
+    if tipo not in {"ALCALDE", "DIPUTADOS"}:
+        tipo = "ALCALDE"
+
+    qs = TrepCentroResultado.objects.filter(tipo=tipo)
+
+    totales_raw = {}
+    centros_map = {}
+    mesas_data = []
+
+    for row in qs.iterator():
+        partidos_row = row.partidos or {}
+
+        centro_codigo = str(row.centro_codigo or "").strip()
+        centro_nombre = (row.centro_nombre or centro_codigo or "Sin centro").strip()
+        centro_key = centro_codigo or centro_nombre
+        if centro_key not in centros_map:
+            centros_map[centro_key] = {
+                "centro_codigo": centro_codigo,
+                "centro_nombre": centro_nombre,
+                "partidos": {},
+                "total": 0,
+            }
+
+        total_mesa = 0
+        top_partido = "-"
+        top_partido_votos = -1
+
+        for partido, votos in partidos_row.items():
+            partido_key = str(partido or "").strip().upper()
+            votos_num = int(votos or 0)
+
+            totales_raw[partido_key] = totales_raw.get(partido_key, 0) + votos_num
+            centros_map[centro_key]["partidos"][partido_key] = centros_map[centro_key]["partidos"].get(partido_key, 0) + votos_num
+            centros_map[centro_key]["total"] += votos_num
+
+            total_mesa += votos_num
+            if votos_num > top_partido_votos:
+                top_partido_votos = votos_num
+                top_partido = partido_key
+
+        mesas_data.append({
+            "mesa": str(row.mesa or "-"),
+            "centro_nombre": centro_nombre,
+            "total_mesa": int(total_mesa),
+            "top_partido": top_partido,
+        })
+
+    ranking_global = sorted(totales_raw.items(), key=lambda x: x[1], reverse=True)
+    total_votos_global = sum(v for _, v in ranking_global)
+
+    ranking_global = ranking_global[:TOP_PARTIDOS_GLOBAL]
+    resto_global = sum(v for _, v in sorted(totales_raw.items(), key=lambda x: x[1], reverse=True)[TOP_PARTIDOS_GLOBAL:])
+    if resto_global > 0:
+        ranking_global.append(("OTROS", int(resto_global)))
+
+    tabla_global = []
+    global_totales = {}
+    for partido, votos in ranking_global:
+        votos_int = int(votos)
+        porcentaje = round((votos_int / total_votos_global) * 100, 2) if total_votos_global else 0
+        tabla_global.append({"partido": partido, "votos": votos_int, "porcentaje": porcentaje})
+        global_totales[partido] = votos_int
+
+    centros_ordenados = sorted(centros_map.values(), key=lambda c: c["total"], reverse=True)[:TOP_CENTROS]
+    centros_data = []
+    for c in centros_ordenados:
+        partidos_sorted = sorted(c["partidos"].items(), key=lambda x: x[1], reverse=True)
+        top_partidos = partidos_sorted[:TOP_PARTIDOS_CENTRO]
+        otros = sum(v for _, v in partidos_sorted[TOP_PARTIDOS_CENTRO:])
+
+        partidos_final = [{"partido": p, "votos": int(v)} for p, v in top_partidos]
+        if otros > 0:
+            partidos_final.append({"partido": "OTROS", "votos": int(otros)})
+
+        centros_data.append({
+            "centro_codigo": c["centro_codigo"],
+            "centro_nombre": c["centro_nombre"],
+            "total": int(c["total"]),
+            "partidos": partidos_final,
+        })
+
+    mesas_data = sorted(mesas_data, key=lambda m: m["total_mesa"], reverse=True)[:TOP_MESAS]
+
+    context = {
+        "tipo": tipo,
+        "tabla_global": tabla_global,
+        "top_centros": TOP_CENTROS,
+        "top_mesas": TOP_MESAS,
+        "mesas_chart_enabled": len(mesas_data) <= 30,
+        "global_json": json.dumps({"totales": global_totales, "total": int(total_votos_global)}, cls=DjangoJSONEncoder),
+        "centros_json": json.dumps(centros_data, cls=DjangoJSONEncoder),
+        "mesas_json": json.dumps(mesas_data, cls=DjangoJSONEncoder),
+    }
+
+    return safe_render(request, "afiliados/elecciones_dashboard.html", context)
 
 def dashboard_elecciones(request):
 

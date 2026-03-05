@@ -276,15 +276,15 @@
                         </a>
                     </li>
 
-                    {% if es_administrador %}
-                    <li class="sidebar-list {% if '/afiliados/elecciones2023' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:elecciones2023' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
-                            <span>Elecciones 2023</span>
+                    <li class="sidebar-list {% if '/afiliados/elecciones/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:elecciones_dashboard' %}">
+                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-widget' %}"></use></svg>
+                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-widget' %}"></use></svg>
+                            <span>Elecciones</span>
                         </a>
                     </li>
 
+                    {% if es_administrador %}
                     <li class="sidebar-list {% if '/afiliados/padron/cargar/' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:padron_cargar' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-file' %}"></use></svg>
