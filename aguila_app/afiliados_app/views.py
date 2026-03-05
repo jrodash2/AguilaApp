@@ -33,7 +33,6 @@ from collections import defaultdict
 from django.shortcuts import get_object_or_404, redirect
 from django.contrib import messages
 import json
-from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib.auth.models import Group
 from django.views.decorators.http import require_GET
 from django.db.models.functions import Coalesce
@@ -206,9 +205,9 @@ def elecciones2023(request):
         "centro": centro,
         "centro_nombre": centro_nombre,   # <<<<<< AQUI LO AGREGAMOS
 
-        "resumen_partidos_json": json.dumps(resumen_partidos, cls=DjangoJSONEncoder),
+        "resumen_partidos": json.dumps(resumen_partidos),
         "ranking": ranking,
-        "votos_por_mesa_json": json.dumps(votos_por_mesa, cls=DjangoJSONEncoder),
+        "votos_por_mesa": json.dumps(votos_por_mesa),
     }
 
     return safe_render(request, "afiliados/elecciones2023.html", context)

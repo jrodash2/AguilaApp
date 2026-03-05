@@ -373,18 +373,15 @@
   });
   // ================== show and hide input start
   const toggle = document.getElementById("searchIcon")
-  const searchInput = document.getElementById("searchInput")
   let newinput = false
-  if (toggle && searchInput) {
-    toggle.addEventListener("click", function(){
-      newinput = !newinput
-      if(newinput){
-        searchInput.classList.add("show")
-      }else{
-        searchInput.classList.remove("show")
-      }
-    })
-  }
+  toggle.addEventListener("click", function(){
+    newinput = !newinput
+    if(newinput){
+      document.getElementById("searchInput").classList.add("show")
+    }else{
+      document.getElementById("searchInput").classList.remove("show")
+    }
+  })
   // ================ show and hide input css end 
 
 })(jQuery);
