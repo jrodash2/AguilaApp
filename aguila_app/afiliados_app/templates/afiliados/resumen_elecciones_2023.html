@@ -1,0 +1,173 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0">Resumen Elecciones 2023</h4>
+        </div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'afiliados:dahsboard' %}">
+              <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-home"></use></svg>
+            </a></li>
+            <li class="breadcrumb-item">Dashboard</li>
+            <li class="breadcrumb-item active">Resumen Elecciones</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    <div class="card">
+      <div class="card-header pb-0">
+        <h4>Totales Globales por Partido (ALCALDE vs DIPUTADO)</h4>
+      </div>
+      <div class="card-body">
+        <div id="chart-global" style="height: 380px;"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header pb-0">
+        <h4>Comparativo por Partido</h4>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive custom-scrollbar">
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>Partido</th>
+                <th>Alcalde</th>
+                <th>Diputado</th>
+                <th>Diferencia</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for fila in tabla_totales %}
+                <tr>
+                  <td>{{ fila.partido }}</td>
+                  <td>{{ fila.alcalde }}</td>
+                  <td>{{ fila.diputado }}</td>
+                  <td>{{ fila.diferencia }}</td>
+                  <td>{{ fila.total }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="5" class="text-center text-muted">No hay datos para mostrar.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header pb-0">
+        <h4>Centros de Votación (Top {{ top_centros }} por participación)</h4>
+      </div>
+      <div class="card-body">
+        <div class="row">
+          {% for centro in centros_top %}
+            <div class="col-12 col-xl-6 mb-4">
+              <div class="border rounded p-3 h-100">
+                <h5 class="mb-2">{{ centro.centro_nombre }}</h5>
+                {% if centro.centro_codigo %}
+                  <p class="text-muted mb-2">Código: {{ centro.centro_codigo }}</p>
+                {% endif %}
+                <p class="mb-3"><strong>Total:</strong> {{ centro.total_general }}</p>
+                <div id="chart-centro-{{ forloop.counter }}" style="height: 300px;"></div>
+              </div>
+            </div>
+          {% empty %}
+            <div class="col-12">
+              <p class="text-center text-muted mb-0">No hay centros para mostrar.</p>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {{ totales_globales_json|json_script:"totales-globales" }}
+    {{ centros_data_json|json_script:"centros-data" }}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const totalesEl = document.getElementById("totales-globales");
+    const centrosEl = document.getElementById("centros-data");
+
+    const totales = totalesEl ? JSON.parse(totalesEl.textContent) : {};
+    const centros = centrosEl ? JSON.parse(centrosEl.textContent) : [];
+
+    const partidos = Object.keys(totales);
+    const serieAlcalde = partidos.map((p) => Number((totales[p] || {}).alcalde) || 0);
+    const serieDiputado = partidos.map((p) => Number((totales[p] || {}).diputado) || 0);
+
+    const elGlobal = document.querySelector("#chart-global");
+    if (elGlobal) {
+      if (partidos.length > 0) {
+        new ApexCharts(elGlobal, {
+          chart: {
+            type: "bar",
+            height: 380,
+            toolbar: { show: false },
+            animations: { enabled: false }
+          },
+          plotOptions: { bar: { horizontal: false, columnWidth: "55%" } },
+          dataLabels: { enabled: false },
+          series: [
+            { name: "Alcalde", data: serieAlcalde },
+            { name: "Diputado", data: serieDiputado }
+          ],
+          xaxis: { categories: partidos },
+          legend: { position: "top" }
+        }).render();
+      } else {
+        elGlobal.innerHTML = "<p class='text-center text-muted'>No hay datos globales para mostrar.</p>";
+      }
+    }
+
+    centros.forEach(function (centro, idx) {
+      const el = document.querySelector(`#chart-centro-${idx + 1}`);
+      if (!el) return;
+
+      const partidosCentro = Object.keys(centro.partidos || {});
+      const alcaldeCentro = partidosCentro.map((p) => Number(((centro.partidos || {})[p] || {}).alcalde) || 0);
+      const diputadoCentro = partidosCentro.map((p) => Number(((centro.partidos || {})[p] || {}).diputado) || 0);
+
+      if (partidosCentro.length === 0) {
+        el.innerHTML = "<p class='text-center text-muted'>Sin datos para este centro.</p>";
+        return;
+      }
+
+      new ApexCharts(el, {
+        chart: {
+          type: "bar",
+          height: 300,
+          toolbar: { show: false },
+          animations: { enabled: false }
+        },
+        plotOptions: { bar: { horizontal: true, barHeight: "60%" } },
+        dataLabels: { enabled: false },
+        series: [
+          { name: "Alcalde", data: alcaldeCentro },
+          { name: "Diputado", data: diputadoCentro }
+        ],
+        xaxis: { categories: partidosCentro },
+        legend: { position: "top" }
+      }).render();
+    });
+  });
+</script>
+{% endblock %}
