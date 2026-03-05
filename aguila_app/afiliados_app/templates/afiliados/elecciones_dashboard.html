@@ -1,0 +1,299 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6">
+          <h4 class="card-title mb-0">Elecciones</h4>
+        </div>
+        <div class="col-6">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'afiliados:dahsboard' %}">
+              <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-home"></use></svg>
+            </a></li>
+            <li class="breadcrumb-item">Dashboard</li>
+            <li class="breadcrumb-item active">Elecciones</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    <div class="card">
+      <div class="card-body">
+        <div class="btn-group" role="group" aria-label="Tipo elección">
+          <a href="{% url 'afiliados:elecciones_dashboard' %}?tipo=ALCALDE" class="btn {% if tipo == 'ALCALDE' %}btn-primary{% else %}btn-outline-primary{% endif %}">ALCALDE</a>
+          <a href="{% url 'afiliados:elecciones_dashboard' %}?tipo=DIPUTADOS" class="btn {% if tipo == 'DIPUTADOS' %}btn-primary{% else %}btn-outline-primary{% endif %}">DIPUTADOS</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header pb-0"><h4>Total de votos por partido ({{ tipo }})</h4></div>
+      <div class="card-body"><div id="chart-global" style="height: 380px;"></div></div>
+      <div class="card-body">
+        <div class="table-responsive custom-scrollbar">
+          <table class="table table-striped">
+            <thead><tr><th>Partido</th><th>Votos</th><th>%</th></tr></thead>
+            <tbody>
+              {% for fila in tabla_global %}
+                <tr><td>{{ fila.partido }}</td><td>{{ fila.votos }}</td><td>{{ fila.porcentaje }}%</td></tr>
+              {% empty %}
+                <tr><td colspan="3" class="text-center text-muted">Sin datos para mostrar.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header pb-0"><h4>Centros de Votación</h4></div>
+      <div class="card-body">
+        <input type="text" id="buscar-centro" class="form-control mb-3" placeholder="Buscar centro...">
+        <div id="centros-buttons" class="d-flex flex-wrap gap-2">
+          {% for centro in centros %}
+            <button type="button"
+                    class="btn btn-outline-primary btn-sm centro-btn"
+                    data-centro="{{ centro.centro_codigo }}"
+                    data-nombre="{{ centro.centro_nombre|default:centro.centro_codigo }}">
+              {{ centro.centro_nombre|default:centro.centro_codigo }}
+            </button>
+          {% empty %}
+            <p class="text-muted mb-0">No hay centros para mostrar.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header pb-0"><h4 id="centro-titulo">Centro seleccionado</h4></div>
+      <div class="card-body">
+        <p id="centro-loading" class="text-muted d-none">Cargando datos del centro...</p>
+        <div id="chart-centro" style="height: 360px;"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header pb-0"><h4>Ranking por partido (Centro)</h4></div>
+      <div class="card-body">
+        <div class="table-responsive custom-scrollbar">
+          <table class="table table-striped">
+            <thead><tr><th>Partido</th><th>Votos</th><th>%</th></tr></thead>
+            <tbody id="tabla-centro-ranking"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header pb-0"><h4>Mesas del centro seleccionado</h4></div>
+      <div class="card-body">
+        <input type="text" id="buscar-mesa" class="form-control mb-3" placeholder="Buscar mesa o partido...">
+        <div class="table-responsive custom-scrollbar">
+          <table class="table table-striped">
+            <thead><tr><th>Mesa</th><th>Total</th><th>Top partido</th></tr></thead>
+            <tbody id="tabla-centro-mesas"></tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-between mt-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="mesas-prev">Anterior</button>
+          <span id="mesas-page-info" class="text-muted small"></span>
+          <button type="button" class="btn btn-outline-secondary btn-sm" id="mesas-next">Siguiente</button>
+        </div>
+      </div>
+    </div>
+
+    {{ global_json|json_script:"global-data" }}
+    {{ centro_default|json_script:"centro-default" }}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const globalEl = document.getElementById("global-data");
+    const centroDefaultEl = document.getElementById("centro-default");
+
+    const globalParsed = globalEl ? JSON.parse(globalEl.textContent) : { totales: {}, total: 0 };
+    const globalData = (typeof globalParsed === "string") ? JSON.parse(globalParsed) : globalParsed;
+    const centroDefault = centroDefaultEl ? JSON.parse(centroDefaultEl.textContent) : "";
+
+    const totales = (globalData && globalData.totales) ? globalData.totales : {};
+    const partidos = Object.keys(totales);
+    const votos = partidos.map((p) => Number(totales[p]) || 0);
+    const sumaGlobal = votos.reduce((a, b) => a + b, 0);
+
+    const chartGlobal = document.querySelector("#chart-global");
+    if (chartGlobal) {
+      if (partidos.length > 0 && sumaGlobal > 0) {
+        new ApexCharts(chartGlobal, {
+          chart: { type: "bar", height: 380, toolbar: { show: false }, animations: { enabled: false } },
+          plotOptions: { bar: { horizontal: true, borderRadius: 4 } },
+          dataLabels: { enabled: false },
+          series: [{ name: "Votos", data: votos }],
+          xaxis: { categories: partidos }
+        }).render();
+      } else {
+        chartGlobal.innerHTML = "<p class='text-center text-muted'>No hay datos globales.</p>";
+      }
+    }
+
+    const tipoActual = new URLSearchParams(window.location.search).get("tipo") || "{{ tipo }}";
+    const botonesCentro = Array.from(document.querySelectorAll(".centro-btn"));
+    const buscarCentro = document.getElementById("buscar-centro");
+    const centroTitulo = document.getElementById("centro-titulo");
+    const centroLoading = document.getElementById("centro-loading");
+    const tablaRanking = document.getElementById("tabla-centro-ranking");
+    const tablaMesas = document.getElementById("tabla-centro-mesas");
+    const buscarMesa = document.getElementById("buscar-mesa");
+    const prevBtn = document.getElementById("mesas-prev");
+    const nextBtn = document.getElementById("mesas-next");
+    const pageInfo = document.getElementById("mesas-page-info");
+
+    let centroChart = null;
+    let mesasAll = [];
+    let mesasFiltradas = [];
+    let page = 1;
+    const pageSize = 12;
+
+    function renderMesas() {
+      if (!tablaMesas) return;
+      const totalPages = Math.max(1, Math.ceil(mesasFiltradas.length / pageSize));
+      if (page > totalPages) page = totalPages;
+      const start = (page - 1) * pageSize;
+      const slice = mesasFiltradas.slice(start, start + pageSize);
+
+      if (slice.length === 0) {
+        tablaMesas.innerHTML = "<tr><td colspan='3' class='text-center text-muted'>No hay mesas para mostrar.</td></tr>";
+      } else {
+        tablaMesas.innerHTML = slice.map((m) => `
+          <tr>
+            <td>${m.mesa}</td>
+            <td>${Number(m.total) || 0}</td>
+            <td>${m.top_partido || "-"}</td>
+          </tr>
+        `).join("");
+      }
+
+      if (pageInfo) pageInfo.textContent = `Página ${page} de ${totalPages}`;
+      if (prevBtn) prevBtn.disabled = page <= 1;
+      if (nextBtn) nextBtn.disabled = page >= totalPages;
+    }
+
+    function setCentroActivo(codigo) {
+      botonesCentro.forEach((btn) => {
+        const active = btn.dataset.centro === codigo;
+        btn.classList.toggle("btn-primary", active);
+        btn.classList.toggle("btn-outline-primary", !active);
+      });
+    }
+
+    async function loadCentro(centroCodigo, centroNombre) {
+      const chartCentro = document.querySelector("#chart-centro");
+      if (!chartCentro) return;
+
+      if (centroLoading) centroLoading.classList.remove("d-none");
+      if (centroTitulo) centroTitulo.textContent = `Centro: ${centroNombre || centroCodigo}`;
+
+      try {
+        const resp = await fetch(`/afiliados/elecciones/centro/${encodeURIComponent(centroCodigo)}/datos/?tipo=${encodeURIComponent(tipoActual)}`);
+        if (!resp.ok) throw new Error("No se pudo cargar el centro");
+        const data = await resp.json();
+
+        const totalesCentro = data.totales_partidos || {};
+        const labels = Object.keys(totalesCentro);
+        const values = labels.map((k) => Number(totalesCentro[k]) || 0);
+
+        if (centroChart) {
+          centroChart.destroy();
+          centroChart = null;
+        }
+
+        if (labels.length === 0 || values.reduce((a, b) => a + b, 0) === 0) {
+          chartCentro.innerHTML = "<p class='text-center text-muted'>No hay datos para este centro.</p>";
+        } else {
+          chartCentro.innerHTML = "";
+          centroChart = new ApexCharts(chartCentro, {
+            chart: { type: "bar", height: 360, toolbar: { show: false }, animations: { enabled: false } },
+            plotOptions: { bar: { horizontal: true, borderRadius: 4 } },
+            dataLabels: { enabled: false },
+            series: [{ name: "Votos", data: values }],
+            xaxis: { categories: labels }
+          });
+          centroChart.render();
+        }
+
+        if (tablaRanking) {
+          const ranking = data.ranking || [];
+          tablaRanking.innerHTML = ranking.length
+            ? ranking.map((r) => `<tr><td>${r.partido}</td><td>${Number(r.votos) || 0}</td><td>${Number(r.pct || 0).toFixed(2)}%</td></tr>`).join("")
+            : "<tr><td colspan='3' class='text-center text-muted'>No hay ranking para este centro.</td></tr>";
+        }
+
+        mesasAll = (data.mesas || []).map((m) => ({
+          mesa: m.mesa,
+          total: Number(m.total) || 0,
+          top_partido: m.top_partido || "-",
+        }));
+        mesasFiltradas = mesasAll.slice();
+        page = 1;
+        renderMesas();
+      } catch (err) {
+        if (chartCentro) chartCentro.innerHTML = "<p class='text-center text-danger'>Error al cargar datos del centro.</p>";
+        if (tablaRanking) tablaRanking.innerHTML = "<tr><td colspan='3' class='text-center text-danger'>Error al cargar ranking.</td></tr>";
+        if (tablaMesas) tablaMesas.innerHTML = "<tr><td colspan='3' class='text-center text-danger'>Error al cargar mesas.</td></tr>";
+      } finally {
+        if (centroLoading) centroLoading.classList.add("d-none");
+      }
+    }
+
+    if (buscarCentro) {
+      buscarCentro.addEventListener("input", function () {
+        const q = (this.value || "").toLowerCase();
+        botonesCentro.forEach((btn) => {
+          const txt = (btn.dataset.nombre || btn.textContent || "").toLowerCase();
+          btn.classList.toggle("d-none", q && !txt.includes(q));
+        });
+      });
+    }
+
+    botonesCentro.forEach((btn) => {
+      btn.addEventListener("click", function () {
+        const codigo = this.dataset.centro;
+        const nombre = this.dataset.nombre || codigo;
+        setCentroActivo(codigo);
+        loadCentro(codigo, nombre);
+      });
+    });
+
+    if (buscarMesa) {
+      buscarMesa.addEventListener("input", function () {
+        const q = (this.value || "").toLowerCase();
+        mesasFiltradas = mesasAll.filter((m) =>
+          String(m.mesa).toLowerCase().includes(q) || String(m.top_partido).toLowerCase().includes(q)
+        );
+        page = 1;
+        renderMesas();
+      });
+    }
+
+    if (prevBtn) prevBtn.addEventListener("click", function () { page -= 1; renderMesas(); });
+    if (nextBtn) nextBtn.addEventListener("click", function () { page += 1; renderMesas(); });
+
+    if (centroDefault && botonesCentro.length > 0) {
+      const btnInicial = botonesCentro.find((b) => b.dataset.centro === centroDefault) || botonesCentro[0];
+      const codigo = btnInicial.dataset.centro;
+      const nombre = btnInicial.dataset.nombre || codigo;
+      setCentroActivo(codigo);
+      loadCentro(codigo, nombre);
+    }
+  });
+</script>
+{% endblock %}
