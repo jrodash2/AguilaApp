@@ -398,6 +398,93 @@ def signin(request):
                 'institucion': institucion,
             })
 
+
+
+def resumen_elecciones_2023(request):
+    TOP_CENTROS = 8
+    PARTIDOS = [
+        "todos", "cambio", "morena", "vamos", "pin", "renovador",
+        "valor", "azul", "une", "fcn_nacion", "podemos", "uc",
+    ]
+
+    qs = TrepCentroResultado.objects.filter(tipo__in=["ALCALDE", "DIPUTADO", "DIPUTADOS"])
+
+    def normalizar_tipo(valor):
+        valor = (valor or "").strip().upper()
+        return "diputado" if valor.startswith("DIPUT") else "alcalde"
+
+    partidos_labels = [p.upper() for p in PARTIDOS]
+
+    totales_globales = {
+        partido: {"alcalde": 0, "diputado": 0}
+        for partido in partidos_labels
+    }
+
+    centros_map = {}
+
+    for fila in qs:
+        tipo = normalizar_tipo(fila.tipo)
+        centro_codigo = str(fila.centro_codigo or "").strip()
+        centro_nombre = (fila.centro_nombre or centro_codigo or "Sin centro").strip()
+
+        centro_key = centro_codigo or centro_nombre
+        if centro_key not in centros_map:
+            centros_map[centro_key] = {
+                "centro_nombre": centro_nombre,
+                "centro_codigo": centro_codigo,
+                "partidos": {
+                    partido: {"alcalde": 0, "diputado": 0}
+                    for partido in partidos_labels
+                },
+                "total_general": 0,
+            }
+
+        fila_partidos = fila.partidos or {}
+        for partido_col in PARTIDOS:
+            partido = partido_col.upper()
+            votos = int(fila_partidos.get(partido_col, 0) or 0)
+
+            totales_globales[partido][tipo] += votos
+            centros_map[centro_key]["partidos"][partido][tipo] += votos
+            centros_map[centro_key]["total_general"] += votos
+
+    ranking_partidos = sorted(
+        partidos_labels,
+        key=lambda p: totales_globales[p]["alcalde"] + totales_globales[p]["diputado"],
+        reverse=True,
+    )
+
+    totales_globales_ordenados = {p: totales_globales[p] for p in ranking_partidos}
+
+    tabla_totales = []
+    for partido in ranking_partidos:
+        alcalde = int(totales_globales[partido]["alcalde"] or 0)
+        diputado = int(totales_globales[partido]["diputado"] or 0)
+        tabla_totales.append({
+            "partido": partido,
+            "alcalde": alcalde,
+            "diputado": diputado,
+            "diferencia": alcalde - diputado,
+            "total": alcalde + diputado,
+        })
+
+    centros_data = list(centros_map.values())
+    centros_data.sort(key=lambda c: c["total_general"], reverse=True)
+    centros_top = centros_data[:TOP_CENTROS]
+
+    for centro in centros_top:
+        centro["partidos"] = {p: centro["partidos"][p] for p in ranking_partidos}
+
+    context = {
+        "top_centros": TOP_CENTROS,
+        "tabla_totales": tabla_totales,
+        "centros_top": centros_top,
+        "totales_globales_json": json.dumps(totales_globales_ordenados, cls=DjangoJSONEncoder),
+        "centros_data_json": json.dumps(centros_top, cls=DjangoJSONEncoder),
+    }
+
+    return safe_render(request, "afiliados/resumen_elecciones_2023.html", context)
+
 def dashboard_elecciones(request):
 
     centros = Eleccion2023.objects.values_list(
