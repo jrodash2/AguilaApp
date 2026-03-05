@@ -65,6 +65,7 @@ from django.views.generic.detail import DetailView
 from django.core.mail import BadHeaderError
 from smtplib import SMTPException
 from django.db.models.functions import ExtractYear, ExtractMonth
+from django.core.serializers.json import DjangoJSONEncoder
 
 from .forms import PadronUploadForm
 
@@ -110,6 +111,7 @@ def elecciones2023(request):
     departamento = request.GET.get("departamento", "")
     municipio = request.GET.get("municipio", "")
     centro = request.GET.get("centro", "")
+    ver_mesas = request.GET.get("ver_mesas") == "1"
 
     qs = TrepCentroResultado.objects.all()
 
@@ -161,38 +163,35 @@ def elecciones2023(request):
             centro_nombre = fila_centro.centro_nombre
 
     # ============================================================
-    # 🟢 1. RESUMEN DE PARTIDOS (GLOBAL O FILTRADO)
+    # 🟢 1. RESUMEN GLOBAL DE PARTIDOS
     # ============================================================
     resumen_partidos = {}
     for fila in qs:
-        for partido, votos in fila.partidos.items():
-            resumen_partidos[partido] = resumen_partidos.get(partido, 0) + votos
+        for partido, votos in (fila.partidos or {}).items():
+            total_actual = int(resumen_partidos.get(partido, 0) or 0)
+            resumen_partidos[partido] = total_actual + int(votos or 0)
 
     ranking = sorted(resumen_partidos.items(), key=lambda x: x[1], reverse=True)
 
     # ============================================================
-    # 🟦 2. VOTOS POR MESA (PARA GRÁFICA 2)
+    # 🟦 2. VOTOS POR MESA (SOLO SI EL USUARIO LO PIDE)
     # ============================================================
     votos_por_mesa = {}
+    if ver_mesas:
+        for fila in qs:
+            mesa = str(fila.mesa)
+            if mesa not in votos_por_mesa:
+                votos_por_mesa[mesa] = {}
 
-    for fila in qs:
-        mesa = fila.mesa
-        if mesa not in votos_por_mesa:
-            votos_por_mesa[mesa] = {}
+            for partido, votos in (fila.partidos or {}).items():
+                mesa_actual = int(votos_por_mesa[mesa].get(partido, 0) or 0)
+                votos_por_mesa[mesa][partido] = mesa_actual + int(votos or 0)
 
-        for partido, votos in fila.partidos.items():
-            votos_por_mesa[mesa][partido] = (
-                votos_por_mesa[mesa].get(partido, 0) + votos
-            )
+        try:
+            votos_por_mesa = dict(sorted(votos_por_mesa.items(), key=lambda x: int(x[0])))
+        except Exception:
+            pass
 
-    try:
-        votos_por_mesa = dict(sorted(votos_por_mesa.items(), key=lambda x: int(x[0])))
-    except:
-        pass
-
-    # ============================================================
-    # CONTEXTO
-    # ============================================================
     context = {
         "tipos": tipos,
         "departamentos": departamentos,
@@ -203,11 +202,12 @@ def elecciones2023(request):
         "departamento": departamento,
         "municipio": municipio,
         "centro": centro,
-        "centro_nombre": centro_nombre,   # <<<<<< AQUI LO AGREGAMOS
+        "centro_nombre": centro_nombre,
+        "ver_mesas": ver_mesas,
 
-        "resumen_partidos": json.dumps(resumen_partidos),
+        "resumen_partidos_json": json.dumps(resumen_partidos or {}, cls=DjangoJSONEncoder),
         "ranking": ranking,
-        "votos_por_mesa": json.dumps(votos_por_mesa),
+        "votos_por_mesa_json": json.dumps(votos_por_mesa or {}, cls=DjangoJSONEncoder),
     }
 
     return safe_render(request, "afiliados/elecciones2023.html", context)
