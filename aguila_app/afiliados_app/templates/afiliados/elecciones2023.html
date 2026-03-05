@@ -50,6 +50,16 @@
         </div>
       </form>
 
+        <div class="col-12">
+          <div class="form-check mt-1">
+            <input class="form-check-input" type="checkbox" id="verMesas" name="ver_mesas" value="1" {% if ver_mesas %}checked{% endif %} onchange="this.form.submit()" {% if not tipo %}disabled{% endif %}>
+            <label class="form-check-label" for="verMesas">
+              Mostrar gráfico de votos por mesa (opcional)
+            </label>
+          </div>
+        </div>
+      </form>
+
       {% if not tipo %}
         <div class="alert alert-info text-center p-3">
           Seleccione un <strong>Tipo de Elección</strong> para mostrar los resultados.
@@ -59,18 +69,20 @@
         <div class="card p-3 mb-4">
           <h4 class="text-center mb-3">
             {% if centro %}
-              Distribución de Votos – <strong>{{ centro_nombre }}</strong>
+              Votos Globales por Partido – <strong>{{ centro_nombre }}</strong>
             {% else %}
-              Distribución de Votos Global
+              Votos Globales por Partido
             {% endif %}
           </h4>
-          <div id="grafica_partidos" style="height: 320px;"></div>
+          <div id="grafica_partidos" style="height: 360px;"></div>
         </div>
 
-        <div class="card p-3 mb-4">
-          <h4 class="text-center mb-3">Votos por Mesa (Comparativo Apilado)</h4>
-          <div id="grafica_mesas" style="height: 420px;"></div>
-        </div>
+        {% if ver_mesas %}
+          <div class="card p-3 mb-4">
+            <h4 class="text-center mb-3">Votos por Mesa (Comparativo Apilado)</h4>
+            <div id="grafica_mesas" style="height: 420px;"></div>
+          </div>
+        {% endif %}
 
         <div class="card p-3 mt-4">
           <h4 class="text-center">Ranking {% if centro %} del Centro {% else %} Global {% endif %}</h4>
@@ -113,53 +125,73 @@
     <script>
       document.addEventListener("DOMContentLoaded", function () {
         const resumenDataEl = document.getElementById("resumen-data");
-        const mesasDataEl = document.getElementById("mesas-data");
-
         const resumen = resumenDataEl ? JSON.parse(resumenDataEl.textContent) : {};
-        const votosMesas = mesasDataEl ? JSON.parse(mesasDataEl.textContent) : {};
 
-        const g1 = document.querySelector("#grafica_partidos");
-        if (g1) {
-          if (Object.keys(resumen).length > 0) {
-            new ApexCharts(g1, {
-              chart: { type: 'bar', height: 320, toolbar: { show: false } },
-              plotOptions: { bar: { horizontal: true, borderRadius: 6 } },
-              dataLabels: { enabled: true },
-              series: [{ name: "Votos", data: Object.values(resumen) }],
-              xaxis: { categories: Object.keys(resumen) }
+        const chartEl = document.querySelector("#grafica_partidos");
+        if (chartEl) {
+          const labels = Object.keys(resumen).map(function (k) { return k.toUpperCase(); });
+          const valores = Object.values(resumen).map(function (v) { return Number(v) || 0; });
+
+          if (labels.length > 0 && valores.length > 0) {
+            new ApexCharts(chartEl, {
+              chart: {
+                type: "bar",
+                height: 360,
+                toolbar: { show: false },
+                animations: { enabled: false }
+              },
+              plotOptions: { bar: { horizontal: true, borderRadius: 4 } },
+              dataLabels: { enabled: false },
+              series: [{ name: "Votos", data: valores }],
+              xaxis: { categories: labels }
             }).render();
           } else {
-            g1.innerHTML = "<p class='text-center text-muted'>No hay datos de partidos para mostrar.</p>";
+            chartEl.innerHTML = "<p class='text-center text-muted'>No hay datos de partidos para mostrar.</p>";
           }
         }
 
-        const g2 = document.querySelector("#grafica_mesas");
-        if (g2) {
-          if (Object.keys(votosMesas).length > 0) {
-            const mesas = Object.keys(votosMesas);
-            const partidos = Object.keys(votosMesas[mesas[0]] || {});
+        {% if ver_mesas %}
+          const mesasDataEl = document.getElementById("mesas-data");
+          const votosMesas = mesasDataEl ? JSON.parse(mesasDataEl.textContent) : {};
+          const g2 = document.querySelector("#grafica_mesas");
 
-            if (partidos.length > 0) {
-              const seriesApilado = partidos.map(partido => ({
-                name: partido,
-                data: mesas.map(mesa => (votosMesas[mesa] || {})[partido] || 0)
-              }));
+          if (g2) {
+            if (Object.keys(votosMesas).length > 0) {
+              const mesas = Object.keys(votosMesas);
+              const partidos = Object.keys(votosMesas[mesas[0]] || {});
 
-              new ApexCharts(g2, {
-                chart: { type: "bar", height: 420, stacked: true, toolbar: { show: true } },
-                series: seriesApilado,
-                plotOptions: { bar: { horizontal: true, barHeight: "60%" } },
-                xaxis: { categories: mesas, title: { text: "Votos Totales" } },
-                legend: { position: 'right', offsetY: 40 },
-                dataLabels: { enabled: false }
-              }).render();
+              if (partidos.length > 0) {
+                const seriesApilado = partidos.map(function (partido) {
+                  return {
+                    name: partido.toUpperCase(),
+                    data: mesas.map(function (mesa) {
+                      return Number(((votosMesas[mesa] || {})[partido])) || 0;
+                    })
+                  };
+                });
+
+                new ApexCharts(g2, {
+                  chart: {
+                    type: "bar",
+                    height: 420,
+                    stacked: true,
+                    toolbar: { show: false },
+                    animations: { enabled: false }
+                  },
+                  series: seriesApilado,
+                  plotOptions: { bar: { horizontal: true, barHeight: "60%" } },
+                  xaxis: { categories: mesas, title: { text: "Votos Totales" } },
+                  legend: { position: "right", offsetY: 40 },
+                  dataLabels: { enabled: false }
+                }).render();
+              } else {
+                g2.innerHTML = "<p class='text-center text-muted'>No hay datos por mesa.</p>";
+              }
             } else {
               g2.innerHTML = "<p class='text-center text-muted'>No hay datos por mesa.</p>";
             }
-          } else {
-            g2.innerHTML = "<p class='text-center text-muted'>No hay datos por mesa.</p>";
           }
-        }
+        {% endif %}
       });
     </script>
   {% endif %}
