@@ -67,7 +67,7 @@
 
 {% else %}
 
-    {% if resumen_partidos %}
+    {% if resumen_partidos_json %}
 <div class="card p-3 mb-4">
     <h4 class="text-center mb-3">
         {% if centro %}
@@ -118,60 +118,69 @@
 
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
-{% if tipo and resumen_partidos %}
+{% if tipo and resumen_partidos_json %}
+{{ resumen_partidos_json|json_script:"resumen-data" }}
+{{ votos_por_mesa_json|json_script:"mesas-data" }}
+
 <script>
+document.addEventListener("DOMContentLoaded", function () {
+const resumenDataEl = document.getElementById("resumen-data");
+const mesasDataEl = document.getElementById("mesas-data");
+if (!resumenDataEl || !mesasDataEl) {
+    return;
+}
 
-let resumen = {{ resumen_partidos|safe }};
-let votosMesas = {{ votos_por_mesa|safe }};
+const resumen = JSON.parse(resumenDataEl.textContent || "{}");
+const votosMesas = JSON.parse(mesasDataEl.textContent || "{}");
 
-
-// --------------------------------------------------------------------
-// 🟢 GRÁFICA PRINCIPAL
-// --------------------------------------------------------------------
-new ApexCharts(document.querySelector("#grafica_partidos"), {
-    chart: { type: 'bar', height: 320, toolbar: { show: false }},
-    plotOptions: { bar: { horizontal: true, borderRadius: 6 }},
-    dataLabels: { enabled: true },
-    series: [{ name: "Votos", data: Object.values(resumen) }],
-    xaxis: { categories: Object.keys(resumen) }
-}).render();
-
-
-// --------------------------------------------------------------------
-// 🟦 GRÁFICA APILADA POR MESA
-// --------------------------------------------------------------------
-
-let contenedorMesas = document.querySelector("#grafica_mesas");
-
-if (Object.keys(votosMesas).length === 0) {
-
-    contenedorMesas.innerHTML = "<p class='text-center text-muted'>No hay datos por mesa.</p>";
-
-} else {
-
-    let mesas = Object.keys(votosMesas);
-    let partidos = Object.keys(votosMesas[mesas[0]]);
-
-    let seriesApilado = partidos.map(partido => ({
-        name: partido,
-        data: mesas.map(mesa => votosMesas[mesa][partido] || 0)
-    }));
-
-    new ApexCharts(contenedorMesas, {
-        chart: {
-            type: "bar",
-            height: 420,
-            stacked: true,
-            toolbar: { show: true }
-        },
-        series: seriesApilado,
-        plotOptions: { bar: { horizontal: true, barHeight: "60%" }},
-        xaxis: { categories: mesas, title: { text: "Votos Totales" }},
-        legend: { position: 'right', offsetY: 40 },
-        dataLabels: { enabled: false }
+const graf1 = document.querySelector("#grafica_partidos");
+if (graf1 && resumen && Object.keys(resumen).length > 0) {
+    new ApexCharts(graf1, {
+        chart: { type: 'bar', height: 320, toolbar: { show: false }},
+        plotOptions: { bar: { horizontal: true, borderRadius: 6 }},
+        dataLabels: { enabled: true },
+        series: [{ name: "Votos", data: Object.values(resumen) }],
+        xaxis: { categories: Object.keys(resumen) }
     }).render();
 }
 
+const contenedorMesas = document.querySelector("#grafica_mesas");
+if (!contenedorMesas) {
+    return;
+}
+
+if (!votosMesas || Object.keys(votosMesas).length === 0) {
+    contenedorMesas.innerHTML = "<p class='text-center text-muted'>No hay datos por mesa.</p>";
+    return;
+}
+
+const mesas = Object.keys(votosMesas);
+const partidos = mesas.length ? Object.keys(votosMesas[mesas[0]] || {}) : [];
+
+if (partidos.length === 0) {
+    contenedorMesas.innerHTML = "<p class='text-center text-muted'>No hay datos por mesa.</p>";
+    return;
+}
+
+const seriesApilado = partidos.map(partido => ({
+    name: partido,
+    data: mesas.map(mesa => (votosMesas[mesa] && votosMesas[mesa][partido]) || 0)
+}));
+
+new ApexCharts(contenedorMesas, {
+    chart: {
+        type: "bar",
+        height: 420,
+        stacked: true,
+        toolbar: { show: true }
+    },
+    series: seriesApilado,
+    plotOptions: { bar: { horizontal: true, barHeight: "60%" }},
+    xaxis: { categories: mesas, title: { text: "Votos Totales" }},
+    legend: { position: 'right', offsetY: 40 },
+    dataLabels: { enabled: false }
+}).render();
+});
 </script>
 {% endif %}
 
