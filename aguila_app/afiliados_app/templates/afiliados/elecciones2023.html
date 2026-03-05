@@ -4,175 +4,194 @@
 {% block content %}
 <div class="page-body">
   <div class="container-fluid">
-<div class="container-fluid mt-4">
+    <div class="container-fluid mt-4">
 
-    <h2 class="text-center mb-4">Elecciones 2023</h2>
+      <h2 class="text-center mb-4">Elecciones 2023</h2>
 
-    <!-- FILTROS -->
-    <form method="get" class="row g-3 mb-4">
-
-        <!-- Tipo -->
+      <form method="get" class="row g-3 mb-4">
         <div class="col-md-3">
-            <label>Tipo de Elección</label>
-            <select name="tipo" class="form-select" onchange="this.form.submit()">
-                <option value="">Seleccione…</option>
-                {% for t in tipos %}
-                    <option value="{{ t }}" {% if t == tipo %}selected{% endif %}>{{ t }}</option>
-                {% endfor %}
-            </select>
+          <label>Tipo de Elección</label>
+          <select name="tipo" class="form-select" onchange="this.form.submit()">
+            <option value="">Seleccione…</option>
+            {% for t in tipos %}
+              <option value="{{ t }}" {% if t == tipo %}selected{% endif %}>{{ t }}</option>
+            {% endfor %}
+          </select>
         </div>
 
-        <!-- Departamento -->
         <div class="col-md-3">
-            <label>Departamento</label>
-            <select name="departamento" class="form-select" onchange="this.form.submit()" {% if not tipo %}disabled{% endif %}>
-                <option value="">Todos</option>
-                {% for d in departamentos %}
-                    <option value="{{ d }}" {% if d == departamento %}selected{% endif %}>{{ d }}</option>
-                {% endfor %}
-            </select>
+          <label>Departamento</label>
+          <select name="departamento" class="form-select" onchange="this.form.submit()" {% if not tipo %}disabled{% endif %}>
+            <option value="">Todos</option>
+            {% for d in departamentos %}
+              <option value="{{ d }}" {% if d == departamento %}selected{% endif %}>{{ d }}</option>
+            {% endfor %}
+          </select>
         </div>
 
-        <!-- Municipio -->
         <div class="col-md-3">
-            <label>Municipio</label>
-            <select name="municipio" class="form-select" onchange="this.form.submit()" {% if not tipo %}disabled{% endif %}>
-                <option value="">Todos</option>
-                {% for m in municipios %}
-                    <option value="{{ m }}" {% if m == municipio %}selected{% endif %}>{{ m }}</option>
-                {% endfor %}
-            </select>
+          <label>Municipio</label>
+          <select name="municipio" class="form-select" onchange="this.form.submit()" {% if not tipo %}disabled{% endif %}>
+            <option value="">Todos</option>
+            {% for m in municipios %}
+              <option value="{{ m }}" {% if m == municipio %}selected{% endif %}>{{ m }}</option>
+            {% endfor %}
+          </select>
         </div>
 
-        <!-- Centro -->
         <div class="col-md-3">
-            <label>Centro de Votación</label>
-            <select name="centro" class="form-select" onchange="this.form.submit()" {% if not tipo %}disabled{% endif %}>
-                <option value="">Todos</option>
-                {% for c in centros %}
-                    <option value="{{ c.centro_codigo }}" {% if centro == c.centro_codigo %}selected{% endif %}>
-                        {{ c.centro_nombre }}
-                    </option>
-                {% endfor %}
-            </select>
+          <label>Centro de Votación</label>
+          <select name="centro" class="form-select" onchange="this.form.submit()" {% if not tipo %}disabled{% endif %}>
+            <option value="">Todos</option>
+            {% for c in centros %}
+              <option value="{{ c.centro_codigo }}" {% if centro == c.centro_codigo %}selected{% endif %}>{{ c.centro_nombre }}</option>
+            {% endfor %}
+          </select>
         </div>
 
-    </form>
+        <div class="col-12">
+          <div class="form-check mt-1">
+            <input class="form-check-input" type="checkbox" id="verMesas" name="ver_mesas" value="1" {% if ver_mesas %}checked{% endif %} onchange="this.form.submit()" {% if not tipo %}disabled{% endif %}>
+            <label class="form-check-label" for="verMesas">
+              Mostrar gráfico de votos por mesa (opcional)
+            </label>
+          </div>
+        </div>
+      </form>
 
+      {% if not tipo %}
+        <div class="alert alert-info text-center p-3">
+          Seleccione un <strong>Tipo de Elección</strong> para mostrar los resultados.
+        </div>
+      {% else %}
 
-{% if not tipo %}
-    <div class="alert alert-info text-center p-3">
-        Seleccione un <strong>Tipo de Elección</strong> para mostrar los resultados.
-    </div>
+        <div class="card p-3 mb-4">
+          <h4 class="text-center mb-3">
+            {% if centro %}
+              Votos Globales por Partido – <strong>{{ centro_nombre }}</strong>
+            {% else %}
+              Votos Globales por Partido
+            {% endif %}
+          </h4>
+          <div id="grafica_partidos" style="height: 360px;"></div>
+        </div>
 
-{% else %}
-
-    {% if resumen_partidos %}
-<div class="card p-3 mb-4">
-    <h4 class="text-center mb-3">
-        {% if centro %}
-            Distribución de Votos – <strong>{{ centro_nombre }}</strong>
-        {% else %}
-            Distribución de Votos Global
+        {% if ver_mesas %}
+          <div class="card p-3 mb-4">
+            <h4 class="text-center mb-3">Votos por Mesa (Comparativo Apilado)</h4>
+            <div id="grafica_mesas" style="height: 420px;"></div>
+          </div>
         {% endif %}
-    </h4>
-    <div id="grafica_partidos" style="height: 320px;"></div>
-</div>
 
-    <div class="card p-3 mb-4">
-        <h4 class="text-center mb-3">
-            Votos por Mesa (Comparativo Apilado)
-        </h4>
-        <div id="grafica_mesas" style="height: 420px;"></div>
-    </div>
-
-    <!-- Ranking debajo -->
-    <div class="card p-3 mt-4">
-        <h4 class="text-center">Ranking {% if centro %} del Centro {% else %} Global {% endif %}</h4>
-        <table class="table table-striped mt-3">
+        <div class="card p-3 mt-4">
+          <h4 class="text-center">Ranking {% if centro %} del Centro {% else %} Global {% endif %}</h4>
+          <table class="table table-striped mt-3">
             <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Partido</th>
-                    <th>Votos</th>
-                </tr>
+              <tr>
+                <th>#</th>
+                <th>Partido</th>
+                <th>Votos</th>
+              </tr>
             </thead>
             <tbody>
-                {% for partido, votos in ranking %}
+              {% for partido, votos in ranking %}
                 <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ partido|upper }}</td>
-                    <td>{{ votos }}</td>
+                  <td>{{ forloop.counter }}</td>
+                  <td>{{ partido|upper }}</td>
+                  <td>{{ votos }}</td>
                 </tr>
-                {% endfor %}
+              {% empty %}
+                <tr>
+                  <td colspan="3" class="text-center text-muted">No hay datos para mostrar.</td>
+                </tr>
+              {% endfor %}
             </tbody>
-        </table>
+          </table>
+        </div>
+
+        {{ resumen_partidos_json|json_script:"resumen-data" }}
+        {{ votos_por_mesa_json|json_script:"mesas-data" }}
+      {% endif %}
+
     </div>
-    {% endif %}
-
-{% endif %}
-
-</div> <!-- container -->
+  </div>
 </div>
-</div>
+{% endblock %}
 
-<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+{% block extra_js %}
+  {% if tipo %}
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const resumenDataEl = document.getElementById("resumen-data");
+        const resumen = resumenDataEl ? JSON.parse(resumenDataEl.textContent) : {};
 
-{% if tipo and resumen_partidos %}
-<script>
+        const chartEl = document.querySelector("#grafica_partidos");
+        if (chartEl) {
+          const labels = Object.keys(resumen).map(function (k) { return k.toUpperCase(); });
+          const valores = Object.values(resumen).map(function (v) { return Number(v) || 0; });
 
-let resumen = {{ resumen_partidos|safe }};
-let votosMesas = {{ votos_por_mesa|safe }};
+          if (labels.length > 0 && valores.length > 0) {
+            new ApexCharts(chartEl, {
+              chart: {
+                type: "bar",
+                height: 360,
+                toolbar: { show: false },
+                animations: { enabled: false }
+              },
+              plotOptions: { bar: { horizontal: true, borderRadius: 4 } },
+              dataLabels: { enabled: false },
+              series: [{ name: "Votos", data: valores }],
+              xaxis: { categories: labels }
+            }).render();
+          } else {
+            chartEl.innerHTML = "<p class='text-center text-muted'>No hay datos de partidos para mostrar.</p>";
+          }
+        }
 
+        {% if ver_mesas %}
+          const mesasDataEl = document.getElementById("mesas-data");
+          const votosMesas = mesasDataEl ? JSON.parse(mesasDataEl.textContent) : {};
+          const g2 = document.querySelector("#grafica_mesas");
 
-// --------------------------------------------------------------------
-// 🟢 GRÁFICA PRINCIPAL
-// --------------------------------------------------------------------
-new ApexCharts(document.querySelector("#grafica_partidos"), {
-    chart: { type: 'bar', height: 320, toolbar: { show: false }},
-    plotOptions: { bar: { horizontal: true, borderRadius: 6 }},
-    dataLabels: { enabled: true },
-    series: [{ name: "Votos", data: Object.values(resumen) }],
-    xaxis: { categories: Object.keys(resumen) }
-}).render();
+          if (g2) {
+            if (Object.keys(votosMesas).length > 0) {
+              const mesas = Object.keys(votosMesas);
+              const partidos = Object.keys(votosMesas[mesas[0]] || {});
 
+              if (partidos.length > 0) {
+                const seriesApilado = partidos.map(function (partido) {
+                  return {
+                    name: partido.toUpperCase(),
+                    data: mesas.map(function (mesa) {
+                      return Number(((votosMesas[mesa] || {})[partido])) || 0;
+                    })
+                  };
+                });
 
-// --------------------------------------------------------------------
-// 🟦 GRÁFICA APILADA POR MESA
-// --------------------------------------------------------------------
-
-let contenedorMesas = document.querySelector("#grafica_mesas");
-
-if (Object.keys(votosMesas).length === 0) {
-
-    contenedorMesas.innerHTML = "<p class='text-center text-muted'>No hay datos por mesa.</p>";
-
-} else {
-
-    let mesas = Object.keys(votosMesas);
-    let partidos = Object.keys(votosMesas[mesas[0]]);
-
-    let seriesApilado = partidos.map(partido => ({
-        name: partido,
-        data: mesas.map(mesa => votosMesas[mesa][partido] || 0)
-    }));
-
-    new ApexCharts(contenedorMesas, {
-        chart: {
-            type: "bar",
-            height: 420,
-            stacked: true,
-            toolbar: { show: true }
-        },
-        series: seriesApilado,
-        plotOptions: { bar: { horizontal: true, barHeight: "60%" }},
-        xaxis: { categories: mesas, title: { text: "Votos Totales" }},
-        legend: { position: 'right', offsetY: 40 },
-        dataLabels: { enabled: false }
-    }).render();
-}
-
-</script>
-{% endif %}
-
+                new ApexCharts(g2, {
+                  chart: {
+                    type: "bar",
+                    height: 420,
+                    stacked: true,
+                    toolbar: { show: false },
+                    animations: { enabled: false }
+                  },
+                  series: seriesApilado,
+                  plotOptions: { bar: { horizontal: true, barHeight: "60%" } },
+                  xaxis: { categories: mesas, title: { text: "Votos Totales" } },
+                  legend: { position: "right", offsetY: 40 },
+                  dataLabels: { enabled: false }
+                }).render();
+              } else {
+                g2.innerHTML = "<p class='text-center text-muted'>No hay datos por mesa.</p>";
+              }
+            } else {
+              g2.innerHTML = "<p class='text-center text-muted'>No hay datos por mesa.</p>";
+            }
+          }
+        {% endif %}
+      });
+    </script>
+  {% endif %}
 {% endblock %}

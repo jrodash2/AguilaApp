@@ -14,6 +14,8 @@ urlpatterns = [
     path("dashboard/", views.dashboard_elecciones, name="dashboard_elecciones"),
     path("dashboard/datos/", views.datos_centro, name="dashboard_datos_centro"),
 
+    path("elecciones/", views.elecciones_dashboard, name="elecciones_dashboard"),
+
 path("filtros/", views.dashboard_filtros, name="dashboard_filtros"),
 path("filtros/export/excel/", views.exportar_filtros_excel, name="exportar_filtros_excel"),
 path("filtros/export/pdf/", views.exportar_filtros_pdf, name="exportar_filtros_pdf"),
@@ -73,7 +75,6 @@ path('comisiones/nuevo/', views.comision_nueva, name='comision_nueva'),
 path('comisiones/editar/<int:pk>/', views.comision_editar, name='comision_editar'),
 path('comisiones/eliminar/<int:pk>/', views.comision_eliminar, name='comision_eliminar'),
 
-path("elecciones2023/", views.elecciones2023, name="elecciones2023"),
 path("api/padron/", views.consultar_padron_local, name="consultar_padron_local"),
 path("api/padron/verificar/", views.consultar_padron_local, name="consultar_padron_verificar"),
 path("verificar-empadronamiento/", views.verificar_empadronamiento, name="verificar_empadronamiento"),
