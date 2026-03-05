@@ -65,6 +65,7 @@ from django.views.generic.detail import DetailView
 from django.core.mail import BadHeaderError
 from smtplib import SMTPException
 from django.db.models.functions import ExtractYear, ExtractMonth
+from django.core.serializers.json import DjangoJSONEncoder
 
 from .forms import PadronUploadForm
 
@@ -205,9 +206,9 @@ def elecciones2023(request):
         "centro": centro,
         "centro_nombre": centro_nombre,   # <<<<<< AQUI LO AGREGAMOS
 
-        "resumen_partidos": json.dumps(resumen_partidos),
+        "resumen_partidos_json": json.dumps(resumen_partidos or {}, cls=DjangoJSONEncoder),
         "ranking": ranking,
-        "votos_por_mesa": json.dumps(votos_por_mesa),
+        "votos_por_mesa_json": json.dumps(votos_por_mesa or {}, cls=DjangoJSONEncoder),
     }
 
     return safe_render(request, "afiliados/elecciones2023.html", context)
