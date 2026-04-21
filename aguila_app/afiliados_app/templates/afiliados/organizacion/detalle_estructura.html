@@ -92,31 +92,54 @@
 <script>
 $(function(){
   const btnConfirmar = $('#btnConfirmarAgregar');
+  const btnVerificar = $('#btnVerificarEmpadronamiento');
   const info = $('#info_integrante_modal');
   const dpiInput = $('#id_dpi_integrante');
   const verifiedInput = $('#id_verified_dpi');
+  const resultado = $('#resultado_tse_integrante');
   const modalEl = document.getElementById('modalAgregarIntegrante');
-  const modalAgregar = modalEl ? new bootstrap.Modal(modalEl) : null;
+
+  function limpiarEstadoVerificacion(mensaje) {
+    verifiedInput.val('');
+    btnConfirmar.prop('disabled', true);
+    resultado.html('');
+    info.html(mensaje || 'Verifica un DPI para cargar los datos.');
+  }
 
   btnConfirmar.prop('disabled', true);
+  limpiarEstadoVerificacion();
+
+  btnVerificar.on('click', function(){
+    const dpi = (dpiInput.val() || '').replace(/\D/g, '');
+    limpiarEstadoVerificacion(dpi ? 'Verificando empadronamiento...' : 'Ingresa un DPI válido para verificar.');
+  });
 
   document.addEventListener('empadronamiento:resultado', function(e){
     const r = e.detail || {};
-    if (r.ok && r.found && r.data) {
+    if (r.ok && (r.found || r.empadronado) && r.data) {
       const d = r.data;
-      info.html('<strong>Nombre:</strong> ' + (d.nombre_completo || 'N/A') + '<br><strong>Comunidad:</strong> ' + (d.comunidad || 'N/A'));
-      verifiedInput.val((d.dpi || '').replace(/\D/g, ''));
-      btnConfirmar.prop('disabled', false);
+      const dpiVerificado = (d.dpi || dpiInput.val() || '').replace(/\D/g, '');
+      const nombre = d.nombre_completo || d.nombre || 'N/A';
+      const comunidad = d.comunidad || 'N/A';
+      const municipio = d.municipio || 'N/A';
+      info.html(
+        '<div class="alert alert-success mb-0">' +
+          '<div><strong>Nombre:</strong> ' + nombre + '</div>' +
+          '<div><strong>DPI:</strong> ' + (dpiVerificado || 'N/A') + '</div>' +
+          '<div><strong>Estado:</strong> Empadronado</div>' +
+          '<div><strong>Comunidad:</strong> ' + comunidad + '</div>' +
+          '<div><strong>Municipio:</strong> ' + municipio + '</div>' +
+        '</div>'
+      );
+      verifiedInput.val(dpiVerificado);
+      btnConfirmar.prop('disabled', !(dpiVerificado && dpiVerificado === (dpiInput.val() || '').replace(/\D/g, '')));
     } else {
-      info.html('<span class="text-danger">No aparece empadronado en padrón local. No se puede agregar.</span>');
-      verifiedInput.val('');
-      btnConfirmar.prop('disabled', true);
+      limpiarEstadoVerificacion('<div class="alert alert-danger mb-0">No aparece empadronado en padrón local o ocurrió un error en la verificación.</div>');
     }
   });
 
   dpiInput.on('input', function(){
-    verifiedInput.val('');
-    btnConfirmar.prop('disabled', true);
+    limpiarEstadoVerificacion('Cambiaste el DPI. Debes verificar nuevamente para habilitar el agregado.');
   });
 
   $('#formAgregarIntegrante').on('submit', function(e){
@@ -124,18 +147,18 @@ $(function(){
     const verified = (verifiedInput.val() || '').replace(/\D/g, '');
     if (!dpi || !verified || dpi !== verified) {
       e.preventDefault();
-      info.html('<span class="text-danger">Debes verificar empadronamiento del DPI antes de confirmar.</span>');
+      info.html('<div class="alert alert-danger mb-0">Debes verificar empadronamiento del DPI antes de confirmar.</div>');
       btnConfirmar.prop('disabled', true);
     }
   });
 
   if (modalEl) {
+    modalEl.addEventListener('shown.bs.modal', function () {
+      limpiarEstadoVerificacion();
+    });
     modalEl.addEventListener('hidden.bs.modal', function () {
       dpiInput.val('');
-      verifiedInput.val('');
-      btnConfirmar.prop('disabled', true);
-      info.html('Verifica un DPI para cargar los datos.');
-      $('#resultado_tse_integrante').html('');
+      limpiarEstadoVerificacion();
     });
   }
 });
