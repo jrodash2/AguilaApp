@@ -49,14 +49,17 @@
             <td>{{ i.estado }}</td>
             <td>{{ i.fecha_registro|date:'d/m/Y H:i' }}</td>
             <td>
-              <form method="post" action="{% url 'afiliados:eliminar_integrante_estructura' estructura.pk i.pk %}" class="d-inline" onsubmit="return confirm('¿Seguro que deseas eliminar este integrante de la estructura?');">
+              <form method="post" action="{% url 'afiliados:eliminar_integrante_estructura' estructura.pk i.pk %}" class="d-inline form-eliminar-integrante" id="form-eliminar-integrante-{{ i.pk }}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-outline-danger btn-sm">Eliminar</button>
+                <button
+                  type="button"
+                  class="btn btn-outline-danger btn-sm btn-eliminar-integrante"
+                  data-form-id="form-eliminar-integrante-{{ i.pk }}"
+                  data-nombre="{{ i.nombre_completo|default:'integrante' }}"
+                >Eliminar</button>
               </form>
             </td>
           </tr>
-          {% empty %}
-          <tr id="filaSinIntegrantes"><td colspan="5" class="text-center text-muted">No hay integrantes registrados en esta estructura.</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -93,6 +96,24 @@
   </div>
 </div>
 
+<div class="modal fade" id="modalConfirmarEliminarIntegrante" tabindex="-1" aria-labelledby="modalConfirmarEliminarIntegranteLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalConfirmarEliminarIntegranteLabel">Confirmar eliminación</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0" id="textoConfirmarEliminarIntegrante">¿Deseas eliminar este integrante de la estructura?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="btnConfirmarEliminarIntegrante">Sí, eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -111,6 +132,11 @@ $(function(){
   const tablaBody = $('#tablaIntegrantesBody');
   const badgeTotal = $('#badgeTotalIntegrantes');
   const tablaEl = $('.datatable').first();
+  const modalConfirmarEliminarEl = document.getElementById('modalConfirmarEliminarIntegrante');
+  const modalConfirmarEliminar = modalConfirmarEliminarEl ? bootstrap.Modal.getOrCreateInstance(modalConfirmarEliminarEl) : null;
+  const textoConfirmarEliminar = $('#textoConfirmarEliminarIntegrante');
+  const btnConfirmarEliminar = $('#btnConfirmarEliminarIntegrante');
+  let formEliminarSeleccionado = null;
 
   function dpiLimpio(valor) { return (valor || '').replace(/\D/g, ''); }
 
@@ -178,18 +204,18 @@ $(function(){
   }
 
   function agregarFilaIntegrante(data) {
-    $('#filaSinIntegrantes').remove();
     const deleteUrlBase = "{% url 'afiliados:eliminar_integrante_estructura' estructura.pk 0 %}";
     const deleteUrl = deleteUrlBase.replace('/0/eliminar/', '/' + (data.id || 0) + '/eliminar/');
+    const formId = 'form-eliminar-integrante-' + (data.id || 'nuevo');
     const fila = $('<tr>' +
       '<td>' + (data.dpi || '—') + '</td>' +
       '<td>' + (data.nombre_completo || '—') + '</td>' +
       '<td>' + (data.estado || '—') + '</td>' +
       '<td>' + (data.fecha_registro || '—') + '</td>' +
       '<td>' +
-        '<form method="post" action="' + deleteUrl + '" class="d-inline form-eliminar-integrante">' +
+        '<form method="post" action="' + deleteUrl + '" class="d-inline form-eliminar-integrante" id="' + formId + '">' +
           '<input type="hidden" name="csrfmiddlewaretoken" value="' + $('input[name=\"csrfmiddlewaretoken\"]', formAgregar).first().val() + '">' +
-          '<button type="submit" class="btn btn-outline-danger btn-sm">Eliminar</button>' +
+          '<button type="button" class="btn btn-outline-danger btn-sm btn-eliminar-integrante" data-form-id="' + formId + '" data-nombre="' + (data.nombre_completo || 'integrante') + '">Eliminar</button>' +
         '</form>' +
       '</td>' +
     '</tr>');
@@ -286,8 +312,20 @@ $(function(){
   btnVerificar.on('click', verificarEmpadronamiento);
   dpiInput.on('input', limpiarPorCambioDpi);
   formAgregar.on('submit', confirmarAgregado);
-  $(document).on('submit', '.form-eliminar-integrante', function(){
-    return confirm('¿Seguro que deseas eliminar este integrante de la estructura?');
+  $(document).on('click', '.btn-eliminar-integrante', function(){
+    const formId = $(this).data('form-id');
+    const nombre = $(this).data('nombre') || 'este integrante';
+    formEliminarSeleccionado = formId ? document.getElementById(formId) : null;
+    textoConfirmarEliminar.text('¿Deseas eliminar a "' + nombre + '" de esta estructura?');
+    if (modalConfirmarEliminar) {
+      modalConfirmarEliminar.show();
+    }
+  });
+
+  btnConfirmarEliminar.on('click', function(){
+    if (formEliminarSeleccionado) {
+      formEliminarSeleccionado.submit();
+    }
   });
 
   if (modalEl) {
