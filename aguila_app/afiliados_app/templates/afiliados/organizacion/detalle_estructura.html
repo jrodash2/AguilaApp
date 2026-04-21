@@ -72,6 +72,7 @@
             <label for="id_dpi_integrante" class="form-label">DPI</label>
             <div class="input-group">
               <input type="text" name="dpi" id="id_dpi_integrante" class="form-control" maxlength="20" placeholder="Ingresa DPI" required>
+              <input type="hidden" name="verified_dpi" id="id_verified_dpi" value="">
               <button type="button" id="btnVerificarEmpadronamiento" class="btn btn-outline-info" data-url="{{ empadronamiento_url }}" data-dpi-input="id_dpi_integrante" data-output-id="resultado_tse_integrante">Verificar empadronamiento</button>
             </div>
           </div>
@@ -92,6 +93,10 @@
 $(function(){
   const btnConfirmar = $('#btnConfirmarAgregar');
   const info = $('#info_integrante_modal');
+  const dpiInput = $('#id_dpi_integrante');
+  const verifiedInput = $('#id_verified_dpi');
+  const modalEl = document.getElementById('modalAgregarIntegrante');
+  const modalAgregar = modalEl ? new bootstrap.Modal(modalEl) : null;
 
   btnConfirmar.prop('disabled', true);
 
@@ -100,16 +105,39 @@ $(function(){
     if (r.ok && r.found && r.data) {
       const d = r.data;
       info.html('<strong>Nombre:</strong> ' + (d.nombre_completo || 'N/A') + '<br><strong>Comunidad:</strong> ' + (d.comunidad || 'N/A'));
+      verifiedInput.val((d.dpi || '').replace(/\D/g, ''));
       btnConfirmar.prop('disabled', false);
     } else {
       info.html('<span class="text-danger">No aparece empadronado en padrón local. No se puede agregar.</span>');
+      verifiedInput.val('');
       btnConfirmar.prop('disabled', true);
     }
   });
 
-  $('#id_dpi_integrante').on('input', function(){
+  dpiInput.on('input', function(){
+    verifiedInput.val('');
     btnConfirmar.prop('disabled', true);
   });
+
+  $('#formAgregarIntegrante').on('submit', function(e){
+    const dpi = (dpiInput.val() || '').replace(/\D/g, '');
+    const verified = (verifiedInput.val() || '').replace(/\D/g, '');
+    if (!dpi || !verified || dpi !== verified) {
+      e.preventDefault();
+      info.html('<span class="text-danger">Debes verificar empadronamiento del DPI antes de confirmar.</span>');
+      btnConfirmar.prop('disabled', true);
+    }
+  });
+
+  if (modalEl) {
+    modalEl.addEventListener('hidden.bs.modal', function () {
+      dpiInput.val('');
+      verifiedInput.val('');
+      btnConfirmar.prop('disabled', true);
+      info.html('Verifica un DPI para cargar los datos.');
+      $('#resultado_tse_integrante').html('');
+    });
+  }
 });
 </script>
 {% endblock %}

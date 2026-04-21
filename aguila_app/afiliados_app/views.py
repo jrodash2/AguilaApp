@@ -2084,6 +2084,12 @@ def detalle_estructura(request, pk):
 
     if request.method == 'POST':
         dpi = re.sub(r"\D", "", request.POST.get('dpi', ''))
+        verified_dpi = re.sub(r"\D", "", request.POST.get('verified_dpi', ''))
+
+        if not dpi or verified_dpi != dpi:
+            messages.error(request, 'Primero debe verificar empadronamiento del DPI antes de confirmar agregado.')
+            return redirect('afiliados:detalle_estructura', pk=estructura.pk)
+
         payload, status_code = _resultado_padron_local(dpi)
 
         if status_code != 200 or not payload.get('ok') or not payload.get('found'):

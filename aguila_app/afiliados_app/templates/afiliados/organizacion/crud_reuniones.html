@@ -137,11 +137,11 @@ $(function(){
   }
 
   $('#tablaResponsablesModal tbody').on('click', '.btn-seleccionar-responsable', function(){
-    const tipoLabel = this.dataset.tipoLabel || '';
-    const nombre = this.dataset.nombre || '';
+    const tipoLabel = this.getAttribute('data-tipo-label') || '';
+    const nombre = this.getAttribute('data-nombre') || '';
     campoResponsable.val((tipoLabel ? (tipoLabel + ' - ') : '') + nombre);
-    campoTipo.val(this.dataset.tipo || '');
-    campoRef.val(this.dataset.refId || '');
+    campoTipo.val(this.getAttribute('data-tipo') || '');
+    campoRef.val(this.getAttribute('data-ref-id') || '');
     if (modalResponsables) {
       modalResponsables.hide();
     }
