@@ -2137,9 +2137,9 @@ def detalle_estructura(request, pk):
                 'ok': True,
                 'message': 'Integrante agregado correctamente a la estructura.',
                 'integrante': {
+                    'id': integrante.id,
                     'dpi': integrante.dpi,
                     'nombre_completo': integrante.nombre_completo,
-                    'comunidad': str(integrante.comunidad) if integrante.comunidad else '—',
                     'estado': integrante.estado,
                     'fecha_registro': timezone.localtime(integrante.fecha_registro).strftime('%d/%m/%Y %H:%M'),
                 },
@@ -2149,13 +2149,27 @@ def detalle_estructura(request, pk):
         messages.success(request, 'Integrante agregado correctamente a la estructura.')
         return redirect('afiliados:detalle_estructura', pk=estructura.pk)
 
-    integrantes = estructura.integrantes.select_related('comunidad', 'usuario_registro').all()
+    integrantes = estructura.integrantes.select_related('usuario_registro').all()
     return safe_render(request, 'afiliados/organizacion/detalle_estructura.html', {
         'estructura': estructura,
         'integrantes': integrantes,
         'total_integrantes': integrantes.count(),
         'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_organizacion'),
     })
+
+
+@login_required
+@require_POST
+def eliminar_integrante_estructura(request, pk, integrante_id):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    estructura = get_object_or_404(EstructuraOrganizativa, pk=pk)
+    integrante = get_object_or_404(EstructuraIntegrante, pk=integrante_id, estructura=estructura)
+    integrante.delete()
+    messages.success(request, 'Integrante eliminado correctamente de la estructura.')
+    return redirect('afiliados:detalle_estructura', pk=estructura.pk)
 
 
 @login_required

@@ -36,9 +36,9 @@
           <tr>
             <th>DPI</th>
             <th>Nombre</th>
-            <th>Comunidad</th>
             <th>Estado</th>
             <th>Fecha registro</th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody id="tablaIntegrantesBody">
@@ -46,9 +46,14 @@
           <tr>
             <td>{{ i.dpi }}</td>
             <td>{{ i.nombre_completo }}</td>
-            <td>{{ i.comunidad|default:'—' }}</td>
             <td>{{ i.estado }}</td>
             <td>{{ i.fecha_registro|date:'d/m/Y H:i' }}</td>
+            <td>
+              <form method="post" action="{% url 'afiliados:eliminar_integrante_estructura' estructura.pk i.pk %}" class="d-inline" onsubmit="return confirm('¿Seguro que deseas eliminar este integrante de la estructura?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-danger btn-sm">Eliminar</button>
+              </form>
+            </td>
           </tr>
           {% empty %}
           <tr id="filaSinIntegrantes"><td colspan="5" class="text-center text-muted">No hay integrantes registrados en esta estructura.</td></tr>
@@ -174,12 +179,19 @@ $(function(){
 
   function agregarFilaIntegrante(data) {
     $('#filaSinIntegrantes').remove();
+    const deleteUrlBase = "{% url 'afiliados:eliminar_integrante_estructura' estructura.pk 0 %}";
+    const deleteUrl = deleteUrlBase.replace('/0/eliminar/', '/' + (data.id || 0) + '/eliminar/');
     const fila = $('<tr>' +
       '<td>' + (data.dpi || '—') + '</td>' +
       '<td>' + (data.nombre_completo || '—') + '</td>' +
-      '<td>' + (data.comunidad || '—') + '</td>' +
       '<td>' + (data.estado || '—') + '</td>' +
       '<td>' + (data.fecha_registro || '—') + '</td>' +
+      '<td>' +
+        '<form method="post" action="' + deleteUrl + '" class="d-inline form-eliminar-integrante">' +
+          '<input type="hidden" name="csrfmiddlewaretoken" value="' + $('input[name=\"csrfmiddlewaretoken\"]', formAgregar).first().val() + '">' +
+          '<button type="submit" class="btn btn-outline-danger btn-sm">Eliminar</button>' +
+        '</form>' +
+      '</td>' +
     '</tr>');
     if ($.fn.DataTable && $.fn.dataTable.isDataTable(tablaEl)) {
       tablaEl.DataTable().row.add(fila[0]).draw(false);
@@ -274,6 +286,9 @@ $(function(){
   btnVerificar.on('click', verificarEmpadronamiento);
   dpiInput.on('input', limpiarPorCambioDpi);
   formAgregar.on('submit', confirmarAgregado);
+  $(document).on('submit', '.form-eliminar-integrante', function(){
+    return confirm('¿Seguro que deseas eliminar este integrante de la estructura?');
+  });
 
   if (modalEl) {
     modalEl.addEventListener('show.bs.modal', renderInicial);
