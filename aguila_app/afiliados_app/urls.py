@@ -131,5 +131,6 @@ path('padron/cargar/', views.padron_cargar, name='padron_cargar'),
     path('organizacion/reportes/coordinadores/', views.reporte_coordinadores, name='reporte_coordinadores'),
     path('organizacion/reportes/reuniones/', views.reporte_reuniones, name='reporte_reuniones'),
     path('organizacion/reportes/crecimiento-mensual/', views.reporte_crecimiento_mensual, name='reporte_crecimiento_mensual'),
+    path('organizacion/comunidad-lookup/', views.organizacion_comunidad_lookup, name='organizacion_comunidad_lookup'),
 
 ]

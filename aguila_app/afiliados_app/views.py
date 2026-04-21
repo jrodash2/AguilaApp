@@ -1862,12 +1862,23 @@ def _org_crud(request, model, form_class, template, list_name, create_name, edit
         obj.save()
         messages.success(request, 'Registro guardado correctamente.')
         return redirect(list_name)
+    descripciones = {
+        'coordinadores': 'Aquí registras coordinadores territoriales por comunidad. El sistema deriva sector y centro automáticamente.',
+        'lideres': 'Aquí registras líderes comunitarios vinculados a comunidad, con control de estado y seguimiento.',
+        'estructuras': 'Aquí registras comités, equipos, células o comisiones comunitarias activas del municipio.',
+        'responsables': 'Aquí asignas responsables por comunidad para mantener cobertura y orden territorial.',
+        'reuniones': 'Aquí registras reuniones territoriales, acuerdos y estado de seguimiento.',
+        'incidencias': 'Aquí reportas incidencias territoriales para su gestión y resolución oportuna.',
+    }
     context = {
         'form': form,
         'items': model.objects.all().order_by('-id')[:200],
         'entity_label': template,
         'create_name': create_name,
         'edit_name': edit_name,
+        'descripcion_vista': descripciones.get(template, ''),
+        'comunidad_lookup_url': reverse('afiliados:organizacion_comunidad_lookup'),
+        'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_organizacion'),
     }
     if extra_context:
         context.update(extra_context)
@@ -2124,3 +2135,25 @@ def reporte_reuniones(request):
 @login_required
 def reporte_crecimiento_mensual(request):
     return panorama_municipal_organizacion(request)
+
+
+@login_required
+@require_GET
+def organizacion_comunidad_lookup(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    comunidad_id = request.GET.get('comunidad_id')
+    comunidad = Comunidad.objects.select_related('sector').filter(pk=comunidad_id).first()
+    if not comunidad:
+        return JsonResponse({'ok': False, 'error': 'Comunidad no encontrada.'}, status=404)
+
+    centro = comunidad.sector.centros.first() if comunidad.sector else None
+    return JsonResponse({
+        'ok': True,
+        'data': {
+            'comunidad': comunidad.nombre,
+            'sector': comunidad.sector.nombre if comunidad.sector else None,
+            'centro_votacion': centro.nombre if centro else None,
+        }
+    })

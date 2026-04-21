@@ -2,6 +2,7 @@
 {% block content %}
 <div class="page-body"><div class="container-fluid">
 <h4>Estructura territorial (catálogos compartidos)</h4>
+<p class="text-muted">Aquí se consulta la base territorial oficial del sistema (comunidades, sectores y centros) reutilizada por Organización sin duplicar catálogos.</p>
 <div class="row">
 <div class="col-md-4"><div class="card"><div class="card-header">Comunidades</div><div class="card-body table-responsive"><table class="display datatable"><thead><tr><th>Nombre</th><th>Sector</th></tr></thead><tbody>{% for c in comunidades %}<tr><td>{{ c.nombre }}</td><td>{{ c.sector|default:'—' }}</td></tr>{% endfor %}</tbody></table></div></div></div>
 <div class="col-md-4"><div class="card"><div class="card-header">Sectores</div><div class="card-body table-responsive"><table class="display datatable"><thead><tr><th>Nombre</th></tr></thead><tbody>{% for s in sectores %}<tr><td>{{ s.nombre }}</td></tr>{% endfor %}</tbody></table></div></div></div>
