@@ -88,131 +88,199 @@
   </div>
 </div>
 
-<script src="{% static 'js/verificar_empadronamiento.js' %}?v=3"></script>
 <script>
 $(function(){
-  const btnConfirmar = $('#btnConfirmarAgregar');
-  const btnVerificar = $('#btnVerificarEmpadronamiento');
-  const info = $('#info_integrante_modal');
-  const dpiInput = $('#id_dpi_integrante');
-  const verifiedInput = $('#id_verified_dpi');
-  const resultado = $('#resultado_tse_integrante');
-  const formAgregar = $('#formAgregarIntegrante');
-  const tablaBody = $('#tablaIntegrantesBody');
-  const badgeTotal = $('#badgeTotalIntegrantes');
+  const state = { verifiedDpi: '', verifiedData: null };
   const modalEl = document.getElementById('modalAgregarIntegrante');
   const modalAgregar = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+  const formAgregar = $('#formAgregarIntegrante');
+  const dpiInput = $('#id_dpi_integrante');
+  const verifiedInput = $('#id_verified_dpi');
+  const btnVerificar = $('#btnVerificarEmpadronamiento');
+  const btnConfirmar = $('#btnConfirmarAgregar');
+  const info = $('#info_integrante_modal');
+  const resultado = $('#resultado_tse_integrante');
+  const tablaBody = $('#tablaIntegrantesBody');
+  const badgeTotal = $('#badgeTotalIntegrantes');
   const tablaEl = $('.datatable').first();
 
-  function limpiarEstadoVerificacion(mensaje) {
-    verifiedInput.val('');
-    btnConfirmar.prop('disabled', true);
-    resultado.html('');
-    info.html(mensaje || 'Verifica un DPI para cargar los datos.');
+  function dpiLimpio(valor) { return (valor || '').replace(/\D/g, ''); }
+
+  function setBotonConfirmarHabilitado(habilitado) {
+    btnConfirmar.prop('disabled', !habilitado);
   }
 
-  btnConfirmar.prop('disabled', true);
-  limpiarEstadoVerificacion();
+  function renderInicial() {
+    state.verifiedDpi = '';
+    state.verifiedData = null;
+    verifiedInput.val('');
+    setBotonConfirmarHabilitado(false);
+    resultado.html('');
+    info.html('<div class="alert alert-light border mb-0">Verifica un DPI para cargar los datos.</div>');
+  }
 
-  btnVerificar.on('click', function(){
-    const dpi = (dpiInput.val() || '').replace(/\D/g, '');
-    limpiarEstadoVerificacion(dpi ? 'Verificando empadronamiento...' : 'Ingresa un DPI válido para verificar.');
-  });
+  function renderCargando() {
+    state.verifiedDpi = '';
+    state.verifiedData = null;
+    verifiedInput.val('');
+    setBotonConfirmarHabilitado(false);
+    resultado.html('<div class="alert alert-info mb-0 py-2">Consultando padrón local...</div>');
+    info.html('<div class="alert alert-light border mb-0">Procesando verificación...</div>');
+  }
 
-  document.addEventListener('empadronamiento:resultado', function(e){
-    const r = e.detail || {};
-    if (r.ok && (r.found || r.empadronado) && r.data) {
-      const d = r.data;
-      const dpiVerificado = (d.dpi || dpiInput.val() || '').replace(/\D/g, '');
-      const nombre = d.nombre_completo || d.nombre || 'N/A';
-      const comunidad = d.comunidad || 'N/A';
-      const municipio = d.municipio || 'N/A';
-      info.html(
-        '<div class="alert alert-success mb-0">' +
-          '<div><strong>Nombre:</strong> ' + nombre + '</div>' +
-          '<div><strong>DPI:</strong> ' + (dpiVerificado || 'N/A') + '</div>' +
-          '<div><strong>Estado:</strong> Empadronado</div>' +
-          '<div><strong>Comunidad:</strong> ' + comunidad + '</div>' +
-          '<div><strong>Municipio:</strong> ' + municipio + '</div>' +
-        '</div>'
-      );
-      verifiedInput.val(dpiVerificado);
-      btnConfirmar.prop('disabled', !(dpiVerificado && dpiVerificado === (dpiInput.val() || '').replace(/\D/g, '')));
-    } else {
-      limpiarEstadoVerificacion('<div class="alert alert-danger mb-0">No aparece empadronado en padrón local o ocurrió un error en la verificación.</div>');
-    }
-  });
+  function renderError(mensaje) {
+    state.verifiedDpi = '';
+    state.verifiedData = null;
+    verifiedInput.val('');
+    setBotonConfirmarHabilitado(false);
+    resultado.html('<div class="alert alert-danger mb-0 py-2">' + (mensaje || 'No fue posible verificar el DPI.') + '</div>');
+    info.html('<div class="alert alert-danger mb-0">No se puede confirmar agregado hasta verificar un DPI empadronado.</div>');
+  }
 
-  dpiInput.on('input', function(){
-    limpiarEstadoVerificacion('Cambiaste el DPI. Debes verificar nuevamente para habilitar el agregado.');
-  });
+  function renderExito(data) {
+    const dpi = dpiLimpio((data && data.dpi) || dpiInput.val());
+    const nombre = (data && (data.nombre_completo || data.nombre)) || 'N/A';
+    const comunidad = (data && data.comunidad) || 'N/A';
+    const municipio = (data && data.municipio) || 'N/A';
+
+    state.verifiedDpi = dpi;
+    state.verifiedData = data || {};
+    verifiedInput.val(dpi);
+    resultado.html('<div class="alert alert-success mb-0 py-2">Empadronado: verificación válida.</div>');
+    info.html(
+      '<div class="alert alert-success mb-0">' +
+      '<div><strong>Nombre:</strong> ' + nombre + '</div>' +
+      '<div><strong>DPI:</strong> ' + (dpi || 'N/A') + '</div>' +
+      '<div><strong>Estado:</strong> Empadronado</div>' +
+      '<div><strong>Comunidad:</strong> ' + comunidad + '</div>' +
+      '<div><strong>Municipio:</strong> ' + municipio + '</div>' +
+      '</div>'
+    );
+
+    setBotonConfirmarHabilitado(dpi && dpi === dpiLimpio(dpiInput.val()));
+  }
+
+  function limpiarPorCambioDpi() {
+    state.verifiedDpi = '';
+    state.verifiedData = null;
+    verifiedInput.val('');
+    setBotonConfirmarHabilitado(false);
+    resultado.html('');
+    info.html('<div class="alert alert-light border mb-0">Cambiaste el DPI. Debes verificar nuevamente.</div>');
+  }
 
   function agregarFilaIntegrante(data) {
-    const filaHtml = '<tr>' +
+    $('#filaSinIntegrantes').remove();
+    const fila = $('<tr>' +
       '<td>' + (data.dpi || '—') + '</td>' +
       '<td>' + (data.nombre_completo || '—') + '</td>' +
       '<td>' + (data.comunidad || '—') + '</td>' +
       '<td>' + (data.estado || '—') + '</td>' +
       '<td>' + (data.fecha_registro || '—') + '</td>' +
-    '</tr>';
-
-    $('#filaSinIntegrantes').remove();
-
+    '</tr>');
     if ($.fn.DataTable && $.fn.dataTable.isDataTable(tablaEl)) {
-      tablaEl.DataTable().row.add($(filaHtml)[0]).draw(false);
+      tablaEl.DataTable().row.add(fila[0]).draw(false);
     } else {
-      tablaBody.append(filaHtml);
+      tablaBody.append(fila);
     }
   }
 
-  formAgregar.on('submit', function(e){
-    const dpi = (dpiInput.val() || '').replace(/\D/g, '');
-    const verified = (verifiedInput.val() || '').replace(/\D/g, '');
-    if (!dpi || !verified || dpi !== verified) {
-      e.preventDefault();
-      info.html('<div class="alert alert-danger mb-0">Debes verificar empadronamiento del DPI antes de confirmar.</div>');
-      btnConfirmar.prop('disabled', true);
+  async function verificarEmpadronamiento() {
+    const dpi = dpiLimpio(dpiInput.val());
+    const endpoint = (btnVerificar.data('url') || '').toString();
+
+    if (!dpi) {
+      renderError('Ingresa un DPI válido para verificar.');
+      return;
+    }
+    if (!endpoint) {
+      renderError('No se encontró la URL de verificación.');
       return;
     }
 
-    e.preventDefault();
-    btnConfirmar.prop('disabled', true).text('Guardando...');
+    renderCargando();
+    btnVerificar.prop('disabled', true).text('Consultando...');
 
-    $.ajax({
-      url: formAgregar.attr('action') || window.location.pathname,
-      method: 'POST',
-      data: formAgregar.serialize(),
-      headers: { 'X-Requested-With': 'XMLHttpRequest' },
-    }).done(function(res){
-      if (!res || !res.ok) {
-        limpiarEstadoVerificacion('<div class="alert alert-danger mb-0">No se pudo agregar el integrante.</div>');
+    try {
+      const response = await fetch(endpoint + '?dpi=' + encodeURIComponent(dpi), {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin',
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload) {
+        renderError((payload && (payload.error || payload.message)) || 'Error en consulta de empadronamiento.');
         return;
       }
 
-      agregarFilaIntegrante(res.integrante || {});
-      if (typeof res.total_integrantes !== 'undefined') {
-        badgeTotal.text('Integrantes registrados: ' + res.total_integrantes);
+      const empadronado = !!(payload.ok && (payload.found || payload.empadronado) && payload.data);
+      if (!empadronado) {
+        renderError(payload.message || payload.error || 'No aparece empadronado en padrón local.');
+        return;
       }
-      limpiarEstadoVerificacion('<div class="alert alert-success mb-0">' + (res.message || 'Integrante agregado correctamente.') + '</div>');
-      if (modalAgregar) modalAgregar.hide();
-    }).fail(function(xhr){
-      const mensaje = (xhr.responseJSON && xhr.responseJSON.message) || 'No se pudo agregar el integrante.';
-      info.html('<div class="alert alert-danger mb-0">' + mensaje + '</div>');
-      btnConfirmar.prop('disabled', true);
-    }).always(function(){
+      renderExito(payload.data);
+    } catch (_error) {
+      renderError('Error de red al consultar padrón.');
+    } finally {
+      btnVerificar.prop('disabled', false).text('Verificar empadronamiento');
+    }
+  }
+
+  async function confirmarAgregado(e) {
+    e.preventDefault();
+    const dpi = dpiLimpio(dpiInput.val());
+    const verified = dpiLimpio(verifiedInput.val());
+    if (!dpi || !verified || dpi !== verified || !state.verifiedData) {
+      renderError('Debes verificar empadronamiento del DPI antes de confirmar.');
+      return;
+    }
+
+    btnConfirmar.prop('disabled', true).text('Guardando...');
+    const url = formAgregar.attr('action') || window.location.pathname;
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        body: new FormData(formAgregar[0]),
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin',
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload || !payload.ok) {
+        renderError((payload && payload.message) || 'No se pudo agregar el integrante.');
+        return;
+      }
+
+      agregarFilaIntegrante(payload.integrante || {});
+      if (typeof payload.total_integrantes !== 'undefined') {
+        badgeTotal.text('Integrantes registrados: ' + payload.total_integrantes);
+      }
+      if (modalAgregar) {
+        modalAgregar.hide();
+      }
+      renderInicial();
+      dpiInput.val('');
+    } catch (_error) {
+      renderError('Error de red al guardar integrante.');
+    } finally {
       btnConfirmar.text('Confirmar agregado');
-    });
-  });
+    }
+  }
+
+  btnVerificar.on('click', verificarEmpadronamiento);
+  dpiInput.on('input', limpiarPorCambioDpi);
+  formAgregar.on('submit', confirmarAgregado);
 
   if (modalEl) {
-    modalEl.addEventListener('shown.bs.modal', function () {
-      limpiarEstadoVerificacion();
-    });
+    modalEl.addEventListener('show.bs.modal', renderInicial);
     modalEl.addEventListener('hidden.bs.modal', function () {
       dpiInput.val('');
-      limpiarEstadoVerificacion();
+      renderInicial();
     });
   }
+
+  renderInicial();
 });
 </script>
 {% endblock %}
