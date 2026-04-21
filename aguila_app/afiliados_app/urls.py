@@ -84,9 +84,13 @@ path('padron/cargar/', views.padron_cargar, name='padron_cargar'),
 
     # Secretaría de Organización
     path('organizacion/', views.dashboard_organizacion, name='dashboard_organizacion'),
+    path('organizacion/dashboard/', views.dashboard_organizacion, name='dashboard_organizacion_home'),
     path('organizacion/integrantes/', views.lista_integrantes_organizacion, name='lista_integrantes_organizacion'),
     path('organizacion/integrantes/crear/', views.crear_integrante_organizacion, name='crear_integrante_organizacion'),
     path('organizacion/integrantes/<int:pk>/', views.detalle_integrante_organizacion, name='detalle_integrante_organizacion'),
     path('organizacion/integrantes/<int:pk>/editar/', views.editar_integrante_organizacion, name='editar_integrante_organizacion'),
+    path('organizacion/integrantes/<int:pk>/estado/', views.cambiar_estado_organizacion, name='cambiar_estado_organizacion'),
+    path('organizacion/buscar-dpi/', views.buscar_por_dpi_organizacion, name='buscar_por_dpi_organizacion'),
+    path('organizacion/verificar-empadronamiento/', views.verificar_empadronamiento_organizacion, name='verificar_empadronamiento_organizacion'),
 
 ]

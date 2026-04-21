@@ -81,6 +81,6 @@ admin.site.register(Afiliado, AfiliadoAdmin)
 
 @admin.register(OrganizacionIntegrante)
 class OrganizacionIntegranteAdmin(admin.ModelAdmin):
-    list_display = ('afiliado', 'estado', 'usuario_registro', 'fecha_creacion')
+    list_display = ('afiliado', 'estado', 'usuario_registro', 'usuario_modificacion', 'fecha_creacion')
     search_fields = ('afiliado__nombre_completo', 'afiliado__dpi', 'usuario_registro__username')
     list_filter = ('estado', 'fecha_creacion')

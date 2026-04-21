@@ -184,6 +184,13 @@ class OrganizacionIntegrante(models.Model):
         on_delete=models.PROTECT,
         related_name="integrantes_organizacion_registrados",
     )
+    usuario_modificacion = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="integrantes_organizacion_modificados",
+        null=True,
+        blank=True,
+    )
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     fecha_actualizacion = models.DateTimeField(auto_now=True)
 
