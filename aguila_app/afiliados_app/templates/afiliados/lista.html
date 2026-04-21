@@ -197,7 +197,9 @@
                         type="button"
                         class="btn btn-info w-75"
                         id="btnVerificarEmpadronamiento"
-                        data-url="{% url 'afiliados:verificar_empadronamiento' %}">
+                        data-url="{% url 'afiliados:verificar_empadronamiento' %}"
+                        data-dpi-input="dpi_afiliado"
+                        data-output-id="resultado_tse">
                         Verificar Empadronamiento
                     </button>
                     <a href="https://www.tse.org.gt/reg-ciudadanos/sistema-de-estadisticas/consulta-de-afiliacion" class="btn btn-outline-secondary w-75" id="btnTSE" target="_blank" rel="noopener noreferrer">TSE</a>
