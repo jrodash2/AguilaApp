@@ -2087,27 +2087,37 @@ def detalle_estructura(request, pk):
     estructura = get_object_or_404(EstructuraOrganizativa.objects.select_related('comunidad', 'sector', 'centro_votacion', 'coordinador_responsable'), pk=pk)
 
     if request.method == 'POST':
+        is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
         dpi = re.sub(r"\D", "", request.POST.get('dpi', ''))
         verified_dpi = re.sub(r"\D", "", request.POST.get('verified_dpi', ''))
 
         if not dpi or verified_dpi != dpi:
-            messages.error(request, 'Primero debe verificar empadronamiento del DPI antes de confirmar agregado.')
+            msg = 'Primero debe verificar empadronamiento del DPI antes de confirmar agregado.'
+            if is_ajax:
+                return JsonResponse({'ok': False, 'message': msg}, status=400)
+            messages.error(request, msg)
             return redirect('afiliados:detalle_estructura', pk=estructura.pk)
 
         payload, status_code = _resultado_padron_local(dpi)
 
         if status_code != 200 or not payload.get('ok') or not payload.get('found'):
-            messages.error(request, payload.get('error') or payload.get('message') or 'No aparece empadronado en padrón local.')
+            msg = payload.get('error') or payload.get('message') or 'No aparece empadronado en padrón local.'
+            if is_ajax:
+                return JsonResponse({'ok': False, 'message': msg}, status=400)
+            messages.error(request, msg)
             return redirect('afiliados:detalle_estructura', pk=estructura.pk)
 
         persona = payload.get('data') or {}
         if EstructuraIntegrante.objects.filter(estructura=estructura, dpi=dpi).exists():
-            messages.warning(request, 'Este integrante ya está registrado en la estructura.')
+            msg = 'Este integrante ya está registrado en la estructura.'
+            if is_ajax:
+                return JsonResponse({'ok': False, 'message': msg}, status=409)
+            messages.warning(request, msg)
             return redirect('afiliados:detalle_estructura', pk=estructura.pk)
 
         comunidad = Comunidad.objects.filter(nombre=persona.get('comunidad')).first() if persona.get('comunidad') else None
         try:
-            EstructuraIntegrante.objects.create(
+            integrante = EstructuraIntegrante.objects.create(
                 estructura=estructura,
                 dpi=dpi,
                 nombre_completo=persona.get('nombre_completo') or f"Integrante {dpi}",
@@ -2115,8 +2125,26 @@ def detalle_estructura(request, pk):
                 usuario_registro=request.user,
             )
         except IntegrityError:
-            messages.warning(request, 'Este integrante ya está registrado en la estructura.')
+            msg = 'Este integrante ya está registrado en la estructura.'
+            if is_ajax:
+                return JsonResponse({'ok': False, 'message': msg}, status=409)
+            messages.warning(request, msg)
             return redirect('afiliados:detalle_estructura', pk=estructura.pk)
+
+        if is_ajax:
+            total = estructura.integrantes.count()
+            return JsonResponse({
+                'ok': True,
+                'message': 'Integrante agregado correctamente a la estructura.',
+                'integrante': {
+                    'dpi': integrante.dpi,
+                    'nombre_completo': integrante.nombre_completo,
+                    'comunidad': str(integrante.comunidad) if integrante.comunidad else '—',
+                    'estado': integrante.estado,
+                    'fecha_registro': timezone.localtime(integrante.fecha_registro).strftime('%d/%m/%Y %H:%M'),
+                },
+                'total_integrantes': total,
+            })
 
         messages.success(request, 'Integrante agregado correctamente a la estructura.')
         return redirect('afiliados:detalle_estructura', pk=estructura.pk)
