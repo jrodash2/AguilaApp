@@ -208,6 +208,16 @@
                         </a>
                     </li>
 
+                    {% if es_administrador or es_organizacion %}
+                    <li class="sidebar-list {% if '/afiliados/organizacion/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:dashboard_organizacion' %}">
+                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-board' %}"></use></svg>
+                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-board' %}"></use></svg>
+                            <span>Organización</span>
+                        </a>
+                    </li>
+                    {% endif %}
+
                     {% if es_administrador or es_afiliados or es_gestor %}
                     <li class="sidebar-list {% if '/afiliados/afiliado' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:afiliado_lista' %}">

@@ -1,0 +1,22 @@
+{% extends 'afiliados/base.html' %}
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title"><h4>Detalle de integrante - Organización</h4></div>
+    <div class="card">
+      <div class="card-body">
+        <h5>{{ integrante.afiliado.nombre_completo }}</h5>
+        <p><strong>DPI:</strong> {{ integrante.afiliado.dpi }}</p>
+        <p><strong>Teléfono:</strong> {{ integrante.afiliado.telefono|default:'N/A' }}</p>
+        <p><strong>Estado:</strong> {{ integrante.get_estado_display }}</p>
+        <p><strong>Observaciones:</strong> {{ integrante.observaciones|default:'Sin observaciones' }}</p>
+        <p><strong>Registrado por:</strong> {{ integrante.usuario_registro.get_full_name|default:integrante.usuario_registro.username }}</p>
+        <p><strong>Creado:</strong> {{ integrante.fecha_creacion|date:'d/m/Y H:i' }}</p>
+        <p><strong>Actualizado:</strong> {{ integrante.fecha_actualizacion|date:'d/m/Y H:i' }}</p>
+        <a href="{% url 'afiliados:editar_integrante_organizacion' integrante.pk %}" class="btn btn-primary">Editar</a>
+        <a href="{% url 'afiliados:lista_integrantes_organizacion' %}" class="btn btn-secondary">Volver</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

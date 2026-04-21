@@ -4,7 +4,7 @@ from django.forms import CheckboxInput, DateInput, inlineformset_factory, modelf
 from django.core.exceptions import ValidationError
 
 
-from .models import  Perfil,  Institucion, Afiliado, Comunidad, CentroVotacion, Comision, Sector
+from .models import  Perfil,  Institucion, Afiliado, Comunidad, CentroVotacion, Comision, Sector, OrganizacionIntegrante
 
 from django.db.models import Sum, F, Value
 from django.db.models.functions import Coalesce
@@ -322,6 +322,23 @@ class ComisionForm(forms.ModelForm):
         widgets = {
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+
+class OrganizacionIntegranteForm(forms.ModelForm):
+    dpi = forms.CharField(
+        max_length=20,
+        required=True,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        label='DPI',
+    )
+
+    class Meta:
+        model = OrganizacionIntegrante
+        fields = ['estado', 'observaciones']
+        widgets = {
+            'estado': forms.Select(attrs={'class': 'form-control'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
 
 

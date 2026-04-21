@@ -1,0 +1,52 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title">
+      <div class="row">
+        <div class="col-6"><h4 class="card-title mb-0">Secretaría de Organización</h4></div>
+        <div class="col-6 text-end">
+          <a href="{% url 'afiliados:crear_integrante_organizacion' %}" class="btn btn-primary">+ Nuevo integrante</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-md-3"><div class="card"><div class="card-body"><h6>Total</h6><h3>{{ total_integrantes }}</h3></div></div></div>
+      <div class="col-md-3"><div class="card"><div class="card-body"><h6>Pendientes</h6><h3>{{ total_pendientes }}</h3></div></div></div>
+      <div class="col-md-3"><div class="card"><div class="card-body"><h6>Revisados</h6><h3>{{ total_revisados }}</h3></div></div></div>
+      <div class="col-md-3"><div class="card"><div class="card-body"><h6>Aprobados</h6><h3>{{ total_aprobados }}</h3></div></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header d-flex justify-content-between">
+        <h5 class="mb-0">Últimos registros</h5>
+        <a href="{% url 'afiliados:lista_integrantes_organizacion' %}" class="btn btn-outline-primary btn-sm">Ver bandeja</a>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive custom-scrollbar">
+          <table class="display datatable">
+            <thead><tr><th>Integrante</th><th>DPI</th><th>Estado</th><th>Registro</th><th></th></tr></thead>
+            <tbody>
+              {% for item in ultimos_registros %}
+              <tr>
+                <td>{{ item.afiliado.nombre_completo }}</td>
+                <td>{{ item.afiliado.dpi }}</td>
+                <td>{{ item.get_estado_display }}</td>
+                <td>{{ item.fecha_creacion|date:'d/m/Y H:i' }}</td>
+                <td><a href="{% url 'afiliados:detalle_integrante_organizacion' item.id %}"><i class="icon-eye"></i></a></td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="5" class="text-center text-muted">Sin registros</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

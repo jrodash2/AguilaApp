@@ -14,12 +14,12 @@ from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 import requests
 import unicodedata
-from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm
-from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral
+from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm, OrganizacionIntegranteForm
+from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral, OrganizacionIntegrante
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
-from django.http import Http404, HttpResponseNotAllowed, JsonResponse
+from django.http import Http404, HttpResponseNotAllowed, JsonResponse, HttpResponseForbidden
 from django.core.exceptions import ValidationError
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
@@ -388,6 +388,8 @@ def signin(request):
                     return redirect('afiliados:dahsboard')
                 elif g.name == 'afiliados':
                     return redirect('afiliados:dahsboard')
+                elif g.name == 'Organizacion':
+                    return redirect('afiliados:dashboard_organizacion')
             # Si no se encuentra el grupo adecuado, se redirige a una página por defecto
             return redirect('afiliados:dahsboard')
         else:
@@ -1574,3 +1576,108 @@ def comision_eliminar(request, pk):
         return redirect('afiliados:comision_lista')
 
     return redirect('afiliados:comision_lista')
+
+
+def _es_usuario_organizacion(user):
+    if not user.is_authenticated:
+        return False
+    return user.groups.filter(name__in=['Organizacion', 'Administrador']).exists()
+
+
+def _require_organizacion(request):
+    if not _es_usuario_organizacion(request.user):
+        return HttpResponseForbidden("No tiene permisos para acceder a Secretaría de Organización.")
+    return None
+
+
+@login_required
+def dashboard_organizacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    registros = OrganizacionIntegrante.objects.select_related('afiliado')
+    context = {
+        'total_integrantes': registros.count(),
+        'total_pendientes': registros.filter(estado=OrganizacionIntegrante.Estado.PENDIENTE).count(),
+        'total_revisados': registros.filter(estado=OrganizacionIntegrante.Estado.REVISADO).count(),
+        'total_aprobados': registros.filter(estado=OrganizacionIntegrante.Estado.APROBADO).count(),
+        'ultimos_registros': registros.order_by('-fecha_creacion')[:10],
+    }
+    return safe_render(request, 'afiliados/organizacion/dashboard.html', context)
+
+
+@login_required
+def lista_integrantes_organizacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    integrantes = OrganizacionIntegrante.objects.select_related('afiliado', 'usuario_registro')
+    return safe_render(request, 'afiliados/organizacion/lista.html', {'integrantes': integrantes})
+
+
+@login_required
+def crear_integrante_organizacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    form = OrganizacionIntegranteForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        dpi = re.sub(r"\D", "", form.cleaned_data['dpi'])
+        afiliado = Afiliado.objects.filter(dpi=dpi).first()
+
+        if not afiliado:
+            form.add_error('dpi', 'No existe un afiliado registrado con este DPI.')
+        elif OrganizacionIntegrante.objects.filter(afiliado=afiliado).exists():
+            form.add_error('dpi', 'Este afiliado ya está registrado en Secretaría de Organización.')
+        else:
+            integrante = form.save(commit=False)
+            integrante.afiliado = afiliado
+            integrante.usuario_registro = request.user
+            integrante.save()
+            messages.success(request, 'Integrante agregado a Secretaría de Organización correctamente.')
+            return redirect('afiliados:lista_integrantes_organizacion')
+
+    return safe_render(request, 'afiliados/organizacion/form.html', {'form': form, 'es_edicion': False})
+
+
+@login_required
+def detalle_integrante_organizacion(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    integrante = get_object_or_404(
+        OrganizacionIntegrante.objects.select_related('afiliado', 'usuario_registro'),
+        pk=pk,
+    )
+    return safe_render(request, 'afiliados/organizacion/detalle.html', {'integrante': integrante})
+
+
+@login_required
+def editar_integrante_organizacion(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    integrante = get_object_or_404(OrganizacionIntegrante, pk=pk)
+    form = OrganizacionIntegranteForm(request.POST or None, instance=integrante)
+    form.fields['dpi'].initial = integrante.afiliado.dpi
+
+    if request.method == 'POST' and form.is_valid():
+        dpi = re.sub(r"\D", "", form.cleaned_data['dpi'])
+        afiliado = Afiliado.objects.filter(dpi=dpi).first()
+        if not afiliado:
+            form.add_error('dpi', 'No existe un afiliado registrado con este DPI.')
+        elif OrganizacionIntegrante.objects.filter(afiliado=afiliado).exclude(pk=integrante.pk).exists():
+            form.add_error('dpi', 'Este afiliado ya está registrado en Secretaría de Organización.')
+        else:
+            integrante = form.save(commit=False)
+            integrante.afiliado = afiliado
+            integrante.save()
+            messages.success(request, 'Integrante de Secretaría de Organización actualizado correctamente.')
+            return redirect('afiliados:detalle_integrante_organizacion', pk=integrante.pk)
+
+    return safe_render(request, 'afiliados/organizacion/form.html', {'form': form, 'es_edicion': True, 'integrante': integrante})
