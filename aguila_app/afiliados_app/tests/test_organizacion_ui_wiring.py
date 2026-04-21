@@ -53,6 +53,7 @@ class OrganizacionUIWiringTests(TestCase):
         self.assertIn('id="id_responsable_referencia_id"', html)
         self.assertIn("#tablaResponsablesModal tbody", html)
         self.assertIn("modalResponsables.hide()", html)
+        self.assertIn("Agregar responsable", html)
 
     def test_detalle_estructura_template_real_contains_modal_and_confirm_flow(self):
         self.client.login(username="org_user", password="12345")
