@@ -1,0 +1,35 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title"><div class="row"><div class="col-6"><h4>Bandeja de Organización</h4></div><div class="col-6 text-end"><a href="{% url 'afiliados:crear_integrante_organizacion' %}" class="btn btn-primary">+ Nuevo integrante</a></div></div></div>
+    <div class="card">
+      <div class="card-body">
+        <div class="table-responsive custom-scrollbar">
+          <table class="display datatable">
+            <thead><tr><th>Integrante</th><th>DPI</th><th>Estado</th><th>Usuario</th><th>Fecha</th><th>Acciones</th></tr></thead>
+            <tbody>
+              {% for item in integrantes %}
+              <tr>
+                <td>{{ item.afiliado.nombre_completo }}</td>
+                <td>{{ item.afiliado.dpi }}</td>
+                <td>{{ item.get_estado_display }}</td>
+                <td>{{ item.usuario_registro.get_full_name|default:item.usuario_registro.username }}</td>
+                <td>{{ item.fecha_creacion|date:'d/m/Y H:i' }}</td>
+                <td>
+                  <a href="{% url 'afiliados:detalle_integrante_organizacion' item.pk %}" title="Detalle"><i class="icon-eye"></i></a>
+                  <a href="{% url 'afiliados:editar_integrante_organizacion' item.pk %}" title="Editar"><i class="icon-pencil-alt"></i></a>
+                </td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="6" class="text-center text-muted">No hay integrantes registrados.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
