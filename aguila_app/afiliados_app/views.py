@@ -1879,9 +1879,13 @@ def _org_crud(request, model, form_class, template, list_name, create_name, edit
         'incidencias': 'afiliados:detalle_incidencia',
     }
 
+    items_qs = model.objects.all().order_by('-id')
+    if template == 'reuniones':
+        items_qs = items_qs.select_related('comunidad', 'sector', 'centro_votacion')
+
     context = {
         'form': form,
-        'items': model.objects.all().order_by('-id')[:200],
+        'items': items_qs[:200],
         'entity_label': template,
         'create_name': create_name,
         'edit_name': edit_name,

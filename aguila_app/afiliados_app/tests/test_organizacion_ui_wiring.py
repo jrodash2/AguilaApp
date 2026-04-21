@@ -55,6 +55,14 @@ class OrganizacionUIWiringTests(TestCase):
         self.assertIn("modalResponsables.hide()", html)
         self.assertIn('data-bs-target="#modalResponsables">Agregar responsable</button>', html)
         self.assertIn("Agregar responsable", html)
+        self.assertIn("<th>Fecha</th>", html)
+        self.assertIn("<th>Comunidad</th>", html)
+        self.assertIn("<th>Responsable</th>", html)
+        self.assertIn("<th>Asistentes</th>", html)
+        self.assertIn("<th>Estado</th>", html)
+        self.assertIn("<th>Tipo</th>", html)
+        self.assertIn("<th>Sector</th>", html)
+        self.assertIn("<th>Centro</th>", html)
 
     def test_detalle_estructura_template_real_contains_modal_and_confirm_flow(self):
         self.client.login(username="org_user", password="12345")

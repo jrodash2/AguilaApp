@@ -36,9 +36,66 @@
   </div></div>
 
   <div class="card"><div class="card-body table-responsive">
-    <table class="display datatable"><thead><tr><th>ID</th><th>Registro</th><th>Acciones</th></tr></thead><tbody>
+    <table class="display datatable">
+      <thead>
+        {% if entity_label == 'reuniones' %}
+        <tr>
+          <th>ID</th>
+          <th>Fecha</th>
+          <th>Registro / Título</th>
+          <th>Comunidad</th>
+          <th>Responsable</th>
+          <th>Asistentes</th>
+          <th>Estado</th>
+          <th>Tipo</th>
+          <th>Sector</th>
+          <th>Centro</th>
+          <th>Acciones</th>
+        </tr>
+        {% else %}
+        <tr><th>ID</th><th>Registro</th><th>Acciones</th></tr>
+        {% endif %}
+      </thead>
+      <tbody>
       {% for item in items %}
       <tr>
+        {% if entity_label == 'reuniones' %}
+        <td>{{ item.id }}</td>
+        <td data-order="{{ item.fecha|date:'Ymd' }}">{{ item.fecha|date:'d/m/Y' }}</td>
+        <td>
+          <div class="fw-semibold">{{ item.titulo }}</div>
+          <small class="text-muted">Registro #{{ item.id }}</small>
+        </td>
+        <td>{{ item.comunidad|default:'—' }}</td>
+        <td>
+          {% if item.responsables %}
+          <span class="d-inline-block text-truncate align-middle" style="max-width: 220px;" title="{{ item.responsables }}">
+            {{ item.responsables }}
+          </span>
+          {% else %}—{% endif %}
+        </td>
+        <td class="text-end">{{ item.asistentes|default:0 }}</td>
+        <td>
+          {% if item.estado_seguimiento == 'CUMPLIDO' %}
+            <span class="badge bg-success">{{ item.get_estado_seguimiento_display }}</span>
+          {% elif item.estado_seguimiento == 'EN_PROCESO' %}
+            <span class="badge bg-warning text-dark">{{ item.get_estado_seguimiento_display }}</span>
+          {% else %}
+            <span class="badge bg-secondary">{{ item.get_estado_seguimiento_display }}</span>
+          {% endif %}
+        </td>
+        <td>{{ item.tipo_reunion|default:'—' }}</td>
+        <td>{{ item.sector|default:'—' }}</td>
+        <td>{{ item.centro_votacion|default:'—' }}</td>
+        <td>
+          <div class="d-flex gap-2">
+            {% if detail_name %}
+            <a href="{% url detail_name item.id %}" class="btn btn-outline-primary btn-sm">Detalle</a>
+            {% endif %}
+            <a href="{% url edit_name item.id %}" class="btn btn-primary btn-sm">Editar</a>
+          </div>
+        </td>
+        {% else %}
         <td>{{ item.id }}</td>
         <td>{{ item }}</td>
         <td>
@@ -49,9 +106,11 @@
             <a href="{% url edit_name item.id %}" class="btn btn-primary btn-sm">Editar</a>
           </div>
         </td>
+        {% endif %}
       </tr>
       {% endfor %}
-    </tbody></table>
+    </tbody>
+    </table>
   </div></div>
 </div></div>
 
