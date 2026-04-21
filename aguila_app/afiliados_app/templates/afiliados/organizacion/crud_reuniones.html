@@ -86,6 +86,7 @@
                     type="button"
                     class="btn btn-sm btn-primary btn-seleccionar-responsable"
                     data-tipo="{{ r.tipo }}"
+                    data-tipo-label="{{ r.tipo_label }}"
                     data-ref-id="{{ r.id }}"
                     data-nombre="{{ r.nombre }}"
                   >Seleccionar</button>
@@ -136,7 +137,9 @@ $(function(){
   }
 
   $('#tablaResponsablesModal tbody').on('click', '.btn-seleccionar-responsable', function(){
-    campoResponsable.val(this.dataset.nombre || '');
+    const tipoLabel = this.dataset.tipoLabel || '';
+    const nombre = this.dataset.nombre || '';
+    campoResponsable.val((tipoLabel ? (tipoLabel + ' - ') : '') + nombre);
     campoTipo.val(this.dataset.tipo || '');
     campoRef.val(this.dataset.refId || '');
     if (modalResponsables) {

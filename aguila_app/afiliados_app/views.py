@@ -15,7 +15,7 @@ import pandas as pd
 import requests
 import unicodedata
 from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm, OrganizacionIntegranteForm, CoordinadorOrganizacionForm, LiderComunitarioOrganizacionForm, EstructuraOrganizativaForm, ResponsableTerritorialForm, ReunionTerritorialForm, IncidenciaTerritorialForm
-from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, EstadoRegistro
+from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, EstructuraIntegrante, EstadoRegistro
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
@@ -2080,7 +2080,44 @@ def detalle_estructura(request, pk):
     denied = _require_organizacion(request)
     if denied:
         return denied
-    return safe_render(request, 'afiliados/organizacion/detalle_generico.html', {'obj': get_object_or_404(EstructuraOrganizativa, pk=pk), 'titulo': 'Estructura organizativa'})
+    estructura = get_object_or_404(EstructuraOrganizativa.objects.select_related('comunidad', 'sector', 'centro_votacion', 'coordinador_responsable'), pk=pk)
+
+    if request.method == 'POST':
+        dpi = re.sub(r"\D", "", request.POST.get('dpi', ''))
+        payload, status_code = _resultado_padron_local(dpi)
+
+        if status_code != 200 or not payload.get('ok') or not payload.get('found'):
+            messages.error(request, payload.get('error') or payload.get('message') or 'No aparece empadronado en padrón local.')
+            return redirect('afiliados:detalle_estructura', pk=estructura.pk)
+
+        persona = payload.get('data') or {}
+        if EstructuraIntegrante.objects.filter(estructura=estructura, dpi=dpi).exists():
+            messages.warning(request, 'Este integrante ya está registrado en la estructura.')
+            return redirect('afiliados:detalle_estructura', pk=estructura.pk)
+
+        comunidad = Comunidad.objects.filter(nombre=persona.get('comunidad')).first() if persona.get('comunidad') else None
+        try:
+            EstructuraIntegrante.objects.create(
+                estructura=estructura,
+                dpi=dpi,
+                nombre_completo=persona.get('nombre_completo') or f"Integrante {dpi}",
+                comunidad=comunidad,
+                usuario_registro=request.user,
+            )
+        except IntegrityError:
+            messages.warning(request, 'Este integrante ya está registrado en la estructura.')
+            return redirect('afiliados:detalle_estructura', pk=estructura.pk)
+
+        messages.success(request, 'Integrante agregado correctamente a la estructura.')
+        return redirect('afiliados:detalle_estructura', pk=estructura.pk)
+
+    integrantes = estructura.integrantes.select_related('comunidad', 'usuario_registro').all()
+    return safe_render(request, 'afiliados/organizacion/detalle_estructura.html', {
+        'estructura': estructura,
+        'integrantes': integrantes,
+        'total_integrantes': integrantes.count(),
+        'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_organizacion'),
+    })
 
 
 @login_required
