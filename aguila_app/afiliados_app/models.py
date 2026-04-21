@@ -359,6 +359,7 @@ class EstructuraOrganizativa(models.Model):
 
 class ResponsableTerritorial(models.Model):
     nombre_completo = models.CharField(max_length=160)
+    dpi = models.CharField(max_length=20, blank=True, null=True)
     comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="responsables_organizacion")
     sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="responsables_organizacion")
     centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="responsables_organizacion")
@@ -389,6 +390,8 @@ class ReunionTerritorial(models.Model):
     sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="reuniones_organizacion")
     centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="reuniones_organizacion")
     responsables = models.TextField(blank=True, null=True)
+    responsable_tipo = models.CharField(max_length=20, blank=True, null=True)
+    responsable_referencia_id = models.PositiveIntegerField(blank=True, null=True)
     asistentes = models.PositiveIntegerField(default=0)
     acuerdos = models.TextField(blank=True, null=True)
     observaciones = models.TextField(blank=True, null=True)
@@ -431,3 +434,22 @@ class IncidenciaTerritorial(models.Model):
 
     def __str__(self):
         return self.tipo_incidencia
+
+
+class EstructuraIntegrante(models.Model):
+    estructura = models.ForeignKey(EstructuraOrganizativa, on_delete=models.CASCADE, related_name="integrantes")
+    dpi = models.CharField(max_length=20)
+    nombre_completo = models.CharField(max_length=180)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="integrantes_estructura")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    usuario_registro = models.ForeignKey(User, on_delete=models.PROTECT, related_name="integrantes_estructura_registrados")
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["estructura", "dpi"], name="uniq_estructura_integrante_dpi"),
+        ]
+        ordering = ["-fecha_registro"]
+
+    def __str__(self):
+        return f"{self.nombre_completo} ({self.dpi})"
