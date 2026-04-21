@@ -430,14 +430,13 @@ class LiderComunitarioOrganizacionForm(OrganizacionTerritorialBaseForm):
 class EstructuraOrganizativaForm(OrganizacionTerritorialBaseForm):
     class Meta:
         model = EstructuraOrganizativa
-        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion', 'cantidad_integrantes']
         widgets = {
             'tipo_estructura': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej.: Comité comunitario, Equipo sectorial, Célula territorial'}),
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
             'coordinador_responsable': forms.Select(attrs={'class': 'form-select'}),
             'comunidad': forms.Select(attrs={'class': 'form-select'}),
             'estado': forms.Select(attrs={'class': 'form-select'}),
-            'cantidad_integrantes': forms.NumberInput(attrs={'class': 'form-control'}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
         help_texts = {

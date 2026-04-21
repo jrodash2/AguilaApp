@@ -99,3 +99,4 @@ class OrganizacionUIWiringTests(TestCase):
         for form in forms:
             self.assertNotIn("sector", form.fields)
             self.assertNotIn("centro_votacion", form.fields)
+        self.assertNotIn("cantidad_integrantes", EstructuraOrganizativaForm().fields)
