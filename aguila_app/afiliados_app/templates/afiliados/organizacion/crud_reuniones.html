@@ -1,0 +1,154 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+<div class="page-body"><div class="container-fluid">
+  <h4>{{ entity_label|title }}</h4>
+  {% if descripcion_vista %}<p class="text-muted">{{ descripcion_vista }}</p>{% endif %}
+
+  <div class="card"><div class="card-body">
+    <form method="post">{% csrf_token %}
+      {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+      <div class="row g-3">
+        {% for field in form.visible_fields %}
+          {% if field.name != 'responsable_tipo' and field.name != 'responsable_referencia_id' %}
+          <div class="col-12 col-md-6">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {% if field.name == 'responsables' %}
+              <div class="input-group">
+                {{ field }}
+                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalResponsables">Agregar responsable</button>
+              </div>
+              <small class="text-muted d-block mt-1">Selecciona un líder, coordinador o responsable territorial desde el modal.</small>
+            {% else %}
+              {{ field }}
+            {% endif %}
+            {% if field.help_text %}<small class="text-muted d-block mt-1">{{ field.help_text }}</small>{% endif %}
+            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <div id="territorio_derivado" class="alert alert-light border mt-3 mb-0 small text-muted" role="status"></div>
+      <div class="mt-3 d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Guardar</button>
+      </div>
+    </form>
+  </div></div>
+
+  <div class="card"><div class="card-body table-responsive">
+    <table class="display datatable"><thead><tr><th>ID</th><th>Registro</th><th>Acciones</th></tr></thead><tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ item.id }}</td>
+        <td>{{ item }}</td>
+        <td>
+          <div class="d-flex gap-2"> 
+            {% if detail_name %}
+            <a href="{% url detail_name item.id %}" class="btn btn-outline-primary btn-sm">Detalle</a>
+            {% endif %}
+            <a href="{% url edit_name item.id %}" class="btn btn-primary btn-sm">Editar</a>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody></table>
+  </div></div>
+</div></div>
+
+<div class="modal fade" id="modalResponsables" tabindex="-1" aria-labelledby="modalResponsablesLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalResponsablesLabel">Seleccionar responsable</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+          <table class="display datatable w-100" id="tablaResponsablesModal">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Nombre</th>
+                <th>DPI</th>
+                <th>Comunidad</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in responsables_modal %}
+              <tr>
+                <td>{{ r.tipo_label }}</td>
+                <td>{{ r.nombre }}</td>
+                <td>{{ r.dpi|default:'—' }}</td>
+                <td>{{ r.comunidad|default:'—' }}</td>
+                <td>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-primary btn-seleccionar-responsable"
+                    data-tipo="{{ r.tipo }}"
+                    data-tipo-label="{{ r.tipo_label }}"
+                    data-ref-id="{{ r.id }}"
+                    data-nombre="{{ r.nombre }}"
+                  >Agregar responsable</button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+$(function(){
+  const comunidad = $('#id_comunidad');
+  const campoResponsable = $('#id_responsables');
+  const campoTipo = $('#id_responsable_tipo');
+  const campoRef = $('#id_responsable_referencia_id');
+  const modalEl = document.getElementById('modalResponsables');
+  const modalResponsables = modalEl ? new bootstrap.Modal(modalEl) : null;
+
+  function cargarTerritorio() {
+    if (!comunidad.length) return;
+    const id = comunidad.val();
+    if (!id) {
+      $('#territorio_derivado').html('Selecciona una comunidad para ver el sector y centro de votación derivados.');
+      return;
+    }
+    $.get('{{ comunidad_lookup_url }}', { comunidad_id: id }).done(function(res){
+      if (!res.ok) return;
+      const d = res.data || {};
+      $('#territorio_derivado').html('Sector: <strong>' + (d.sector || 'N/A') + '</strong> &nbsp;|&nbsp; Centro: <strong>' + (d.centro_votacion || 'N/A') + '</strong>');
+    });
+  }
+
+  const tablaResponsables = window.initDataTable
+    ? window.initDataTable('#tablaResponsablesModal', { order: [[1, 'asc']] })
+    : null;
+
+  if (modalEl) {
+    modalEl.addEventListener('shown.bs.modal', function () {
+      if (tablaResponsables && tablaResponsables.columns) {
+        tablaResponsables.columns.adjust().draw(false);
+      }
+    });
+  }
+
+  $('#tablaResponsablesModal tbody').on('click', '.btn-seleccionar-responsable', function(){
+    const tipoLabel = this.getAttribute('data-tipo-label') || '';
+    const nombre = this.getAttribute('data-nombre') || '';
+    campoResponsable.val((tipoLabel ? (tipoLabel + ' - ') : '') + nombre);
+    campoTipo.val(this.getAttribute('data-tipo') || '');
+    campoRef.val(this.getAttribute('data-ref-id') || '');
+    if (modalResponsables) {
+      modalResponsables.hide();
+    }
+  });
+
+  comunidad.on('change', cargarTerritorio);
+  cargarTerritorio();
+});
+</script>
+{% endblock %}
