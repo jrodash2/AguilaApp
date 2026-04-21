@@ -362,42 +362,46 @@ class SectorForm(forms.ModelForm):
         }
 
 
-class CoordinadorOrganizacionForm(forms.ModelForm):
-    sector_referencia = forms.CharField(required=False, label="Sector (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
-    centro_referencia = forms.CharField(required=False, label="Centro de votación (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
 
+class OrganizacionTerritorialBaseForm(forms.ModelForm):
+    """Formulario base para derivar sector/centro desde comunidad."""
+
+    def _setup_territorio_derivado(self):
+        self.fields.pop('sector', None)
+        self.fields.pop('centro_votacion', None)
+
+    def _aplicar_territorio_desde_comunidad(self, obj):
+        obj.sector = None
+        obj.centro_votacion = None
+        if obj.comunidad and obj.comunidad.sector:
+            obj.sector = obj.comunidad.sector
+            obj.centro_votacion = obj.comunidad.sector.centros.first()
+        return obj
+
+class CoordinadorOrganizacionForm(OrganizacionTerritorialBaseForm):
     class Meta:
         model = CoordinadorOrganizacion
         exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
         widgets = {f: forms.TextInput(attrs={'class': 'form-control'}) for f in ['nombre_completo', 'dpi', 'telefono', 'tipo_coordinacion']}
         widgets.update({
-            'comunidad': forms.Select(attrs={'class': 'form-control'}),
-            'estado': forms.Select(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         })
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields.pop('sector', None)
-        self.fields.pop('centro_votacion', None)
-        if self.instance and self.instance.pk:
-            self.fields['sector_referencia'].initial = self.instance.sector.nombre if self.instance.sector else ''
-            self.fields['centro_referencia'].initial = self.instance.centro_votacion.nombre if self.instance.centro_votacion else ''
+        self._setup_territorio_derivado()
 
     def save(self, commit=True):
         obj = super().save(commit=False)
-        if obj.comunidad and obj.comunidad.sector:
-            obj.sector = obj.comunidad.sector
-            obj.centro_votacion = obj.comunidad.sector.centros.first()
+        self._aplicar_territorio_desde_comunidad(obj)
         if commit:
             obj.save()
         return obj
 
 
-class LiderComunitarioOrganizacionForm(forms.ModelForm):
-    sector_referencia = forms.CharField(required=False, label="Sector (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
-    centro_referencia = forms.CharField(required=False, label="Centro de votación (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
-
+class LiderComunitarioOrganizacionForm(OrganizacionTerritorialBaseForm):
     class Meta:
         model = LiderComunitarioOrganizacion
         exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
@@ -405,43 +409,34 @@ class LiderComunitarioOrganizacionForm(forms.ModelForm):
             'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}),
             'dpi': forms.TextInput(attrs={'class': 'form-control'}),
             'telefono': forms.TextInput(attrs={'class': 'form-control'}),
-            'coordinador': forms.Select(attrs={'class': 'form-control'}),
-            'comunidad': forms.Select(attrs={'class': 'form-control'}),
-            'estado': forms.Select(attrs={'class': 'form-control'}),
+            'coordinador': forms.Select(attrs={'class': 'form-select'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields.pop('sector', None)
-        self.fields.pop('centro_votacion', None)
-        if self.instance and self.instance.pk:
-            self.fields['sector_referencia'].initial = self.instance.sector.nombre if self.instance.sector else ''
-            self.fields['centro_referencia'].initial = self.instance.centro_votacion.nombre if self.instance.centro_votacion else ''
+        self._setup_territorio_derivado()
 
     def save(self, commit=True):
         obj = super().save(commit=False)
-        if obj.comunidad and obj.comunidad.sector:
-            obj.sector = obj.comunidad.sector
-            obj.centro_votacion = obj.comunidad.sector.centros.first()
+        self._aplicar_territorio_desde_comunidad(obj)
         if commit:
             obj.save()
         return obj
 
 
-class EstructuraOrganizativaForm(forms.ModelForm):
-    sector_referencia = forms.CharField(required=False, label="Sector (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
-    centro_referencia = forms.CharField(required=False, label="Centro de votación (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
-
+class EstructuraOrganizativaForm(OrganizacionTerritorialBaseForm):
     class Meta:
         model = EstructuraOrganizativa
         exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
         widgets = {
             'tipo_estructura': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej.: Comité comunitario, Equipo sectorial, Célula territorial'}),
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
-            'coordinador_responsable': forms.Select(attrs={'class': 'form-control'}),
-            'comunidad': forms.Select(attrs={'class': 'form-control'}),
-            'estado': forms.Select(attrs={'class': 'form-control'}),
+            'coordinador_responsable': forms.Select(attrs={'class': 'form-select'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
             'cantidad_integrantes': forms.NumberInput(attrs={'class': 'form-control'}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
@@ -451,58 +446,41 @@ class EstructuraOrganizativaForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields.pop('sector', None)
-        self.fields.pop('centro_votacion', None)
-        if self.instance and self.instance.pk:
-            self.fields['sector_referencia'].initial = self.instance.sector.nombre if self.instance.sector else ''
-            self.fields['centro_referencia'].initial = self.instance.centro_votacion.nombre if self.instance.centro_votacion else ''
+        self._setup_territorio_derivado()
 
     def save(self, commit=True):
         obj = super().save(commit=False)
-        if obj.comunidad and obj.comunidad.sector:
-            obj.sector = obj.comunidad.sector
-            obj.centro_votacion = obj.comunidad.sector.centros.first()
+        self._aplicar_territorio_desde_comunidad(obj)
         if commit:
             obj.save()
         return obj
 
 
-class ResponsableTerritorialForm(forms.ModelForm):
-    sector_referencia = forms.CharField(required=False, label="Sector (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
-    centro_referencia = forms.CharField(required=False, label="Centro de votación (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
-
+class ResponsableTerritorialForm(OrganizacionTerritorialBaseForm):
     class Meta:
         model = ResponsableTerritorial
         exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
         widgets = {
             'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}),
-            'comunidad': forms.Select(attrs={'class': 'form-control'}),
-            'estado': forms.Select(attrs={'class': 'form-control'}),
+            'dpi': forms.TextInput(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields.pop('sector', None)
-        self.fields.pop('centro_votacion', None)
-        if self.instance and self.instance.pk:
-            self.fields['sector_referencia'].initial = self.instance.sector.nombre if self.instance.sector else ''
-            self.fields['centro_referencia'].initial = self.instance.centro_votacion.nombre if self.instance.centro_votacion else ''
+        self._setup_territorio_derivado()
 
     def save(self, commit=True):
         obj = super().save(commit=False)
-        if obj.comunidad and obj.comunidad.sector:
-            obj.sector = obj.comunidad.sector
-            obj.centro_votacion = obj.comunidad.sector.centros.first()
+        self._aplicar_territorio_desde_comunidad(obj)
         if commit:
             obj.save()
         return obj
 
 
-class ReunionTerritorialForm(forms.ModelForm):
-    sector_referencia = forms.CharField(required=False, label="Sector (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
-    centro_referencia = forms.CharField(required=False, label="Centro de votación (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
-
+class ReunionTerritorialForm(OrganizacionTerritorialBaseForm):
     class Meta:
         model = ReunionTerritorial
         exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
@@ -510,63 +488,50 @@ class ReunionTerritorialForm(forms.ModelForm):
             'fecha': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'tipo_reunion': forms.TextInput(attrs={'class': 'form-control'}),
             'titulo': forms.TextInput(attrs={'class': 'form-control'}),
-            'comunidad': forms.Select(attrs={'class': 'form-control'}),
-            'responsables': forms.TextInput(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'responsables': forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly', 'placeholder': 'Selecciona desde el modal'}),
+            'responsable_tipo': forms.HiddenInput(),
+            'responsable_referencia_id': forms.HiddenInput(),
             'asistentes': forms.NumberInput(attrs={'class': 'form-control'}),
             'acuerdos': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
-            'estado_seguimiento': forms.Select(attrs={'class': 'form-control'}),
+            'estado_seguimiento': forms.Select(attrs={'class': 'form-select'}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields.pop('sector', None)
-        self.fields.pop('centro_votacion', None)
-        if self.instance and self.instance.pk:
-            self.fields['sector_referencia'].initial = self.instance.sector.nombre if self.instance.sector else ''
-            self.fields['centro_referencia'].initial = self.instance.centro_votacion.nombre if self.instance.centro_votacion else ''
+        self._setup_territorio_derivado()
 
     def save(self, commit=True):
         obj = super().save(commit=False)
-        if obj.comunidad and obj.comunidad.sector:
-            obj.sector = obj.comunidad.sector
-            obj.centro_votacion = obj.comunidad.sector.centros.first()
+        self._aplicar_territorio_desde_comunidad(obj)
         if commit:
             obj.save()
         return obj
 
 
-class IncidenciaTerritorialForm(forms.ModelForm):
-    sector_referencia = forms.CharField(required=False, label="Sector (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
-    centro_referencia = forms.CharField(required=False, label="Centro de votación (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
-
+class IncidenciaTerritorialForm(OrganizacionTerritorialBaseForm):
     class Meta:
         model = IncidenciaTerritorial
         exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
         widgets = {
             'tipo_incidencia': forms.TextInput(attrs={'class': 'form-control'}),
-            'comunidad': forms.Select(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
-            'prioridad': forms.Select(attrs={'class': 'form-control'}),
-            'estado': forms.Select(attrs={'class': 'form-control'}),
-            'responsable_asignado': forms.Select(attrs={'class': 'form-control'}),
+            'prioridad': forms.Select(attrs={'class': 'form-select'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+            'responsable_asignado': forms.Select(attrs={'class': 'form-select'}),
             'seguimiento': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields.pop('sector', None)
-        self.fields.pop('centro_votacion', None)
-        if self.instance and self.instance.pk:
-            self.fields['sector_referencia'].initial = self.instance.sector.nombre if self.instance.sector else ''
-            self.fields['centro_referencia'].initial = self.instance.centro_votacion.nombre if self.instance.centro_votacion else ''
+        self._setup_territorio_derivado()
 
     def save(self, commit=True):
         obj = super().save(commit=False)
-        if obj.comunidad and obj.comunidad.sector:
-            obj.sector = obj.comunidad.sector
-            obj.centro_votacion = obj.comunidad.sector.centros.first()
+        self._aplicar_territorio_desde_comunidad(obj)
         if commit:
             obj.save()
         return obj

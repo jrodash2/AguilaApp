@@ -1880,6 +1880,41 @@ def _org_crud(request, model, form_class, template, list_name, create_name, edit
         'comunidad_lookup_url': reverse('afiliados:organizacion_comunidad_lookup'),
         'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_organizacion'),
     }
+
+    if template == 'reuniones':
+        responsables_modal = []
+
+        for responsable in ResponsableTerritorial.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({
+                'tipo': 'RESPONSABLE',
+                'tipo_label': 'Responsable',
+                'id': responsable.id,
+                'nombre': responsable.nombre_completo,
+                'dpi': responsable.dpi,
+                'comunidad': responsable.comunidad.nombre if responsable.comunidad else '',
+            })
+
+        for coordinador in CoordinadorOrganizacion.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({
+                'tipo': 'COORDINADOR',
+                'tipo_label': 'Coordinador',
+                'id': coordinador.id,
+                'nombre': coordinador.nombre_completo,
+                'dpi': coordinador.dpi,
+                'comunidad': coordinador.comunidad.nombre if coordinador.comunidad else '',
+            })
+
+        for lider in LiderComunitarioOrganizacion.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({
+                'tipo': 'LIDER',
+                'tipo_label': 'Líder',
+                'id': lider.id,
+                'nombre': lider.nombre_completo,
+                'dpi': lider.dpi,
+                'comunidad': lider.comunidad.nombre if lider.comunidad else '',
+            })
+
+        context['responsables_modal'] = responsables_modal
     if extra_context:
         context.update(extra_context)
     return safe_render(request, f'afiliados/organizacion/crud_{template}.html', context)
