@@ -1,0 +1,4 @@
+{% extends 'afiliados/base.html' %}
+{% block content %}
+<div class="page-body"><div class="container-fluid"><h4>Reporte coordinadores activos/inactivos</h4><div class="card"><div class="card-body table-responsive"><table class="display datatable"><thead><tr><th>Nombre</th><th>Estado</th><th>Comunidad</th><th>Sector</th></tr></thead><tbody>{% for c in coordinadores %}<tr><td>{{ c.nombre_completo }}</td><td>{{ c.estado }}</td><td>{{ c.comunidad|default:'—' }}</td><td>{{ c.sector|default:'—' }}</td></tr>{% endfor %}</tbody></table></div></div></div></div>
+{% endblock %}

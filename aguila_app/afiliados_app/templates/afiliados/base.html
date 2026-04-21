@@ -216,6 +216,33 @@
                             <span>Organización</span>
                         </a>
                     </li>
+                    <li class="sidebar-list {% if '/afiliados/organizacion/panorama/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:panorama_municipal_organizacion' %}"><span>Panorama Municipal</span></a>
+                    </li>
+                    <li class="sidebar-list {% if '/afiliados/organizacion/estructura-territorial/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:lista_estructura_territorial' %}"><span>Estructura Territorial</span></a>
+                    </li>
+                    <li class="sidebar-list {% if '/afiliados/organizacion/coordinadores/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:lista_coordinadores' %}"><span>Coordinadores</span></a>
+                    </li>
+                    <li class="sidebar-list {% if '/afiliados/organizacion/lideres/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:lista_lideres' %}"><span>Líderes</span></a>
+                    </li>
+                    <li class="sidebar-list {% if '/afiliados/organizacion/estructuras/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:lista_estructuras' %}"><span>Estructuras</span></a>
+                    </li>
+                    <li class="sidebar-list {% if '/afiliados/organizacion/responsables/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:lista_responsables' %}"><span>Responsables</span></a>
+                    </li>
+                    <li class="sidebar-list {% if '/afiliados/organizacion/reuniones/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:lista_reuniones' %}"><span>Reuniones</span></a>
+                    </li>
+                    <li class="sidebar-list {% if '/afiliados/organizacion/incidencias/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:lista_incidencias' %}"><span>Incidencias</span></a>
+                    </li>
+                    <li class="sidebar-list {% if '/afiliados/organizacion/reportes/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link" href="{% url 'afiliados:reporte_cobertura_comunidades' %}"><span>Reportes</span></a>
+                    </li>
                     {% endif %}
 
                     {% if es_administrador or es_afiliados or es_gestor %}

@@ -1,0 +1,27 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+<div class="page-body"><div class="container-fluid">
+  <div class="page-title"><h4>Panorama municipal - Organización</h4></div>
+  <div class="row">
+    <div class="col-md-3"><div class="card"><div class="card-body"><small>Total comunidades</small><h3>{{ total_comunidades }}</h3></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><small>Comunidades cubiertas</small><h3>{{ comunidades_cubiertas }}</h3></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><small>Sectores</small><h3>{{ total_sectores }}</h3></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><small>Centros</small><h3>{{ total_centros }}</h3></div></div></div>
+  </div>
+  <div class="row">
+    <div class="col-md-3"><div class="card"><div class="card-body"><small>Coordinadores activos</small><h3>{{ coordinadores_activos }}</h3></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><small>Líderes</small><h3>{{ total_lideres }}</h3></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><small>Estructuras activas</small><h3>{{ estructuras_activas }}</h3></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><small>Incidencias abiertas</small><h3>{{ incidencias_abiertas }}</h3></div></div></div>
+  </div>
+
+  <div class="card"><div class="card-header"><h5>Resumen por comunidad</h5></div><div class="card-body table-responsive">
+    <table class="display datatable"><thead><tr><th>Comunidad</th><th>Sectores</th><th>Reuniones</th><th>Incidencias</th><th>Cobertura</th></tr></thead><tbody>
+      {% for c in resumen_comunidad %}
+      <tr><td>{{ c.nombre }}</td><td>{{ c.total_sectores }}</td><td>{{ c.reuniones_total }}</td><td>{{ c.incidencias_abiertas }}</td><td>{% if c.id in comunidad_ids_cubiertas %}Sí{% else %}No{% endif %}</td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div></div>
+</div></div>
+{% endblock %}

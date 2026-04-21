@@ -14,8 +14,8 @@ from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 import requests
 import unicodedata
-from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm, OrganizacionIntegranteForm
-from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral, OrganizacionIntegrante
+from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm, OrganizacionIntegranteForm, CoordinadorOrganizacionForm, LiderComunitarioOrganizacionForm, EstructuraOrganizativaForm, ResponsableTerritorialForm, ReunionTerritorialForm, IncidenciaTerritorialForm
+from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, EstadoRegistro
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
@@ -1759,3 +1759,368 @@ def cambiar_estado_organizacion(request, pk):
     integrante.save(update_fields=['estado', 'usuario_modificacion', 'fecha_actualizacion'])
     messages.success(request, 'Estado actualizado correctamente.')
     return redirect('afiliados:detalle_integrante_organizacion', pk=pk)
+
+
+@login_required
+def panorama_municipal_organizacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    comunidad_qs = Comunidad.objects.select_related('sector')
+    sector_qs = Sector.objects.all()
+    centro_qs = CentroVotacion.objects.all()
+    coordinadores = CoordinadorOrganizacion.objects.all()
+    lideres = LiderComunitarioOrganizacion.objects.all()
+    estructuras = EstructuraOrganizativa.objects.all()
+    reuniones = ReunionTerritorial.objects.all()
+    incidencias = IncidenciaTerritorial.objects.filter(estado=EstadoRegistro.ACTIVO)
+    responsables = ResponsableTerritorial.objects.filter(estado=EstadoRegistro.ACTIVO)
+
+    comunidad_ids_cubiertas = set(
+        CoordinadorOrganizacion.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)
+    ) | set(
+        LiderComunitarioOrganizacion.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)
+    ) | set(
+        EstructuraOrganizativa.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)
+    ) | set(
+        ResponsableTerritorial.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)
+    )
+
+    sector_ids_cubiertos = set(
+        CoordinadorOrganizacion.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)
+    ) | set(
+        EstructuraOrganizativa.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)
+    ) | set(
+        ResponsableTerritorial.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)
+    )
+
+    centro_ids_cubiertos = set(
+        CoordinadorOrganizacion.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)
+    ) | set(
+        EstructuraOrganizativa.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)
+    ) | set(
+        ResponsableTerritorial.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)
+    )
+
+    crecimiento = {
+        'coordinadores': list(coordinadores.annotate(mes=TruncWeek('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+        'lideres': list(lideres.annotate(mes=TruncWeek('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+        'estructuras': list(estructuras.annotate(mes=TruncWeek('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+        'reuniones': list(reuniones.annotate(mes=TruncWeek('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+    }
+
+    context = {
+        'total_comunidades': comunidad_qs.count(),
+        'comunidades_cubiertas': len(comunidad_ids_cubiertas),
+        'comunidades_no_cubiertas': max(comunidad_qs.count() - len(comunidad_ids_cubiertas), 0),
+        'total_sectores': sector_qs.count(),
+        'sectores_con_responsable': responsables.exclude(sector__isnull=True).values('sector_id').distinct().count(),
+        'sectores_sin_responsable': max(sector_qs.count() - responsables.exclude(sector__isnull=True).values('sector_id').distinct().count(), 0),
+        'total_centros': centro_qs.count(),
+        'centros_con_cobertura': len(centro_ids_cubiertos),
+        'centros_sin_cobertura': max(centro_qs.count() - len(centro_ids_cubiertos), 0),
+        'coordinadores_activos': coordinadores.filter(estado=EstadoRegistro.ACTIVO).count(),
+        'coordinadores_inactivos': coordinadores.filter(estado=EstadoRegistro.INACTIVO).count(),
+        'total_lideres': lideres.count(),
+        'estructuras_activas': estructuras.filter(estado=EstadoRegistro.ACTIVO).count(),
+        'reuniones_mes': reuniones.filter(fecha__month=timezone.now().month, fecha__year=timezone.now().year).count(),
+        'incidencias_abiertas': incidencias.count(),
+        'resumen_comunidad': comunidad_qs.annotate(
+            total_sectores=Count('sector', distinct=True),
+            reuniones_total=Count('reuniones_organizacion', distinct=True),
+            incidencias_abiertas=Count('incidencias_organizacion', filter=Q(incidencias_organizacion__estado=EstadoRegistro.ACTIVO), distinct=True),
+        ),
+        'resumen_sector': sector_qs.annotate(
+            lideres_total=Count('lideres_organizacion', distinct=True),
+            estructuras_total=Count('estructuras_organizacion', distinct=True),
+            incidencias_total=Count('incidencias_organizacion', distinct=True),
+        ),
+        'resumen_centro': centro_qs.annotate(
+            incidencias_total=Count('incidencias_organizacion', distinct=True),
+            reuniones_total=Count('reuniones_organizacion', distinct=True),
+        ),
+        'crecimiento': json.dumps(crecimiento, cls=DjangoJSONEncoder),
+        'sector_ids_cubiertos': sector_ids_cubiertos,
+        'centro_ids_cubiertos': centro_ids_cubiertos,
+        'comunidad_ids_cubiertas': comunidad_ids_cubiertas,
+    }
+    return safe_render(request, 'afiliados/organizacion/panorama.html', context)
+
+
+def _org_crud(request, model, form_class, template, list_name, create_name, edit_name, pk=None, extra_context=None):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    instance = get_object_or_404(model, pk=pk) if pk else None
+    form = form_class(request.POST or None, instance=instance)
+    if request.method == 'POST' and form.is_valid():
+        obj = form.save(commit=False)
+        if not getattr(obj, 'usuario_creador_id', None):
+            obj.usuario_creador = request.user
+        obj.usuario_modificador = request.user
+        obj.save()
+        messages.success(request, 'Registro guardado correctamente.')
+        return redirect(list_name)
+    context = {
+        'form': form,
+        'items': model.objects.all().order_by('-id')[:200],
+        'entity_label': template,
+        'create_name': create_name,
+        'edit_name': edit_name,
+    }
+    if extra_context:
+        context.update(extra_context)
+    return safe_render(request, f'afiliados/organizacion/crud_{template}.html', context)
+
+
+@login_required
+def lista_estructura_territorial(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/estructura_territorial.html', {
+        'comunidades': Comunidad.objects.select_related('sector').all(),
+        'sectores': Sector.objects.all(),
+        'centros': CentroVotacion.objects.prefetch_related('sectores').all(),
+    })
+
+
+@login_required
+def lista_comunidades(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return comunidad_lista(request)
+
+
+@login_required
+def crear_comunidad(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return comunidad_nueva(request)
+
+
+@login_required
+def editar_comunidad(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return comunidad_editar(request, pk)
+
+
+@login_required
+def lista_sectores(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return sector_nueva(request)
+
+
+@login_required
+def crear_sector(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return sector_nueva(request)
+
+
+@login_required
+def editar_sector(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return sector_editar(request, pk)
+
+
+@login_required
+def lista_centros_votacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return centro_lista(request)
+
+
+@login_required
+def crear_centro_votacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return centro_nuevo(request)
+
+
+@login_required
+def editar_centro_votacion(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return centro_editar(request, pk)
+
+
+@login_required
+def lista_coordinadores(request):
+    return _org_crud(request, CoordinadorOrganizacion, CoordinadorOrganizacionForm, 'coordinadores', 'afiliados:lista_coordinadores', 'afiliados:crear_coordinador', 'afiliados:editar_coordinador')
+
+
+@login_required
+def crear_coordinador(request):
+    return _org_crud(request, CoordinadorOrganizacion, CoordinadorOrganizacionForm, 'coordinadores', 'afiliados:lista_coordinadores', 'afiliados:crear_coordinador', 'afiliados:editar_coordinador')
+
+
+@login_required
+def editar_coordinador(request, pk):
+    return _org_crud(request, CoordinadorOrganizacion, CoordinadorOrganizacionForm, 'coordinadores', 'afiliados:lista_coordinadores', 'afiliados:crear_coordinador', 'afiliados:editar_coordinador', pk=pk)
+
+
+@login_required
+def detalle_coordinador(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/detalle_generico.html', {'obj': get_object_or_404(CoordinadorOrganizacion, pk=pk), 'titulo': 'Coordinador'})
+
+
+@login_required
+def lista_lideres(request):
+    return _org_crud(request, LiderComunitarioOrganizacion, LiderComunitarioOrganizacionForm, 'lideres', 'afiliados:lista_lideres', 'afiliados:crear_lider', 'afiliados:editar_lider')
+
+
+@login_required
+def crear_lider(request):
+    return _org_crud(request, LiderComunitarioOrganizacion, LiderComunitarioOrganizacionForm, 'lideres', 'afiliados:lista_lideres', 'afiliados:crear_lider', 'afiliados:editar_lider')
+
+
+@login_required
+def editar_lider(request, pk):
+    return _org_crud(request, LiderComunitarioOrganizacion, LiderComunitarioOrganizacionForm, 'lideres', 'afiliados:lista_lideres', 'afiliados:crear_lider', 'afiliados:editar_lider', pk=pk)
+
+
+@login_required
+def detalle_lider(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/detalle_generico.html', {'obj': get_object_or_404(LiderComunitarioOrganizacion, pk=pk), 'titulo': 'Líder comunitario'})
+
+
+@login_required
+def lista_estructuras(request):
+    return _org_crud(request, EstructuraOrganizativa, EstructuraOrganizativaForm, 'estructuras', 'afiliados:lista_estructuras', 'afiliados:crear_estructura', 'afiliados:editar_estructura')
+
+
+@login_required
+def crear_estructura(request):
+    return _org_crud(request, EstructuraOrganizativa, EstructuraOrganizativaForm, 'estructuras', 'afiliados:lista_estructuras', 'afiliados:crear_estructura', 'afiliados:editar_estructura')
+
+
+@login_required
+def editar_estructura(request, pk):
+    return _org_crud(request, EstructuraOrganizativa, EstructuraOrganizativaForm, 'estructuras', 'afiliados:lista_estructuras', 'afiliados:crear_estructura', 'afiliados:editar_estructura', pk=pk)
+
+
+@login_required
+def detalle_estructura(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/detalle_generico.html', {'obj': get_object_or_404(EstructuraOrganizativa, pk=pk), 'titulo': 'Estructura organizativa'})
+
+
+@login_required
+def lista_responsables(request):
+    return _org_crud(request, ResponsableTerritorial, ResponsableTerritorialForm, 'responsables', 'afiliados:lista_responsables', 'afiliados:crear_responsable', 'afiliados:editar_responsable')
+
+
+@login_required
+def crear_responsable(request):
+    return _org_crud(request, ResponsableTerritorial, ResponsableTerritorialForm, 'responsables', 'afiliados:lista_responsables', 'afiliados:crear_responsable', 'afiliados:editar_responsable')
+
+
+@login_required
+def editar_responsable(request, pk):
+    return _org_crud(request, ResponsableTerritorial, ResponsableTerritorialForm, 'responsables', 'afiliados:lista_responsables', 'afiliados:crear_responsable', 'afiliados:editar_responsable', pk=pk)
+
+
+@login_required
+def detalle_responsable(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/detalle_generico.html', {'obj': get_object_or_404(ResponsableTerritorial, pk=pk), 'titulo': 'Responsable territorial'})
+
+
+@login_required
+def lista_reuniones(request):
+    return _org_crud(request, ReunionTerritorial, ReunionTerritorialForm, 'reuniones', 'afiliados:lista_reuniones', 'afiliados:crear_reunion', 'afiliados:editar_reunion')
+
+
+@login_required
+def crear_reunion(request):
+    return _org_crud(request, ReunionTerritorial, ReunionTerritorialForm, 'reuniones', 'afiliados:lista_reuniones', 'afiliados:crear_reunion', 'afiliados:editar_reunion')
+
+
+@login_required
+def editar_reunion(request, pk):
+    return _org_crud(request, ReunionTerritorial, ReunionTerritorialForm, 'reuniones', 'afiliados:lista_reuniones', 'afiliados:crear_reunion', 'afiliados:editar_reunion', pk=pk)
+
+
+@login_required
+def detalle_reunion(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/detalle_generico.html', {'obj': get_object_or_404(ReunionTerritorial, pk=pk), 'titulo': 'Reunión territorial'})
+
+
+@login_required
+def lista_incidencias(request):
+    return _org_crud(request, IncidenciaTerritorial, IncidenciaTerritorialForm, 'incidencias', 'afiliados:lista_incidencias', 'afiliados:crear_incidencia', 'afiliados:editar_incidencia')
+
+
+@login_required
+def crear_incidencia(request):
+    return _org_crud(request, IncidenciaTerritorial, IncidenciaTerritorialForm, 'incidencias', 'afiliados:lista_incidencias', 'afiliados:crear_incidencia', 'afiliados:editar_incidencia')
+
+
+@login_required
+def editar_incidencia(request, pk):
+    return _org_crud(request, IncidenciaTerritorial, IncidenciaTerritorialForm, 'incidencias', 'afiliados:lista_incidencias', 'afiliados:crear_incidencia', 'afiliados:editar_incidencia', pk=pk)
+
+
+@login_required
+def detalle_incidencia(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/detalle_generico.html', {'obj': get_object_or_404(IncidenciaTerritorial, pk=pk), 'titulo': 'Incidencia territorial'})
+
+
+@login_required
+def reporte_cobertura_comunidades(request):
+    return panorama_municipal_organizacion(request)
+
+
+@login_required
+def reporte_coordinadores(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/reporte_coordinadores.html', {
+        'coordinadores': CoordinadorOrganizacion.objects.select_related('comunidad', 'sector', 'centro_votacion').order_by('-fecha_creacion')
+    })
+
+
+@login_required
+def reporte_reuniones(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/reporte_reuniones.html', {
+        'reuniones': ReunionTerritorial.objects.select_related('comunidad', 'sector', 'centro_votacion').order_by('-fecha')
+    })
+
+
+@login_required
+def reporte_crecimiento_mensual(request):
+    return panorama_municipal_organizacion(request)
