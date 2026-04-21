@@ -1870,12 +1870,22 @@ def _org_crud(request, model, form_class, template, list_name, create_name, edit
         'reuniones': 'Aquí registras reuniones territoriales, acuerdos y estado de seguimiento.',
         'incidencias': 'Aquí reportas incidencias territoriales para su gestión y resolución oportuna.',
     }
+    detail_names = {
+        'coordinadores': 'afiliados:detalle_coordinador',
+        'lideres': 'afiliados:detalle_lider',
+        'estructuras': 'afiliados:detalle_estructura',
+        'responsables': 'afiliados:detalle_responsable',
+        'reuniones': 'afiliados:detalle_reunion',
+        'incidencias': 'afiliados:detalle_incidencia',
+    }
+
     context = {
         'form': form,
         'items': model.objects.all().order_by('-id')[:200],
         'entity_label': template,
         'create_name': create_name,
         'edit_name': edit_name,
+        'detail_name': detail_names.get(template),
         'descripcion_vista': descripciones.get(template, ''),
         'comunidad_lookup_url': reverse('afiliados:organizacion_comunidad_lookup'),
         'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_organizacion'),

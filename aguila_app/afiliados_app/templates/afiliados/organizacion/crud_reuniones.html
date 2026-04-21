@@ -38,7 +38,18 @@
   <div class="card"><div class="card-body table-responsive">
     <table class="display datatable"><thead><tr><th>ID</th><th>Registro</th><th>Acciones</th></tr></thead><tbody>
       {% for item in items %}
-      <tr><td>{{ item.id }}</td><td>{{ item }}</td><td><a href="{% url edit_name item.id %}">Editar</a></td></tr>
+      <tr>
+        <td>{{ item.id }}</td>
+        <td>{{ item }}</td>
+        <td>
+          <div class="d-flex gap-2"> 
+            {% if detail_name %}
+            <a href="{% url detail_name item.id %}" class="btn btn-outline-primary btn-sm">Detalle</a>
+            {% endif %}
+            <a href="{% url edit_name item.id %}" class="btn btn-primary btn-sm">Editar</a>
+          </div>
+        </td>
+      </tr>
       {% endfor %}
     </tbody></table>
   </div></div>
@@ -53,7 +64,7 @@
       </div>
       <div class="modal-body">
         <div class="table-responsive">
-          <table class="table table-striped table-bordered w-100" id="tablaResponsablesModal">
+          <table class="display datatable w-100" id="tablaResponsablesModal">
             <thead>
               <tr>
                 <th>Tipo</th>
@@ -112,24 +123,22 @@ $(function(){
     });
   }
 
-  if ($.fn.DataTable && !$.fn.DataTable.isDataTable('#tablaResponsablesModal')) {
-    $('#tablaResponsablesModal').DataTable({
-      pageLength: 10,
-      order: [[1, 'asc']],
-      language: {
-        search: 'Buscar:',
-        lengthMenu: 'Mostrar _MENU_ registros',
-        info: 'Mostrando _START_ a _END_ de _TOTAL_ registros',
-        paginate: { previous: 'Anterior', next: 'Siguiente' },
-        emptyTable: 'No hay responsables disponibles'
+  const tablaResponsables = window.initDataTable
+    ? window.initDataTable('#tablaResponsablesModal', { order: [[1, 'asc']] })
+    : null;
+
+  if (modalEl) {
+    modalEl.addEventListener('shown.bs.modal', function () {
+      if (tablaResponsables && tablaResponsables.columns) {
+        tablaResponsables.columns.adjust().draw(false);
       }
     });
   }
 
-  $(document).on('click', '.btn-seleccionar-responsable', function(){
-    campoResponsable.val($(this).data('nombre') || '');
-    campoTipo.val($(this).data('tipo') || '');
-    campoRef.val($(this).data('ref-id') || '');
+  $('#tablaResponsablesModal tbody').on('click', '.btn-seleccionar-responsable', function(){
+    campoResponsable.val(this.dataset.nombre || '');
+    campoTipo.val(this.dataset.tipo || '');
+    campoRef.val(this.dataset.refId || '');
     if (modalResponsables) {
       modalResponsables.hide();
     }
