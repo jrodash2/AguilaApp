@@ -12,14 +12,18 @@
       {% for field in form %}
       <div class="mb-3">
         <label class="form-label">{{ field.label }}</label>
+        {% if field.name == 'dpi' %}
+        <div class="input-group">
+          {{ field }}
+          <button type="button" id="btnVerificarEmpadronamiento" class="btn btn-outline-info" data-url="{{ empadronamiento_url }}" data-dpi-input="{{ form.dpi.id_for_label }}" data-output-id="resultado_tse">Verificar empadronamiento</button>
+        </div>
+        {% else %}
         {{ field }}
+        {% endif %}
         {% if field.help_text %}<small class="text-muted d-block">{{ field.help_text }}</small>{% endif %}
       </div>
       {% endfor %}
-      {% if form.dpi %}
-      <button type="button" id="btnVerificarEmpadronamiento" class="btn btn-outline-info mb-2" data-url="{{ empadronamiento_url }}" data-dpi-input="{{ form.dpi.id_for_label }}" data-output-id="resultado_tse">Verificar empadronamiento por DPI</button>
       <div id="resultado_tse" class="mb-2"></div>
-      {% endif %}
       <div id="territorio_derivado" class="small text-muted mb-2"></div>
       <button class="btn btn-primary" type="submit">Guardar</button>
     </form>
@@ -36,8 +40,8 @@
 <script>
 $(function(){
   const comunidad = $('#id_comunidad');
-  if (!comunidad.length) return;
   function cargarTerritorio() {
+    if (!comunidad.length) return;
     const id = comunidad.val();
     if (!id) { $('#territorio_derivado').html(''); return; }
     $.get('{{ comunidad_lookup_url }}', { comunidad_id: id }).done(function(res){

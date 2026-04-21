@@ -403,6 +403,7 @@ class LiderComunitarioOrganizacionForm(forms.ModelForm):
         exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
         widgets = {
             'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}),
+            'dpi': forms.TextInput(attrs={'class': 'form-control'}),
             'telefono': forms.TextInput(attrs={'class': 'form-control'}),
             'coordinador': forms.Select(attrs={'class': 'form-control'}),
             'comunidad': forms.Select(attrs={'class': 'form-control'}),

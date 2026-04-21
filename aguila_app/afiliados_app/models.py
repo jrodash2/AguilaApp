@@ -315,6 +315,7 @@ class CoordinadorOrganizacion(models.Model):
 
 class LiderComunitarioOrganizacion(models.Model):
     nombre_completo = models.CharField(max_length=160)
+    dpi = models.CharField(max_length=20, blank=True, null=True)
     telefono = models.CharField(max_length=20, blank=True, null=True)
     comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="lideres_organizacion")
     sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="lideres_organizacion")
