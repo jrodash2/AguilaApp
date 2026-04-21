@@ -485,7 +485,10 @@ class ReunionTerritorialForm(OrganizacionTerritorialBaseForm):
         model = ReunionTerritorial
         exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
         widgets = {
-            'fecha': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'fecha': forms.DateInput(
+                attrs={'class': 'form-control', 'type': 'date'},
+                format='%Y-%m-%d',
+            ),
             'tipo_reunion': forms.TextInput(attrs={'class': 'form-control'}),
             'titulo': forms.TextInput(attrs={'class': 'form-control'}),
             'comunidad': forms.Select(attrs={'class': 'form-select'}),
@@ -501,6 +504,9 @@ class ReunionTerritorialForm(OrganizacionTerritorialBaseForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._setup_territorio_derivado()
+        self.fields['fecha'].input_formats = ['%Y-%m-%d']
+        if self.instance and self.instance.pk and self.instance.fecha:
+            self.initial['fecha'] = self.instance.fecha.strftime('%Y-%m-%d')
 
     def save(self, commit=True):
         obj = super().save(commit=False)

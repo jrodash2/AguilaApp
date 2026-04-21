@@ -2169,7 +2169,8 @@ def detalle_reunion(request, pk):
     denied = _require_organizacion(request)
     if denied:
         return denied
-    return safe_render(request, 'afiliados/organizacion/detalle_generico.html', {'obj': get_object_or_404(ReunionTerritorial, pk=pk), 'titulo': 'Reunión territorial'})
+    reunion = get_object_or_404(ReunionTerritorial, pk=pk)
+    return safe_render(request, 'afiliados/organizacion/detalle_reunion.html', {'reunion': reunion})
 
 
 @login_required
