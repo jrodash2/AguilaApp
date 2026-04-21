@@ -1,0 +1,166 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+<div class="page-body"><div class="container-fluid">
+  <div class="page-title mb-3">
+    <div class="row">
+      <div class="col-md-8">
+        <h4>Detalle de estructura</h4>
+        <p class="text-muted mb-0">{{ estructura.nombre }} ({{ estructura.tipo_estructura }})</p>
+      </div>
+      <div class="col-md-4 text-md-end mt-2 mt-md-0">
+        <span class="badge bg-primary fs-6">Integrantes registrados: {{ total_integrantes }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4"><strong>Comunidad:</strong> {{ estructura.comunidad|default:'—' }}</div>
+        <div class="col-md-4"><strong>Sector:</strong> {{ estructura.sector|default:'—' }}</div>
+        <div class="col-md-4"><strong>Centro:</strong> {{ estructura.centro_votacion|default:'—' }}</div>
+      </div>
+      <div class="mt-3 d-flex gap-2">
+        <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#modalAgregarIntegrante">Agregar integrante</button>
+        <a href="{% url 'afiliados:editar_estructura' estructura.pk %}" class="btn btn-outline-primary">Editar estructura</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h5 class="mb-0">Listado de integrantes</h5></div>
+    <div class="card-body table-responsive">
+      <table class="display datatable">
+        <thead>
+          <tr>
+            <th>DPI</th>
+            <th>Nombre</th>
+            <th>Comunidad</th>
+            <th>Estado</th>
+            <th>Fecha registro</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i in integrantes %}
+          <tr>
+            <td>{{ i.dpi }}</td>
+            <td>{{ i.nombre_completo }}</td>
+            <td>{{ i.comunidad|default:'—' }}</td>
+            <td>{{ i.estado }}</td>
+            <td>{{ i.fecha_registro|date:'d/m/Y H:i' }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="5" class="text-center text-muted">No hay integrantes registrados en esta estructura.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div></div>
+
+<div class="modal fade" id="modalAgregarIntegrante" tabindex="-1" aria-labelledby="modalAgregarIntegranteLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="formAgregarIntegrante">{% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalAgregarIntegranteLabel">Agregar integrante por DPI</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="id_dpi_integrante" class="form-label">DPI</label>
+            <div class="input-group">
+              <input type="text" name="dpi" id="id_dpi_integrante" class="form-control" maxlength="20" placeholder="Ingresa DPI" required>
+              <input type="hidden" name="verified_dpi" id="id_verified_dpi" value="">
+              <button type="button" id="btnVerificarEmpadronamiento" class="btn btn-outline-info" data-url="{{ empadronamiento_url }}" data-dpi-input="id_dpi_integrante" data-output-id="resultado_tse_integrante">Verificar empadronamiento</button>
+            </div>
+          </div>
+          <div id="resultado_tse_integrante" class="mb-2"></div>
+          <div class="alert alert-light border mb-0" id="info_integrante_modal">Verifica un DPI para cargar los datos.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnConfirmarAgregar" disabled>Confirmar agregado</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="{% static 'js/verificar_empadronamiento.js' %}?v=3"></script>
+<script>
+$(function(){
+  const btnConfirmar = $('#btnConfirmarAgregar');
+  const btnVerificar = $('#btnVerificarEmpadronamiento');
+  const info = $('#info_integrante_modal');
+  const dpiInput = $('#id_dpi_integrante');
+  const verifiedInput = $('#id_verified_dpi');
+  const resultado = $('#resultado_tse_integrante');
+  const modalEl = document.getElementById('modalAgregarIntegrante');
+
+  function limpiarEstadoVerificacion(mensaje) {
+    verifiedInput.val('');
+    btnConfirmar.prop('disabled', true);
+    resultado.html('');
+    info.html(mensaje || 'Verifica un DPI para cargar los datos.');
+  }
+
+  btnConfirmar.prop('disabled', true);
+  limpiarEstadoVerificacion();
+
+  btnVerificar.on('click', function(){
+    const dpi = (dpiInput.val() || '').replace(/\D/g, '');
+    limpiarEstadoVerificacion(dpi ? 'Verificando empadronamiento...' : 'Ingresa un DPI válido para verificar.');
+  });
+
+  document.addEventListener('empadronamiento:resultado', function(e){
+    const r = e.detail || {};
+    if (r.ok && (r.found || r.empadronado) && r.data) {
+      const d = r.data;
+      const dpiVerificado = (d.dpi || dpiInput.val() || '').replace(/\D/g, '');
+      const nombre = d.nombre_completo || d.nombre || 'N/A';
+      const comunidad = d.comunidad || 'N/A';
+      const municipio = d.municipio || 'N/A';
+      info.html(
+        '<div class="alert alert-success mb-0">' +
+          '<div><strong>Nombre:</strong> ' + nombre + '</div>' +
+          '<div><strong>DPI:</strong> ' + (dpiVerificado || 'N/A') + '</div>' +
+          '<div><strong>Estado:</strong> Empadronado</div>' +
+          '<div><strong>Comunidad:</strong> ' + comunidad + '</div>' +
+          '<div><strong>Municipio:</strong> ' + municipio + '</div>' +
+        '</div>'
+      );
+      verifiedInput.val(dpiVerificado);
+      btnConfirmar.prop('disabled', !(dpiVerificado && dpiVerificado === (dpiInput.val() || '').replace(/\D/g, '')));
+    } else {
+      limpiarEstadoVerificacion('<div class="alert alert-danger mb-0">No aparece empadronado en padrón local o ocurrió un error en la verificación.</div>');
+    }
+  });
+
+  dpiInput.on('input', function(){
+    limpiarEstadoVerificacion('Cambiaste el DPI. Debes verificar nuevamente para habilitar el agregado.');
+  });
+
+  $('#formAgregarIntegrante').on('submit', function(e){
+    const dpi = (dpiInput.val() || '').replace(/\D/g, '');
+    const verified = (verifiedInput.val() || '').replace(/\D/g, '');
+    if (!dpi || !verified || dpi !== verified) {
+      e.preventDefault();
+      info.html('<div class="alert alert-danger mb-0">Debes verificar empadronamiento del DPI antes de confirmar.</div>');
+      btnConfirmar.prop('disabled', true);
+    }
+  });
+
+  if (modalEl) {
+    modalEl.addEventListener('shown.bs.modal', function () {
+      limpiarEstadoVerificacion();
+    });
+    modalEl.addEventListener('hidden.bs.modal', function () {
+      dpiInput.val('');
+      limpiarEstadoVerificacion();
+    });
+  }
+});
+</script>
+{% endblock %}
