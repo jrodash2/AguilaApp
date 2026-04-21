@@ -82,5 +82,11 @@ path("api/padron/verificar/", views.consultar_padron_local, name="consultar_padr
 path("verificar-empadronamiento/", views.verificar_empadronamiento, name="verificar_empadronamiento"),
 path('padron/cargar/', views.padron_cargar, name='padron_cargar'),
 
+    # Secretaría de Organización
+    path('organizacion/', views.dashboard_organizacion, name='dashboard_organizacion'),
+    path('organizacion/integrantes/', views.lista_integrantes_organizacion, name='lista_integrantes_organizacion'),
+    path('organizacion/integrantes/crear/', views.crear_integrante_organizacion, name='crear_integrante_organizacion'),
+    path('organizacion/integrantes/<int:pk>/', views.detalle_integrante_organizacion, name='detalle_integrante_organizacion'),
+    path('organizacion/integrantes/<int:pk>/editar/', views.editar_integrante_organizacion, name='editar_integrante_organizacion'),
 
 ]
