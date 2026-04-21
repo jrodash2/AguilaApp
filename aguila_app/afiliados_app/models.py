@@ -162,6 +162,50 @@ class Afiliado(models.Model):
         return f"{self.nombre_completo} ({self.dpi})"
 
     
+class OrganizacionIntegrante(models.Model):
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        REVISADO = "REVISADO", "Revisado"
+        APROBADO = "APROBADO", "Aprobado"
+
+    afiliado = models.ForeignKey(
+        Afiliado,
+        on_delete=models.PROTECT,
+        related_name="registros_organizacion",
+    )
+    estado = models.CharField(
+        max_length=20,
+        choices=Estado.choices,
+        default=Estado.PENDIENTE,
+    )
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_registro = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="integrantes_organizacion_registrados",
+    )
+    usuario_modificacion = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="integrantes_organizacion_modificados",
+        null=True,
+        blank=True,
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Integrante de Organización"
+        verbose_name_plural = "Integrantes de Organización"
+        ordering = ["-fecha_creacion"]
+        constraints = [
+            models.UniqueConstraint(fields=["afiliado"], name="uniq_organizacion_afiliado"),
+        ]
+
+    def __str__(self):
+        return f"{self.afiliado.nombre_completo} - {self.get_estado_display()}"
+
+
 
 class Eleccion2023(models.Model):
     mesa = models.IntegerField(null=True, blank=True)

@@ -14,12 +14,12 @@ from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 import requests
 import unicodedata
-from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm
-from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral
+from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm, OrganizacionIntegranteForm
+from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral, OrganizacionIntegrante
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
-from django.http import Http404, HttpResponseNotAllowed, JsonResponse
+from django.http import Http404, HttpResponseNotAllowed, JsonResponse, HttpResponseForbidden
 from django.core.exceptions import ValidationError
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
@@ -388,6 +388,8 @@ def signin(request):
                     return redirect('afiliados:dahsboard')
                 elif g.name == 'afiliados':
                     return redirect('afiliados:dahsboard')
+                elif g.name == 'Organizacion':
+                    return redirect('afiliados:dashboard_organizacion')
             # Si no se encuentra el grupo adecuado, se redirige a una página por defecto
             return redirect('afiliados:dahsboard')
         else:
@@ -612,40 +614,8 @@ def datos_centro(request):
 @login_required
 @require_GET
 def consultar_padron_local(request):
-    dpi_limpio = re.sub(r"\D", "", request.GET.get("dpi", ""))
-
-    if len(dpi_limpio) != 13:
-        return JsonResponse({
-            "ok": False,
-            "found": False,
-            "empadronado": False,
-            "error": "DPI inválido. Debe contener exactamente 13 dígitos.",
-        }, status=400)
-
-    persona = PadronElectoral.objects.filter(identificacion=dpi_limpio).first()
-
-    if not persona:
-        return JsonResponse({
-            "ok": True,
-            "found": False,
-            "empadronado": False,
-            "message": "No aparece en padrón local: podría estar vecindado en otro municipio o no empadronado. Consulte TSE.",
-        })
-
-    return JsonResponse({
-        "ok": True,
-        "found": True,
-        "empadronado": True,
-        "data": {
-            "dpi": persona.identificacion,
-            "nombre_completo": persona.nombre,
-            "comunidad": persona.comunidad,
-            "departamento": persona.departamento,
-            "municipio": persona.municipio,
-            "edad": persona.edad,
-        },
-        "message": "Encontrado en padrón local",
-    })
+    payload, status_code = _resultado_padron_local(request.GET.get("dpi", ""))
+    return JsonResponse(payload, status=status_code)
 
 
 
@@ -665,6 +635,43 @@ def verificar_empadronamiento(request):
             'ok': False,
             'error': f'Error interno al verificar empadronamiento: {exc.__class__.__name__}',
         }, status=500)
+
+
+def _resultado_padron_local(dpi_raw):
+    dpi_limpio = re.sub(r"\D", "", dpi_raw or "")
+
+    if len(dpi_limpio) != 13:
+        return ({
+            "ok": False,
+            "found": False,
+            "empadronado": False,
+            "error": "DPI inválido. Debe contener exactamente 13 dígitos.",
+        }, 400)
+
+    persona = PadronElectoral.objects.filter(identificacion=dpi_limpio).first()
+
+    if not persona:
+        return ({
+            "ok": True,
+            "found": False,
+            "empadronado": False,
+            "message": "No aparece en padrón local: podría estar vecindado en otro municipio o no empadronado. Consulte TSE.",
+        }, 200)
+
+    return ({
+        "ok": True,
+        "found": True,
+        "empadronado": True,
+        "data": {
+            "dpi": persona.identificacion,
+            "nombre_completo": persona.nombre,
+            "comunidad": persona.comunidad,
+            "departamento": persona.departamento,
+            "municipio": persona.municipio,
+            "edad": persona.edad,
+        },
+        "message": "Encontrado en padrón local",
+    }, 200)
 
 def _normalizar_columna(nombre_columna):
     texto = str(nombre_columna or "").strip().lower()
@@ -1574,3 +1581,181 @@ def comision_eliminar(request, pk):
         return redirect('afiliados:comision_lista')
 
     return redirect('afiliados:comision_lista')
+
+
+def _es_usuario_organizacion(user):
+    if not user.is_authenticated:
+        return False
+    return user.groups.filter(name__in=['Organizacion', 'Administrador']).exists()
+
+
+def _require_organizacion(request):
+    if not _es_usuario_organizacion(request.user):
+        return HttpResponseForbidden("No tiene permisos para acceder a Secretaría de Organización.")
+    return None
+
+
+def _afiliado_por_dpi(dpi_raw):
+    dpi_limpio = re.sub(r"\D", "", dpi_raw or "")
+    if len(dpi_limpio) != 13:
+        return None, dpi_limpio, "DPI inválido. Debe contener exactamente 13 dígitos."
+    return Afiliado.objects.filter(dpi=dpi_limpio).first(), dpi_limpio, None
+
+
+@login_required
+def dashboard_organizacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    registros = OrganizacionIntegrante.objects.select_related('afiliado')
+    context = {
+        'total_integrantes': registros.count(),
+        'total_pendientes': registros.filter(estado=OrganizacionIntegrante.Estado.PENDIENTE).count(),
+        'total_revisados': registros.filter(estado=OrganizacionIntegrante.Estado.REVISADO).count(),
+        'total_aprobados': registros.filter(estado=OrganizacionIntegrante.Estado.APROBADO).count(),
+        'ultimos_registros': registros.order_by('-fecha_creacion')[:10],
+    }
+    return safe_render(request, 'afiliados/organizacion/dashboard.html', context)
+
+
+@login_required
+def lista_integrantes_organizacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    integrantes = OrganizacionIntegrante.objects.select_related('afiliado', 'usuario_registro')
+    return safe_render(request, 'afiliados/organizacion/lista.html', {'integrantes': integrantes})
+
+
+@login_required
+def crear_integrante_organizacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    form = OrganizacionIntegranteForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
+
+        if error_dpi:
+            form.add_error('dpi', error_dpi)
+        elif not afiliado:
+            form.add_error('dpi', 'No existe un afiliado registrado con este DPI.')
+        elif OrganizacionIntegrante.objects.filter(afiliado=afiliado).exists():
+            form.add_error('dpi', 'Este afiliado ya está registrado en Secretaría de Organización.')
+        else:
+            integrante = form.save(commit=False)
+            integrante.afiliado = afiliado
+            integrante.usuario_registro = request.user
+            integrante.usuario_modificacion = request.user
+            integrante.save()
+            messages.success(request, 'Integrante agregado a Secretaría de Organización correctamente.')
+            return redirect('afiliados:lista_integrantes_organizacion')
+
+    return safe_render(request, 'afiliados/organizacion/form.html', {'form': form, 'es_edicion': False})
+
+
+@login_required
+def detalle_integrante_organizacion(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    integrante = get_object_or_404(
+        OrganizacionIntegrante.objects.select_related('afiliado', 'usuario_registro'),
+        pk=pk,
+    )
+    return safe_render(request, 'afiliados/organizacion/detalle.html', {'integrante': integrante})
+
+
+@login_required
+def editar_integrante_organizacion(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    integrante = get_object_or_404(OrganizacionIntegrante, pk=pk)
+    form = OrganizacionIntegranteForm(request.POST or None, instance=integrante)
+    form.fields['dpi'].initial = integrante.afiliado.dpi
+
+    if request.method == 'POST' and form.is_valid():
+        afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
+        if error_dpi:
+            form.add_error('dpi', error_dpi)
+        elif not afiliado:
+            form.add_error('dpi', 'No existe un afiliado registrado con este DPI.')
+        elif OrganizacionIntegrante.objects.filter(afiliado=afiliado).exclude(pk=integrante.pk).exists():
+            form.add_error('dpi', 'Este afiliado ya está registrado en Secretaría de Organización.')
+        else:
+            integrante = form.save(commit=False)
+            integrante.afiliado = afiliado
+            integrante.usuario_modificacion = request.user
+            integrante.save()
+            messages.success(request, 'Integrante de Secretaría de Organización actualizado correctamente.')
+            return redirect('afiliados:detalle_integrante_organizacion', pk=integrante.pk)
+
+    return safe_render(request, 'afiliados/organizacion/form.html', {'form': form, 'es_edicion': True, 'integrante': integrante})
+
+
+@login_required
+@require_GET
+def buscar_por_dpi_organizacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    afiliado, dpi_limpio, error_dpi = _afiliado_por_dpi(request.GET.get('dpi', ''))
+    if error_dpi:
+        return JsonResponse({'ok': False, 'error': error_dpi}, status=400)
+
+    if not afiliado:
+        return JsonResponse({'ok': True, 'exists': False, 'message': 'No existe afiliado con ese DPI.'})
+
+    ya_registrado = OrganizacionIntegrante.objects.filter(afiliado=afiliado).exists()
+    return JsonResponse({
+        'ok': True,
+        'exists': True,
+        'already_registered': ya_registrado,
+        'data': {
+            'dpi': dpi_limpio,
+            'nombre_completo': afiliado.nombre_completo,
+            'telefono': afiliado.telefono,
+            'direccion': afiliado.direccion,
+            'comunidad': afiliado.comunidad.nombre if afiliado.comunidad else None,
+            'empadronado': afiliado.empadronado,
+        }
+    })
+
+
+@login_required
+@require_GET
+def verificar_empadronamiento_organizacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    payload, status_code = _resultado_padron_local(request.GET.get("dpi", ""))
+    return JsonResponse(payload, status=status_code)
+
+
+@login_required
+@require_POST
+def cambiar_estado_organizacion(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    integrante = get_object_or_404(OrganizacionIntegrante, pk=pk)
+    nuevo_estado = request.POST.get('estado', '').strip().upper()
+    estados_validos = {choice[0] for choice in OrganizacionIntegrante.Estado.choices}
+
+    if nuevo_estado not in estados_validos:
+        messages.error(request, 'Estado inválido.')
+        return redirect('afiliados:detalle_integrante_organizacion', pk=pk)
+
+    integrante.estado = nuevo_estado
+    integrante.usuario_modificacion = request.user
+    integrante.save(update_fields=['estado', 'usuario_modificacion', 'fecha_actualizacion'])
+    messages.success(request, 'Estado actualizado correctamente.')
+    return redirect('afiliados:detalle_integrante_organizacion', pk=pk)
