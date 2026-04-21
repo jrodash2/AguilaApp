@@ -14,12 +14,12 @@ from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 import requests
 import unicodedata
-from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm
-from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral
+from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm, OrganizacionIntegranteForm, CoordinadorOrganizacionForm, LiderComunitarioOrganizacionForm, EstructuraOrganizativaForm, ResponsableTerritorialForm, ReunionTerritorialForm, IncidenciaTerritorialForm
+from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, EstadoRegistro
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
-from django.http import Http404, HttpResponseNotAllowed, JsonResponse
+from django.http import Http404, HttpResponseNotAllowed, JsonResponse, HttpResponseForbidden
 from django.core.exceptions import ValidationError
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
@@ -388,6 +388,8 @@ def signin(request):
                     return redirect('afiliados:dahsboard')
                 elif g.name == 'afiliados':
                     return redirect('afiliados:dahsboard')
+                elif g.name == 'Organizacion':
+                    return redirect('afiliados:dashboard_organizacion')
             # Si no se encuentra el grupo adecuado, se redirige a una página por defecto
             return redirect('afiliados:dahsboard')
         else:
@@ -612,40 +614,8 @@ def datos_centro(request):
 @login_required
 @require_GET
 def consultar_padron_local(request):
-    dpi_limpio = re.sub(r"\D", "", request.GET.get("dpi", ""))
-
-    if len(dpi_limpio) != 13:
-        return JsonResponse({
-            "ok": False,
-            "found": False,
-            "empadronado": False,
-            "error": "DPI inválido. Debe contener exactamente 13 dígitos.",
-        }, status=400)
-
-    persona = PadronElectoral.objects.filter(identificacion=dpi_limpio).first()
-
-    if not persona:
-        return JsonResponse({
-            "ok": True,
-            "found": False,
-            "empadronado": False,
-            "message": "No aparece en padrón local: podría estar vecindado en otro municipio o no empadronado. Consulte TSE.",
-        })
-
-    return JsonResponse({
-        "ok": True,
-        "found": True,
-        "empadronado": True,
-        "data": {
-            "dpi": persona.identificacion,
-            "nombre_completo": persona.nombre,
-            "comunidad": persona.comunidad,
-            "departamento": persona.departamento,
-            "municipio": persona.municipio,
-            "edad": persona.edad,
-        },
-        "message": "Encontrado en padrón local",
-    })
+    payload, status_code = _resultado_padron_local(request.GET.get("dpi", ""))
+    return JsonResponse(payload, status=status_code)
 
 
 
@@ -665,6 +635,43 @@ def verificar_empadronamiento(request):
             'ok': False,
             'error': f'Error interno al verificar empadronamiento: {exc.__class__.__name__}',
         }, status=500)
+
+
+def _resultado_padron_local(dpi_raw):
+    dpi_limpio = re.sub(r"\D", "", dpi_raw or "")
+
+    if len(dpi_limpio) != 13:
+        return ({
+            "ok": False,
+            "found": False,
+            "empadronado": False,
+            "error": "DPI inválido. Debe contener exactamente 13 dígitos.",
+        }, 400)
+
+    persona = PadronElectoral.objects.filter(identificacion=dpi_limpio).first()
+
+    if not persona:
+        return ({
+            "ok": True,
+            "found": False,
+            "empadronado": False,
+            "message": "No aparece en padrón local: podría estar vecindado en otro municipio o no empadronado. Consulte TSE.",
+        }, 200)
+
+    return ({
+        "ok": True,
+        "found": True,
+        "empadronado": True,
+        "data": {
+            "dpi": persona.identificacion,
+            "nombre_completo": persona.nombre,
+            "comunidad": persona.comunidad,
+            "departamento": persona.departamento,
+            "municipio": persona.municipio,
+            "edad": persona.edad,
+        },
+        "message": "Encontrado en padrón local",
+    }, 200)
 
 def _normalizar_columna(nombre_columna):
     texto = str(nombre_columna or "").strip().lower()
@@ -1574,3 +1581,546 @@ def comision_eliminar(request, pk):
         return redirect('afiliados:comision_lista')
 
     return redirect('afiliados:comision_lista')
+
+
+def _es_usuario_organizacion(user):
+    if not user.is_authenticated:
+        return False
+    return user.groups.filter(name__in=['Organizacion', 'Administrador']).exists()
+
+
+def _require_organizacion(request):
+    if not _es_usuario_organizacion(request.user):
+        return HttpResponseForbidden("No tiene permisos para acceder a Secretaría de Organización.")
+    return None
+
+
+def _afiliado_por_dpi(dpi_raw):
+    dpi_limpio = re.sub(r"\D", "", dpi_raw or "")
+    if len(dpi_limpio) != 13:
+        return None, dpi_limpio, "DPI inválido. Debe contener exactamente 13 dígitos."
+    return Afiliado.objects.filter(dpi=dpi_limpio).first(), dpi_limpio, None
+
+
+@login_required
+def dashboard_organizacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    registros = OrganizacionIntegrante.objects.select_related('afiliado')
+    context = {
+        'total_integrantes': registros.count(),
+        'total_pendientes': registros.filter(estado=OrganizacionIntegrante.Estado.PENDIENTE).count(),
+        'total_revisados': registros.filter(estado=OrganizacionIntegrante.Estado.REVISADO).count(),
+        'total_aprobados': registros.filter(estado=OrganizacionIntegrante.Estado.APROBADO).count(),
+        'ultimos_registros': registros.order_by('-fecha_creacion')[:10],
+    }
+    return safe_render(request, 'afiliados/organizacion/dashboard.html', context)
+
+
+@login_required
+def lista_integrantes_organizacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    integrantes = OrganizacionIntegrante.objects.select_related('afiliado', 'usuario_registro')
+    return safe_render(request, 'afiliados/organizacion/lista.html', {'integrantes': integrantes})
+
+
+@login_required
+def crear_integrante_organizacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    form = OrganizacionIntegranteForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
+
+        if error_dpi:
+            form.add_error('dpi', error_dpi)
+        elif not afiliado:
+            form.add_error('dpi', 'No existe un afiliado registrado con este DPI.')
+        elif OrganizacionIntegrante.objects.filter(afiliado=afiliado).exists():
+            form.add_error('dpi', 'Este afiliado ya está registrado en Secretaría de Organización.')
+        else:
+            integrante = form.save(commit=False)
+            integrante.afiliado = afiliado
+            integrante.usuario_registro = request.user
+            integrante.usuario_modificacion = request.user
+            integrante.save()
+            messages.success(request, 'Integrante agregado a Secretaría de Organización correctamente.')
+            return redirect('afiliados:lista_integrantes_organizacion')
+
+    return safe_render(request, 'afiliados/organizacion/form.html', {'form': form, 'es_edicion': False})
+
+
+@login_required
+def detalle_integrante_organizacion(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    integrante = get_object_or_404(
+        OrganizacionIntegrante.objects.select_related('afiliado', 'usuario_registro'),
+        pk=pk,
+    )
+    return safe_render(request, 'afiliados/organizacion/detalle.html', {'integrante': integrante})
+
+
+@login_required
+def editar_integrante_organizacion(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    integrante = get_object_or_404(OrganizacionIntegrante, pk=pk)
+    form = OrganizacionIntegranteForm(request.POST or None, instance=integrante)
+    form.fields['dpi'].initial = integrante.afiliado.dpi
+
+    if request.method == 'POST' and form.is_valid():
+        afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
+        if error_dpi:
+            form.add_error('dpi', error_dpi)
+        elif not afiliado:
+            form.add_error('dpi', 'No existe un afiliado registrado con este DPI.')
+        elif OrganizacionIntegrante.objects.filter(afiliado=afiliado).exclude(pk=integrante.pk).exists():
+            form.add_error('dpi', 'Este afiliado ya está registrado en Secretaría de Organización.')
+        else:
+            integrante = form.save(commit=False)
+            integrante.afiliado = afiliado
+            integrante.usuario_modificacion = request.user
+            integrante.save()
+            messages.success(request, 'Integrante de Secretaría de Organización actualizado correctamente.')
+            return redirect('afiliados:detalle_integrante_organizacion', pk=integrante.pk)
+
+    return safe_render(request, 'afiliados/organizacion/form.html', {'form': form, 'es_edicion': True, 'integrante': integrante})
+
+
+@login_required
+@require_GET
+def buscar_por_dpi_organizacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    afiliado, dpi_limpio, error_dpi = _afiliado_por_dpi(request.GET.get('dpi', ''))
+    if error_dpi:
+        return JsonResponse({'ok': False, 'error': error_dpi}, status=400)
+
+    if not afiliado:
+        return JsonResponse({'ok': True, 'exists': False, 'message': 'No existe afiliado con ese DPI.'})
+
+    ya_registrado = OrganizacionIntegrante.objects.filter(afiliado=afiliado).exists()
+    return JsonResponse({
+        'ok': True,
+        'exists': True,
+        'already_registered': ya_registrado,
+        'data': {
+            'dpi': dpi_limpio,
+            'nombre_completo': afiliado.nombre_completo,
+            'telefono': afiliado.telefono,
+            'direccion': afiliado.direccion,
+            'comunidad': afiliado.comunidad.nombre if afiliado.comunidad else None,
+            'empadronado': afiliado.empadronado,
+        }
+    })
+
+
+@login_required
+@require_GET
+def verificar_empadronamiento_organizacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    payload, status_code = _resultado_padron_local(request.GET.get("dpi", ""))
+    return JsonResponse(payload, status=status_code)
+
+
+@login_required
+@require_POST
+def cambiar_estado_organizacion(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    integrante = get_object_or_404(OrganizacionIntegrante, pk=pk)
+    nuevo_estado = request.POST.get('estado', '').strip().upper()
+    estados_validos = {choice[0] for choice in OrganizacionIntegrante.Estado.choices}
+
+    if nuevo_estado not in estados_validos:
+        messages.error(request, 'Estado inválido.')
+        return redirect('afiliados:detalle_integrante_organizacion', pk=pk)
+
+    integrante.estado = nuevo_estado
+    integrante.usuario_modificacion = request.user
+    integrante.save(update_fields=['estado', 'usuario_modificacion', 'fecha_actualizacion'])
+    messages.success(request, 'Estado actualizado correctamente.')
+    return redirect('afiliados:detalle_integrante_organizacion', pk=pk)
+
+
+@login_required
+def panorama_municipal_organizacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+
+    comunidad_qs = Comunidad.objects.select_related('sector')
+    sector_qs = Sector.objects.all()
+    centro_qs = CentroVotacion.objects.all()
+    coordinadores = CoordinadorOrganizacion.objects.all()
+    lideres = LiderComunitarioOrganizacion.objects.all()
+    estructuras = EstructuraOrganizativa.objects.all()
+    reuniones = ReunionTerritorial.objects.all()
+    incidencias = IncidenciaTerritorial.objects.filter(estado=EstadoRegistro.ACTIVO)
+    responsables = ResponsableTerritorial.objects.filter(estado=EstadoRegistro.ACTIVO)
+
+    comunidad_ids_cubiertas = set(
+        CoordinadorOrganizacion.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)
+    ) | set(
+        LiderComunitarioOrganizacion.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)
+    ) | set(
+        EstructuraOrganizativa.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)
+    ) | set(
+        ResponsableTerritorial.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)
+    )
+
+    sector_ids_cubiertos = set(
+        CoordinadorOrganizacion.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)
+    ) | set(
+        EstructuraOrganizativa.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)
+    ) | set(
+        ResponsableTerritorial.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)
+    )
+
+    centro_ids_cubiertos = set(
+        CoordinadorOrganizacion.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)
+    ) | set(
+        EstructuraOrganizativa.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)
+    ) | set(
+        ResponsableTerritorial.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)
+    )
+
+    crecimiento = {
+        'coordinadores': list(coordinadores.annotate(mes=TruncWeek('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+        'lideres': list(lideres.annotate(mes=TruncWeek('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+        'estructuras': list(estructuras.annotate(mes=TruncWeek('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+        'reuniones': list(reuniones.annotate(mes=TruncWeek('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+    }
+
+    context = {
+        'total_comunidades': comunidad_qs.count(),
+        'comunidades_cubiertas': len(comunidad_ids_cubiertas),
+        'comunidades_no_cubiertas': max(comunidad_qs.count() - len(comunidad_ids_cubiertas), 0),
+        'total_sectores': sector_qs.count(),
+        'sectores_con_responsable': responsables.exclude(sector__isnull=True).values('sector_id').distinct().count(),
+        'sectores_sin_responsable': max(sector_qs.count() - responsables.exclude(sector__isnull=True).values('sector_id').distinct().count(), 0),
+        'total_centros': centro_qs.count(),
+        'centros_con_cobertura': len(centro_ids_cubiertos),
+        'centros_sin_cobertura': max(centro_qs.count() - len(centro_ids_cubiertos), 0),
+        'coordinadores_activos': coordinadores.filter(estado=EstadoRegistro.ACTIVO).count(),
+        'coordinadores_inactivos': coordinadores.filter(estado=EstadoRegistro.INACTIVO).count(),
+        'total_lideres': lideres.count(),
+        'estructuras_activas': estructuras.filter(estado=EstadoRegistro.ACTIVO).count(),
+        'reuniones_mes': reuniones.filter(fecha__month=timezone.now().month, fecha__year=timezone.now().year).count(),
+        'incidencias_abiertas': incidencias.count(),
+        'resumen_comunidad': comunidad_qs.annotate(
+            total_sectores=Count('sector', distinct=True),
+            reuniones_total=Count('reuniones_organizacion', distinct=True),
+            incidencias_abiertas=Count('incidencias_organizacion', filter=Q(incidencias_organizacion__estado=EstadoRegistro.ACTIVO), distinct=True),
+        ),
+        'resumen_sector': sector_qs.annotate(
+            lideres_total=Count('lideres_organizacion', distinct=True),
+            estructuras_total=Count('estructuras_organizacion', distinct=True),
+            incidencias_total=Count('incidencias_organizacion', distinct=True),
+        ),
+        'resumen_centro': centro_qs.annotate(
+            incidencias_total=Count('incidencias_organizacion', distinct=True),
+            reuniones_total=Count('reuniones_organizacion', distinct=True),
+        ),
+        'crecimiento': json.dumps(crecimiento, cls=DjangoJSONEncoder),
+        'sector_ids_cubiertos': sector_ids_cubiertos,
+        'centro_ids_cubiertos': centro_ids_cubiertos,
+        'comunidad_ids_cubiertas': comunidad_ids_cubiertas,
+    }
+    return safe_render(request, 'afiliados/organizacion/panorama.html', context)
+
+
+def _org_crud(request, model, form_class, template, list_name, create_name, edit_name, pk=None, extra_context=None):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    instance = get_object_or_404(model, pk=pk) if pk else None
+    form = form_class(request.POST or None, instance=instance)
+    if request.method == 'POST' and form.is_valid():
+        obj = form.save(commit=False)
+        if not getattr(obj, 'usuario_creador_id', None):
+            obj.usuario_creador = request.user
+        obj.usuario_modificador = request.user
+        obj.save()
+        messages.success(request, 'Registro guardado correctamente.')
+        return redirect(list_name)
+    context = {
+        'form': form,
+        'items': model.objects.all().order_by('-id')[:200],
+        'entity_label': template,
+        'create_name': create_name,
+        'edit_name': edit_name,
+    }
+    if extra_context:
+        context.update(extra_context)
+    return safe_render(request, f'afiliados/organizacion/crud_{template}.html', context)
+
+
+@login_required
+def lista_estructura_territorial(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/estructura_territorial.html', {
+        'comunidades': Comunidad.objects.select_related('sector').all(),
+        'sectores': Sector.objects.all(),
+        'centros': CentroVotacion.objects.prefetch_related('sectores').all(),
+    })
+
+
+@login_required
+def lista_comunidades(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return comunidad_lista(request)
+
+
+@login_required
+def crear_comunidad(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return comunidad_nueva(request)
+
+
+@login_required
+def editar_comunidad(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return comunidad_editar(request, pk)
+
+
+@login_required
+def lista_sectores(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return sector_nueva(request)
+
+
+@login_required
+def crear_sector(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return sector_nueva(request)
+
+
+@login_required
+def editar_sector(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return sector_editar(request, pk)
+
+
+@login_required
+def lista_centros_votacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return centro_lista(request)
+
+
+@login_required
+def crear_centro_votacion(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return centro_nuevo(request)
+
+
+@login_required
+def editar_centro_votacion(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return centro_editar(request, pk)
+
+
+@login_required
+def lista_coordinadores(request):
+    return _org_crud(request, CoordinadorOrganizacion, CoordinadorOrganizacionForm, 'coordinadores', 'afiliados:lista_coordinadores', 'afiliados:crear_coordinador', 'afiliados:editar_coordinador')
+
+
+@login_required
+def crear_coordinador(request):
+    return _org_crud(request, CoordinadorOrganizacion, CoordinadorOrganizacionForm, 'coordinadores', 'afiliados:lista_coordinadores', 'afiliados:crear_coordinador', 'afiliados:editar_coordinador')
+
+
+@login_required
+def editar_coordinador(request, pk):
+    return _org_crud(request, CoordinadorOrganizacion, CoordinadorOrganizacionForm, 'coordinadores', 'afiliados:lista_coordinadores', 'afiliados:crear_coordinador', 'afiliados:editar_coordinador', pk=pk)
+
+
+@login_required
+def detalle_coordinador(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/detalle_generico.html', {'obj': get_object_or_404(CoordinadorOrganizacion, pk=pk), 'titulo': 'Coordinador'})
+
+
+@login_required
+def lista_lideres(request):
+    return _org_crud(request, LiderComunitarioOrganizacion, LiderComunitarioOrganizacionForm, 'lideres', 'afiliados:lista_lideres', 'afiliados:crear_lider', 'afiliados:editar_lider')
+
+
+@login_required
+def crear_lider(request):
+    return _org_crud(request, LiderComunitarioOrganizacion, LiderComunitarioOrganizacionForm, 'lideres', 'afiliados:lista_lideres', 'afiliados:crear_lider', 'afiliados:editar_lider')
+
+
+@login_required
+def editar_lider(request, pk):
+    return _org_crud(request, LiderComunitarioOrganizacion, LiderComunitarioOrganizacionForm, 'lideres', 'afiliados:lista_lideres', 'afiliados:crear_lider', 'afiliados:editar_lider', pk=pk)
+
+
+@login_required
+def detalle_lider(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/detalle_generico.html', {'obj': get_object_or_404(LiderComunitarioOrganizacion, pk=pk), 'titulo': 'Líder comunitario'})
+
+
+@login_required
+def lista_estructuras(request):
+    return _org_crud(request, EstructuraOrganizativa, EstructuraOrganizativaForm, 'estructuras', 'afiliados:lista_estructuras', 'afiliados:crear_estructura', 'afiliados:editar_estructura')
+
+
+@login_required
+def crear_estructura(request):
+    return _org_crud(request, EstructuraOrganizativa, EstructuraOrganizativaForm, 'estructuras', 'afiliados:lista_estructuras', 'afiliados:crear_estructura', 'afiliados:editar_estructura')
+
+
+@login_required
+def editar_estructura(request, pk):
+    return _org_crud(request, EstructuraOrganizativa, EstructuraOrganizativaForm, 'estructuras', 'afiliados:lista_estructuras', 'afiliados:crear_estructura', 'afiliados:editar_estructura', pk=pk)
+
+
+@login_required
+def detalle_estructura(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/detalle_generico.html', {'obj': get_object_or_404(EstructuraOrganizativa, pk=pk), 'titulo': 'Estructura organizativa'})
+
+
+@login_required
+def lista_responsables(request):
+    return _org_crud(request, ResponsableTerritorial, ResponsableTerritorialForm, 'responsables', 'afiliados:lista_responsables', 'afiliados:crear_responsable', 'afiliados:editar_responsable')
+
+
+@login_required
+def crear_responsable(request):
+    return _org_crud(request, ResponsableTerritorial, ResponsableTerritorialForm, 'responsables', 'afiliados:lista_responsables', 'afiliados:crear_responsable', 'afiliados:editar_responsable')
+
+
+@login_required
+def editar_responsable(request, pk):
+    return _org_crud(request, ResponsableTerritorial, ResponsableTerritorialForm, 'responsables', 'afiliados:lista_responsables', 'afiliados:crear_responsable', 'afiliados:editar_responsable', pk=pk)
+
+
+@login_required
+def detalle_responsable(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/detalle_generico.html', {'obj': get_object_or_404(ResponsableTerritorial, pk=pk), 'titulo': 'Responsable territorial'})
+
+
+@login_required
+def lista_reuniones(request):
+    return _org_crud(request, ReunionTerritorial, ReunionTerritorialForm, 'reuniones', 'afiliados:lista_reuniones', 'afiliados:crear_reunion', 'afiliados:editar_reunion')
+
+
+@login_required
+def crear_reunion(request):
+    return _org_crud(request, ReunionTerritorial, ReunionTerritorialForm, 'reuniones', 'afiliados:lista_reuniones', 'afiliados:crear_reunion', 'afiliados:editar_reunion')
+
+
+@login_required
+def editar_reunion(request, pk):
+    return _org_crud(request, ReunionTerritorial, ReunionTerritorialForm, 'reuniones', 'afiliados:lista_reuniones', 'afiliados:crear_reunion', 'afiliados:editar_reunion', pk=pk)
+
+
+@login_required
+def detalle_reunion(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/detalle_generico.html', {'obj': get_object_or_404(ReunionTerritorial, pk=pk), 'titulo': 'Reunión territorial'})
+
+
+@login_required
+def lista_incidencias(request):
+    return _org_crud(request, IncidenciaTerritorial, IncidenciaTerritorialForm, 'incidencias', 'afiliados:lista_incidencias', 'afiliados:crear_incidencia', 'afiliados:editar_incidencia')
+
+
+@login_required
+def crear_incidencia(request):
+    return _org_crud(request, IncidenciaTerritorial, IncidenciaTerritorialForm, 'incidencias', 'afiliados:lista_incidencias', 'afiliados:crear_incidencia', 'afiliados:editar_incidencia')
+
+
+@login_required
+def editar_incidencia(request, pk):
+    return _org_crud(request, IncidenciaTerritorial, IncidenciaTerritorialForm, 'incidencias', 'afiliados:lista_incidencias', 'afiliados:crear_incidencia', 'afiliados:editar_incidencia', pk=pk)
+
+
+@login_required
+def detalle_incidencia(request, pk):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/detalle_generico.html', {'obj': get_object_or_404(IncidenciaTerritorial, pk=pk), 'titulo': 'Incidencia territorial'})
+
+
+@login_required
+def reporte_cobertura_comunidades(request):
+    return panorama_municipal_organizacion(request)
+
+
+@login_required
+def reporte_coordinadores(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/reporte_coordinadores.html', {
+        'coordinadores': CoordinadorOrganizacion.objects.select_related('comunidad', 'sector', 'centro_votacion').order_by('-fecha_creacion')
+    })
+
+
+@login_required
+def reporte_reuniones(request):
+    denied = _require_organizacion(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/organizacion/reporte_reuniones.html', {
+        'reuniones': ReunionTerritorial.objects.select_related('comunidad', 'sector', 'centro_votacion').order_by('-fecha')
+    })
+
+
+@login_required
+def reporte_crecimiento_mensual(request):
+    return panorama_municipal_organizacion(request)

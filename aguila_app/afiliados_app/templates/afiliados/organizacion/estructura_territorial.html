@@ -1,0 +1,11 @@
+{% extends 'afiliados/base.html' %}
+{% block content %}
+<div class="page-body"><div class="container-fluid">
+<h4>Estructura territorial (catálogos compartidos)</h4>
+<div class="row">
+<div class="col-md-4"><div class="card"><div class="card-header">Comunidades</div><div class="card-body table-responsive"><table class="display datatable"><thead><tr><th>Nombre</th><th>Sector</th></tr></thead><tbody>{% for c in comunidades %}<tr><td>{{ c.nombre }}</td><td>{{ c.sector|default:'—' }}</td></tr>{% endfor %}</tbody></table></div></div></div>
+<div class="col-md-4"><div class="card"><div class="card-header">Sectores</div><div class="card-body table-responsive"><table class="display datatable"><thead><tr><th>Nombre</th></tr></thead><tbody>{% for s in sectores %}<tr><td>{{ s.nombre }}</td></tr>{% endfor %}</tbody></table></div></div></div>
+<div class="col-md-4"><div class="card"><div class="card-header">Centros de votación</div><div class="card-body table-responsive"><table class="display datatable"><thead><tr><th>Nombre</th><th>Ubicación</th></tr></thead><tbody>{% for ct in centros %}<tr><td>{{ ct.nombre }}</td><td>{{ ct.ubicacion }}</td></tr>{% endfor %}</tbody></table></div></div></div>
+</div>
+</div></div>
+{% endblock %}
