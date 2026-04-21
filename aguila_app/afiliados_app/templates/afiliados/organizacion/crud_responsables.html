@@ -1,0 +1,61 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+<div class="page-body"><div class="container-fluid">
+  <h4>{{ entity_label|title }}</h4>
+  {% if descripcion_vista %}<p class="text-muted">{{ descripcion_vista }}</p>{% endif %}
+  {% if entity_label == 'estructuras' %}
+  <div class="alert alert-info">Ejemplos de estructura: Comité comunitario, Equipo sectorial, Célula territorial, Comisión local, Red de líderes, Estructura de centro de votación.</div>
+  {% endif %}
+  <div class="card"><div class="card-body">
+    <form method="post">{% csrf_token %}
+      {% for field in form %}
+      <div class="mb-3">
+        <label class="form-label">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<small class="text-muted d-block">{{ field.help_text }}</small>{% endif %}
+      </div>
+      {% endfor %}
+      {% if form.dpi %}
+      <button type="button" id="btnVerificarEmpadronamiento" class="btn btn-outline-info mb-2" data-url="{{ empadronamiento_url }}" data-dpi-input="{{ form.dpi.id_for_label }}" data-output-id="resultado_tse">Verificar empadronamiento por DPI</button>
+      <div id="resultado_tse" class="mb-2"></div>
+      {% endif %}
+      <div id="territorio_derivado" class="small text-muted mb-2"></div>
+      <button class="btn btn-primary" type="submit">Guardar</button>
+    </form>
+  </div></div>
+  <div class="card"><div class="card-body table-responsive">
+    <table class="display datatable"><thead><tr><th>ID</th><th>Registro</th><th>Acciones</th></tr></thead><tbody>
+      {% for item in items %}
+      <tr><td>{{ item.id }}</td><td>{{ item }}</td><td><a href="{% url edit_name item.id %}">Editar</a></td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div></div>
+</div></div>
+<script src="{% static 'js/verificar_empadronamiento.js' %}?v=3"></script>
+<script>
+$(function(){
+  const comunidad = $('#id_comunidad');
+  if (!comunidad.length) return;
+  function cargarTerritorio() {
+    const id = comunidad.val();
+    if (!id) { $('#territorio_derivado').html(''); return; }
+    $.get('{{ comunidad_lookup_url }}', { comunidad_id: id }).done(function(res){
+      if (!res.ok) return;
+      const d = res.data || {};
+      $('#id_sector_referencia').val(d.sector || '');
+      $('#id_centro_referencia').val(d.centro_votacion || '');
+      $('#territorio_derivado').html('Sector: ' + (d.sector || 'N/A') + ' | Centro: ' + (d.centro_votacion || 'N/A'));
+    });
+  }
+  comunidad.on('change', cargarTerritorio);
+  cargarTerritorio();
+  document.addEventListener('empadronamiento:resultado', function(e){
+    const res = e.detail || {};
+    if (res.ok && res.found && res.data?.nombre_completo && $('#id_nombre_completo').length) {
+      if (!$('#id_nombre_completo').val()) $('#id_nombre_completo').val(res.data.nombre_completo);
+    }
+  });
+});
+</script>
+{% endblock %}

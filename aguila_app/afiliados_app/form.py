@@ -4,7 +4,7 @@ from django.forms import CheckboxInput, DateInput, inlineformset_factory, modelf
 from django.core.exceptions import ValidationError
 
 
-from .models import  Perfil,  Institucion, Afiliado, Comunidad, CentroVotacion, Comision, Sector
+from .models import  Perfil,  Institucion, Afiliado, Comunidad, CentroVotacion, Comision, Sector, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial
 
 from django.db.models import Sum, F, Value
 from django.db.models.functions import Coalesce
@@ -325,6 +325,23 @@ class ComisionForm(forms.ModelForm):
         }
 
 
+class OrganizacionIntegranteForm(forms.ModelForm):
+    dpi = forms.CharField(
+        max_length=20,
+        required=True,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        label='DPI',
+    )
+
+    class Meta:
+        model = OrganizacionIntegrante
+        fields = ['estado', 'observaciones']
+        widgets = {
+            'estado': forms.Select(attrs={'class': 'form-control'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+
 class ComisionForm(forms.ModelForm):
     class Meta:
         model = Comision
@@ -343,3 +360,212 @@ class SectorForm(forms.ModelForm):
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
             'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
+
+
+class CoordinadorOrganizacionForm(forms.ModelForm):
+    sector_referencia = forms.CharField(required=False, label="Sector (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
+    centro_referencia = forms.CharField(required=False, label="Centro de votación (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
+
+    class Meta:
+        model = CoordinadorOrganizacion
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {f: forms.TextInput(attrs={'class': 'form-control'}) for f in ['nombre_completo', 'dpi', 'telefono', 'tipo_coordinacion']}
+        widgets.update({
+            'comunidad': forms.Select(attrs={'class': 'form-control'}),
+            'estado': forms.Select(attrs={'class': 'form-control'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        })
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields.pop('sector', None)
+        self.fields.pop('centro_votacion', None)
+        if self.instance and self.instance.pk:
+            self.fields['sector_referencia'].initial = self.instance.sector.nombre if self.instance.sector else ''
+            self.fields['centro_referencia'].initial = self.instance.centro_votacion.nombre if self.instance.centro_votacion else ''
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if obj.comunidad and obj.comunidad.sector:
+            obj.sector = obj.comunidad.sector
+            obj.centro_votacion = obj.comunidad.sector.centros.first()
+        if commit:
+            obj.save()
+        return obj
+
+
+class LiderComunitarioOrganizacionForm(forms.ModelForm):
+    sector_referencia = forms.CharField(required=False, label="Sector (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
+    centro_referencia = forms.CharField(required=False, label="Centro de votación (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
+
+    class Meta:
+        model = LiderComunitarioOrganizacion
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-control'}),
+            'coordinador': forms.Select(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-control'}),
+            'estado': forms.Select(attrs={'class': 'form-control'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields.pop('sector', None)
+        self.fields.pop('centro_votacion', None)
+        if self.instance and self.instance.pk:
+            self.fields['sector_referencia'].initial = self.instance.sector.nombre if self.instance.sector else ''
+            self.fields['centro_referencia'].initial = self.instance.centro_votacion.nombre if self.instance.centro_votacion else ''
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if obj.comunidad and obj.comunidad.sector:
+            obj.sector = obj.comunidad.sector
+            obj.centro_votacion = obj.comunidad.sector.centros.first()
+        if commit:
+            obj.save()
+        return obj
+
+
+class EstructuraOrganizativaForm(forms.ModelForm):
+    sector_referencia = forms.CharField(required=False, label="Sector (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
+    centro_referencia = forms.CharField(required=False, label="Centro de votación (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
+
+    class Meta:
+        model = EstructuraOrganizativa
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'tipo_estructura': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej.: Comité comunitario, Equipo sectorial, Célula territorial'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'coordinador_responsable': forms.Select(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-control'}),
+            'estado': forms.Select(attrs={'class': 'form-control'}),
+            'cantidad_integrantes': forms.NumberInput(attrs={'class': 'form-control'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+        help_texts = {
+            'tipo_estructura': 'Ejemplos: Comité comunitario, Equipo sectorial, Célula territorial, Comisión local, Red de líderes.',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields.pop('sector', None)
+        self.fields.pop('centro_votacion', None)
+        if self.instance and self.instance.pk:
+            self.fields['sector_referencia'].initial = self.instance.sector.nombre if self.instance.sector else ''
+            self.fields['centro_referencia'].initial = self.instance.centro_votacion.nombre if self.instance.centro_votacion else ''
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if obj.comunidad and obj.comunidad.sector:
+            obj.sector = obj.comunidad.sector
+            obj.centro_votacion = obj.comunidad.sector.centros.first()
+        if commit:
+            obj.save()
+        return obj
+
+
+class ResponsableTerritorialForm(forms.ModelForm):
+    sector_referencia = forms.CharField(required=False, label="Sector (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
+    centro_referencia = forms.CharField(required=False, label="Centro de votación (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
+
+    class Meta:
+        model = ResponsableTerritorial
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-control'}),
+            'estado': forms.Select(attrs={'class': 'form-control'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields.pop('sector', None)
+        self.fields.pop('centro_votacion', None)
+        if self.instance and self.instance.pk:
+            self.fields['sector_referencia'].initial = self.instance.sector.nombre if self.instance.sector else ''
+            self.fields['centro_referencia'].initial = self.instance.centro_votacion.nombre if self.instance.centro_votacion else ''
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if obj.comunidad and obj.comunidad.sector:
+            obj.sector = obj.comunidad.sector
+            obj.centro_votacion = obj.comunidad.sector.centros.first()
+        if commit:
+            obj.save()
+        return obj
+
+
+class ReunionTerritorialForm(forms.ModelForm):
+    sector_referencia = forms.CharField(required=False, label="Sector (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
+    centro_referencia = forms.CharField(required=False, label="Centro de votación (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
+
+    class Meta:
+        model = ReunionTerritorial
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'fecha': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'tipo_reunion': forms.TextInput(attrs={'class': 'form-control'}),
+            'titulo': forms.TextInput(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-control'}),
+            'responsables': forms.TextInput(attrs={'class': 'form-control'}),
+            'asistentes': forms.NumberInput(attrs={'class': 'form-control'}),
+            'acuerdos': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'estado_seguimiento': forms.Select(attrs={'class': 'form-control'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields.pop('sector', None)
+        self.fields.pop('centro_votacion', None)
+        if self.instance and self.instance.pk:
+            self.fields['sector_referencia'].initial = self.instance.sector.nombre if self.instance.sector else ''
+            self.fields['centro_referencia'].initial = self.instance.centro_votacion.nombre if self.instance.centro_votacion else ''
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if obj.comunidad and obj.comunidad.sector:
+            obj.sector = obj.comunidad.sector
+            obj.centro_votacion = obj.comunidad.sector.centros.first()
+        if commit:
+            obj.save()
+        return obj
+
+
+class IncidenciaTerritorialForm(forms.ModelForm):
+    sector_referencia = forms.CharField(required=False, label="Sector (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
+    centro_referencia = forms.CharField(required=False, label="Centro de votación (automático)", widget=forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly'}))
+
+    class Meta:
+        model = IncidenciaTerritorial
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'tipo_incidencia': forms.TextInput(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-control'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'prioridad': forms.Select(attrs={'class': 'form-control'}),
+            'estado': forms.Select(attrs={'class': 'form-control'}),
+            'responsable_asignado': forms.Select(attrs={'class': 'form-control'}),
+            'seguimiento': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields.pop('sector', None)
+        self.fields.pop('centro_votacion', None)
+        if self.instance and self.instance.pk:
+            self.fields['sector_referencia'].initial = self.instance.sector.nombre if self.instance.sector else ''
+            self.fields['centro_referencia'].initial = self.instance.centro_votacion.nombre if self.instance.centro_votacion else ''
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        if obj.comunidad and obj.comunidad.sector:
+            obj.sector = obj.comunidad.sector
+            obj.centro_votacion = obj.comunidad.sector.centros.first()
+        if commit:
+            obj.save()
+        return obj
