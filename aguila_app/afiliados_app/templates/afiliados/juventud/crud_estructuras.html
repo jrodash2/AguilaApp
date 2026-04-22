@@ -119,6 +119,9 @@
   </div>
 </div>
 
+{% endblock %}
+
+{% block extra_js %}
 <script src="{% static 'js/verificar_empadronamiento.js' %}?v=3"></script>
 <script>
 $(function(){
@@ -170,27 +173,17 @@ $(function(){
     const nombre = boton.getAttribute('data-coord-nombre') || (fila && fila.cells && fila.cells[0] ? fila.cells[0].innerText.trim() : '');
     const aplicado = aplicarCoordinadorSeleccionado(id, nombre);
     if (!aplicado) return;
-    if (modalCoordinadores) {
-      modalCoordinadores.hide();
-    }
+    if (modalCoordinadores) modalCoordinadores.hide();
   });
 
   if (campoCoordinadorId.length && campoCoordinadorId.val() && !campoCoordinadorVisible.val()) {
     const selector = `#tablaCoordinadoresModal .js-select-coordinador[data-coord-id="${campoCoordinadorId.val()}"]`;
     const btn = document.querySelector(selector);
-    if (btn) {
-      campoCoordinadorVisible.val(btn.getAttribute('data-coord-nombre') || '');
-    }
+    if (btn) campoCoordinadorVisible.val(btn.getAttribute('data-coord-nombre') || '');
   }
 
   comunidad.on('change', cargarTerritorio);
   cargarTerritorio();
-  document.addEventListener('empadronamiento:resultado', function(e){
-    const res = e.detail || {};
-    if (res.ok && res.found && res.data?.nombre_completo && $('#id_nombre_completo').length) {
-      if (!$('#id_nombre_completo').val()) $('#id_nombre_completo').val(res.data.nombre_completo);
-    }
-  });
 });
 </script>
 {% endblock %}
