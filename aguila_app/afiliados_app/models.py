@@ -436,6 +436,425 @@ class IncidenciaTerritorial(models.Model):
         return self.tipo_incidencia
 
 
+class JuventudIntegrante(models.Model):
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        REVISADO = "REVISADO", "Revisado"
+        APROBADO = "APROBADO", "Aprobado"
+
+    afiliado = models.ForeignKey(
+        Afiliado,
+        on_delete=models.PROTECT,
+        related_name="registros_juventud",
+    )
+    estado = models.CharField(
+        max_length=20,
+        choices=Estado.choices,
+        default=Estado.PENDIENTE,
+    )
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_registro = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="integrantes_juventud_registrados",
+    )
+    usuario_modificacion = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="integrantes_juventud_modificados",
+        null=True,
+        blank=True,
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Integrante de Juventud"
+        verbose_name_plural = "Integrantes de Juventud"
+        ordering = ["-fecha_creacion"]
+        constraints = [
+            models.UniqueConstraint(fields=["afiliado"], name="uniq_juventud_afiliado"),
+        ]
+
+    def __str__(self):
+        return f"{self.afiliado.nombre_completo} - {self.get_estado_display()}"
+
+
+class CoordinadorJuventud(models.Model):
+    nombre_completo = models.CharField(max_length=160)
+    dpi = models.CharField(max_length=20, blank=True, null=True)
+    telefono = models.CharField(max_length=20, blank=True, null=True)
+    tipo_coordinacion = models.CharField(max_length=100, blank=True, null=True)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="coordinadores_juventud")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="coordinadores_juventud")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="coordinadores_juventud")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="coordinadores_juv_creados")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="coordinadores_juv_modificados", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        return self.nombre_completo
+
+
+class LiderJuvenil(models.Model):
+    nombre_completo = models.CharField(max_length=160)
+    dpi = models.CharField(max_length=20, blank=True, null=True)
+    telefono = models.CharField(max_length=20, blank=True, null=True)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="lideres_juventud")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="lideres_juventud")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="lideres_juventud")
+    coordinador = models.ForeignKey(CoordinadorJuventud, on_delete=models.SET_NULL, null=True, blank=True, related_name="lideres")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="lideres_juv_creados")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="lideres_juv_modificados", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        return self.nombre_completo
+
+
+class EstructuraJuventud(models.Model):
+    tipo_estructura = models.CharField(max_length=80)
+    nombre = models.CharField(max_length=160)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="estructuras_juventud")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="estructuras_juventud")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="estructuras_juventud")
+    coordinador_responsable = models.ForeignKey(CoordinadorJuventud, on_delete=models.SET_NULL, null=True, blank=True, related_name="estructuras_responsables")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    cantidad_integrantes = models.PositiveIntegerField(default=0)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="estructuras_juv_creadas")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="estructuras_juv_modificadas", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        return self.nombre
+
+
+class ResponsableJuventud(models.Model):
+    nombre_completo = models.CharField(max_length=160)
+    dpi = models.CharField(max_length=20, blank=True, null=True)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="responsables_juventud")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="responsables_juventud")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="responsables_juventud")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="responsables_juv_creados")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="responsables_juv_modificados", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        return self.nombre_completo
+
+
+class ReunionJuventud(models.Model):
+    class Seguimiento(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        EN_PROCESO = "EN_PROCESO", "En proceso"
+        CUMPLIDO = "CUMPLIDO", "Cumplido"
+
+    fecha = models.DateField()
+    tipo_reunion = models.CharField(max_length=80, blank=True, null=True)
+    titulo = models.CharField(max_length=180)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="reuniones_juventud")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="reuniones_juventud")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="reuniones_juventud")
+    responsables = models.TextField(blank=True, null=True)
+    responsable_tipo = models.CharField(max_length=20, blank=True, null=True)
+    responsable_referencia_id = models.PositiveIntegerField(blank=True, null=True)
+    asistentes = models.PositiveIntegerField(default=0)
+    acuerdos = models.TextField(blank=True, null=True)
+    observaciones = models.TextField(blank=True, null=True)
+    estado_seguimiento = models.CharField(max_length=20, choices=Seguimiento.choices, default=Seguimiento.PENDIENTE)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="reuniones_juv_creadas")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="reuniones_juv_modificadas", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+
+    def __str__(self):
+        return self.titulo
+
+
+class IncidenciaJuventud(models.Model):
+    class Prioridad(models.TextChoices):
+        BAJA = "BAJA", "Baja"
+        MEDIA = "MEDIA", "Media"
+        ALTA = "ALTA", "Alta"
+
+    tipo_incidencia = models.CharField(max_length=120)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_juventud")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_juventud")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_juventud")
+    descripcion = models.TextField()
+    prioridad = models.CharField(max_length=10, choices=Prioridad.choices, default=Prioridad.MEDIA)
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    responsable_asignado = models.ForeignKey(ResponsableJuventud, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_asignadas")
+    seguimiento = models.TextField(blank=True, null=True)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="incidencias_juv_creadas")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="incidencias_juv_modificadas", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        return self.tipo_incidencia
+
+
+class EstructuraIntegranteJuventud(models.Model):
+    estructura = models.ForeignKey(EstructuraJuventud, on_delete=models.CASCADE, related_name="integrantes")
+    dpi = models.CharField(max_length=20)
+    nombre_completo = models.CharField(max_length=180)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="integrantes_estructura_juventud")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    usuario_registro = models.ForeignKey(User, on_delete=models.PROTECT, related_name="integrantes_estructura_juventud_registrados")
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["estructura", "dpi"], name="uniq_estructura_juventud_integrante_dpi"),
+        ]
+        ordering = ["-fecha_registro"]
+
+    def __str__(self):
+        return f"{self.nombre_completo} ({self.dpi})"
+
+
+
+
+class MujeresIntegrante(models.Model):
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        REVISADO = "REVISADO", "Revisado"
+        APROBADO = "APROBADO", "Aprobado"
+
+    afiliado = models.ForeignKey(
+        Afiliado,
+        on_delete=models.PROTECT,
+        related_name="registros_mujeres",
+    )
+    estado = models.CharField(
+        max_length=20,
+        choices=Estado.choices,
+        default=Estado.PENDIENTE,
+    )
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_registro = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="integrantes_mujeres_registrados",
+    )
+    usuario_modificacion = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="integrantes_mujeres_modificados",
+        null=True,
+        blank=True,
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Integrante de Mujeres"
+        verbose_name_plural = "Integrantes de Mujeres"
+        ordering = ["-fecha_creacion"]
+        constraints = [
+            models.UniqueConstraint(fields=["afiliado"], name="uniq_mujeres_afiliado"),
+        ]
+
+    def __str__(self):
+        return f"{self.afiliado.nombre_completo} - {self.get_estado_display()}"
+
+
+class CoordinadoraMujeres(models.Model):
+    nombre_completo = models.CharField(max_length=160)
+    dpi = models.CharField(max_length=20, blank=True, null=True)
+    telefono = models.CharField(max_length=20, blank=True, null=True)
+    tipo_coordinacion = models.CharField(max_length=100, blank=True, null=True)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="coordinadores_mujeres")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="coordinadores_mujeres")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="coordinadores_mujeres")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="coordinadores_muj_creados")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="coordinadores_muj_modificados", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        return self.nombre_completo
+
+
+class LiderMujeres(models.Model):
+    nombre_completo = models.CharField(max_length=160)
+    dpi = models.CharField(max_length=20, blank=True, null=True)
+    telefono = models.CharField(max_length=20, blank=True, null=True)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="lideres_mujeres")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="lideres_mujeres")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="lideres_mujeres")
+    coordinador = models.ForeignKey(CoordinadoraMujeres, on_delete=models.SET_NULL, null=True, blank=True, related_name="lideres")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="lideres_muj_creados")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="lideres_muj_modificados", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        return self.nombre_completo
+
+
+class EstructuraMujeres(models.Model):
+    tipo_estructura = models.CharField(max_length=80)
+    nombre = models.CharField(max_length=160)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="estructuras_mujeres")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="estructuras_mujeres")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="estructuras_mujeres")
+    coordinador_responsable = models.ForeignKey(CoordinadoraMujeres, on_delete=models.SET_NULL, null=True, blank=True, related_name="estructuras_responsables")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    cantidad_integrantes = models.PositiveIntegerField(default=0)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="estructuras_muj_creadas")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="estructuras_muj_modificadas", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        return self.nombre
+
+
+class ResponsableMujeres(models.Model):
+    nombre_completo = models.CharField(max_length=160)
+    dpi = models.CharField(max_length=20, blank=True, null=True)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="responsables_mujeres")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="responsables_mujeres")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="responsables_mujeres")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="responsables_muj_creados")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="responsables_muj_modificados", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        return self.nombre_completo
+
+
+class ReunionMujeres(models.Model):
+    class Seguimiento(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        EN_PROCESO = "EN_PROCESO", "En proceso"
+        CUMPLIDO = "CUMPLIDO", "Cumplido"
+
+    fecha = models.DateField()
+    tipo_reunion = models.CharField(max_length=80, blank=True, null=True)
+    titulo = models.CharField(max_length=180)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="reuniones_mujeres")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="reuniones_mujeres")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="reuniones_mujeres")
+    responsables = models.TextField(blank=True, null=True)
+    responsable_tipo = models.CharField(max_length=20, blank=True, null=True)
+    responsable_referencia_id = models.PositiveIntegerField(blank=True, null=True)
+    asistentes = models.PositiveIntegerField(default=0)
+    acuerdos = models.TextField(blank=True, null=True)
+    observaciones = models.TextField(blank=True, null=True)
+    estado_seguimiento = models.CharField(max_length=20, choices=Seguimiento.choices, default=Seguimiento.PENDIENTE)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="reuniones_muj_creadas")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="reuniones_muj_modificadas", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+
+    def __str__(self):
+        return self.titulo
+
+
+class IncidenciaMujeres(models.Model):
+    class Prioridad(models.TextChoices):
+        BAJA = "BAJA", "Baja"
+        MEDIA = "MEDIA", "Media"
+        ALTA = "ALTA", "Alta"
+
+    tipo_incidencia = models.CharField(max_length=120)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_mujeres")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_mujeres")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_mujeres")
+    descripcion = models.TextField()
+    prioridad = models.CharField(max_length=10, choices=Prioridad.choices, default=Prioridad.MEDIA)
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    responsable_asignado = models.ForeignKey(ResponsableMujeres, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_asignadas")
+    seguimiento = models.TextField(blank=True, null=True)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="incidencias_muj_creadas")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="incidencias_muj_modificadas", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        return self.tipo_incidencia
+
+
+class EstructuraIntegranteMujeres(models.Model):
+    estructura = models.ForeignKey(EstructuraMujeres, on_delete=models.CASCADE, related_name="integrantes")
+    dpi = models.CharField(max_length=20)
+    nombre_completo = models.CharField(max_length=180)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="integrantes_estructura_mujeres")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    usuario_registro = models.ForeignKey(User, on_delete=models.PROTECT, related_name="integrantes_estructura_mujeres_registrados")
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["estructura", "dpi"], name="uniq_estructura_mujeres_integrante_dpi"),
+        ]
+        ordering = ["-fecha_registro"]
+
+    def __str__(self):
+        return f"{self.nombre_completo} ({self.dpi})"
+
+
+
 class EstructuraIntegrante(models.Model):
     estructura = models.ForeignKey(EstructuraOrganizativa, on_delete=models.CASCADE, related_name="integrantes")
     dpi = models.CharField(max_length=20)

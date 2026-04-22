@@ -1,6 +1,6 @@
 {% extends 'afiliados/base.html' %}
 {% load static %}
-{% block title %}Dashboard Organización{% endblock %}
+{% block title %}Integrantes Mujeres{% endblock %}
 {% block content %}
 <div class="page-body">
   <style>
@@ -122,10 +122,10 @@
     <div class="card hero-card mt-3 mb-4">
       <div class="card-body p-4 p-lg-5 d-flex flex-column flex-lg-row align-items-start align-items-lg-center justify-content-between gap-3">
         <div>
-          <h1 class="hero-title">Secretaría de Organización</h1>
-          <p class="hero-text">Panel de control para seguimiento territorial, estado de revisión y gestión operativa de los integrantes registrados.</p>
+          <h1 class="hero-title">Integrantes Mujeres</h1>
+          <p class="hero-text">Bandeja operativa de integrantes para seguimiento, revisión y control de estado en Secretaría de Mujeres.</p>
         </div>
-        <a href="{% url 'afiliados:crear_integrante_organizacion' %}" class="btn btn-light btn-pill px-4">
+        <a href="{% url 'afiliados:crear_integrante_mujeres' %}" class="btn btn-light btn-pill px-4">
           <i class="icon-plus me-1"></i> Nuevo integrante
         </a>
       </div>
@@ -181,29 +181,35 @@
     </div>
 
     <div class="card table-card org-dashboard mt-4">
-      <div class="card-header d-flex justify-content-between">
-        <h5 class="mb-0">Últimos registros</h5>
-        <a href="{% url 'afiliados:lista_integrantes_organizacion' %}" class="btn btn-outline-primary btn-sm">Ver bandeja</a>
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Listado de integrantes</h5>
+        <a href="{% url 'afiliados:crear_integrante_mujeres' %}" class="btn btn-outline-primary btn-sm">Agregar integrante</a>
       </div>
       <div class="card-body">
         <div class="table-responsive custom-scrollbar">
           <table class="display datatable">
-            <thead><tr><th>Integrante</th><th>DPI</th><th>Estado</th><th>Registro</th><th></th></tr></thead>
+            <thead><tr><th>Integrante</th><th>DPI</th><th>Estado</th><th>Usuario</th><th>Fecha</th><th>Acciones</th></tr></thead>
             <tbody>
-              {% for item in ultimos_registros %}
+              {% for item in integrantes %}
               <tr>
                 <td>{{ item.afiliado.nombre_completo }}</td>
                 <td>{{ item.afiliado.dpi }}</td>
                 <td>
-                  <span class="state-pill {% if item.estado == 'pendiente' %}pendiente{% elif item.estado == 'revisado' %}revisado{% elif item.estado == 'aprobado' %}aprobado{% else %}default{% endif %}">
+                  <span class="state-pill {% if item.estado == 'PENDIENTE' %}pendiente{% elif item.estado == 'REVISADO' %}revisado{% elif item.estado == 'APROBADO' %}aprobado{% else %}default{% endif %}">
                     {{ item.get_estado_display }}
                   </span>
                 </td>
+                <td>{{ item.usuario_registro.get_full_name|default:item.usuario_registro.username }}</td>
                 <td>{{ item.fecha_creacion|date:'d/m/Y H:i' }}</td>
-                <td><a href="{% url 'afiliados:detalle_integrante_organizacion' item.id %}"><i class="icon-eye"></i></a></td>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <a href="{% url 'afiliados:detalle_integrante_mujeres' item.pk %}" title="Detalle"><i class="icon-eye"></i></a>
+                    <a href="{% url 'afiliados:editar_integrante_mujeres' item.pk %}" title="Editar"><i class="icon-pencil-alt"></i></a>
+                  </div>
+                </td>
               </tr>
               {% empty %}
-              <tr><td colspan="5" class="text-center text-muted">Sin registros</td></tr>
+              <tr><td colspan="6" class="text-center text-muted">No hay integrantes registrados.</td></tr>
               {% endfor %}
             </tbody>
           </table>

@@ -1,4 +1,20 @@
 (function ($) {
+  // Evita dobles inicializaciones cuando una tabla ya fue tomada por
+  // otra capa (por ejemplo, inicializador global de la aplicación).
+  if ($.fn && $.fn.DataTable && !$.fn.DataTable.__aguilaSafeRetrievePatched) {
+    var originalDataTable = $.fn.DataTable;
+    $.fn.DataTable = function () {
+      var args = Array.prototype.slice.call(arguments);
+      if (args.length === 0) {
+        args = [{ retrieve: true }];
+      } else if (typeof args[0] === "object" && args[0] !== null) {
+        args[0] = $.extend(true, { retrieve: true }, args[0]);
+      }
+      return originalDataTable.apply(this, args);
+    };
+    $.fn.DataTable.__aguilaSafeRetrievePatched = true;
+  }
+
   $(document).ready(function () {
     $("product-list").DataTable();
     // Basic table example
