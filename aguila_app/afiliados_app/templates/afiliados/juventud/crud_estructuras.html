@@ -121,9 +121,9 @@
 $(function(){
   const comunidad = $('#id_comunidad');
   const campoCoordinadorVisible = $('#coordinador_responsable_display');
-  const campoCoordinadorId = $('#id_coordinador_responsable');
+  const campoCoordinadorId = $('#id_coordinador_responsable, input[name=\"coordinador_responsable\"]').first();
   const modalEl = document.getElementById('modalCoordinadores');
-  const modalCoordinadores = modalEl ? new bootstrap.Modal(modalEl) : null;
+  const modalCoordinadores = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
 
   function cargarTerritorio() {
     if (!comunidad.length) return;
@@ -151,9 +151,18 @@ $(function(){
     });
   }
 
-  $('#tablaCoordinadoresModal tbody').on('click', '.btn-seleccionar-coordinador', function(){
-    campoCoordinadorId.val(this.getAttribute('data-coordinador-id') || '');
-    campoCoordinadorVisible.val(this.getAttribute('data-coordinador-nombre') || '');
+  function aplicarCoordinadorSeleccionado(id, nombre) {
+    if (!campoCoordinadorId.length || !campoCoordinadorVisible.length) return;
+    campoCoordinadorId.val(id || '').trigger('change');
+    campoCoordinadorVisible.val(nombre || '').trigger('change');
+  }
+
+  $(document).on('click', '#tablaCoordinadoresModal .btn-seleccionar-coordinador', function(){
+    const boton = this;
+    const fila = boton.closest('tr');
+    const id = boton.getAttribute('data-coordinador-id') || '';
+    const nombre = boton.getAttribute('data-coordinador-nombre') || (fila && fila.cells && fila.cells[0] ? fila.cells[0].innerText.trim() : '');
+    aplicarCoordinadorSeleccionado(id, nombre);
     if (modalCoordinadores) {
       modalCoordinadores.hide();
     }
