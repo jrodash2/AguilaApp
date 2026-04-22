@@ -1,0 +1,137 @@
+{% extends 'afiliados/base.html' %}
+{% block content %}
+<div class="page-body"><div class="container-fluid">
+  <style>
+    .mujeres-kpi .card-body { padding: 1rem 1.1rem; }
+    .mujeres-kpi small { font-size: .78rem; letter-spacing: .02em; text-transform: uppercase; }
+    .mujeres-kpi h3 { margin: .35rem 0 0; line-height: 1.1; }
+    .mujeres-card { height: 100%; }
+    .mujeres-card .card-header { padding: .9rem 1rem; }
+    .mujeres-card .card-body { padding: .85rem 1rem 1rem; }
+    .mujeres-table-wrap { min-height: 430px; }
+    .mujeres-card .dataTables_wrapper .row:first-child,
+    .mujeres-card .dataTables_wrapper .row:last-child {
+      align-items: center;
+      row-gap: .6rem;
+      margin-left: 0;
+      margin-right: 0;
+    }
+    .mujeres-card .dataTables_wrapper .dataTables_length,
+    .mujeres-card .dataTables_wrapper .dataTables_filter,
+    .mujeres-card .dataTables_wrapper .dataTables_info,
+    .mujeres-card .dataTables_wrapper .dataTables_paginate {
+      padding-top: .45rem;
+      padding-bottom: .15rem;
+      margin: 0;
+    }
+    .mujeres-card .dataTables_wrapper .dataTables_filter { text-align: right; }
+    .mujeres-card .dataTables_wrapper .dataTables_filter input { margin-left: .45rem; }
+    .mujeres-card .dataTables_wrapper .dataTables_paginate .paginate_button {
+      margin-left: .1rem !important;
+      border-radius: .35rem;
+    }
+    @media (max-width: 991.98px) {
+      .mujeres-table-wrap { min-height: 360px; }
+      .mujeres-card .dataTables_wrapper .dataTables_filter { text-align: left; }
+    }
+  </style>
+
+  <div class="mb-3">
+    <h4 class="mb-1">Estructura mujeres</h4>
+    <p class="text-muted mb-0">Consulta consolidada de catálogos compartidos para Mujeres: comunidades, sectores y centros de votación.</p>
+  </div>
+
+  <div class="row g-3 mujeres-kpi mb-3">
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <small class="text-muted">Comunidades</small>
+          <h3>{{ total_comunidades }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <small class="text-muted">Sectores</small>
+          <h3>{{ total_sectores }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <small class="text-muted">Centros de votación</small>
+          <h3>{{ total_centros }}</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-xl-4">
+      <div class="card mujeres-card">
+        <div class="card-header"><h5 class="mb-0">Comunidades</h5></div>
+        <div class="card-body">
+          <div class="table-responsive mujeres-table-wrap">
+            <table class="display datatable w-100" id="tablaComunidades">
+              <thead><tr><th>Nombre</th><th>Sector</th></tr></thead>
+              <tbody>
+                {% for c in comunidades %}
+                <tr><td>{{ c.nombre }}</td><td>{{ c.sector|default:'—' }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-xl-4">
+      <div class="card mujeres-card">
+        <div class="card-header"><h5 class="mb-0">Sectores</h5></div>
+        <div class="card-body">
+          <div class="table-responsive mujeres-table-wrap">
+            <table class="display datatable w-100" id="tablaSectores">
+              <thead><tr><th>Nombre</th></tr></thead>
+              <tbody>
+                {% for s in sectores %}
+                <tr><td>{{ s.nombre }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-xl-4">
+      <div class="card mujeres-card">
+        <div class="card-header"><h5 class="mb-0">Centros de votación</h5></div>
+        <div class="card-body">
+          <div class="table-responsive mujeres-table-wrap">
+            <table class="display datatable w-100" id="tablaCentros">
+              <thead><tr><th>Nombre</th><th>Ubicación</th></tr></thead>
+              <tbody>
+                {% for ct in centros %}
+                <tr><td>{{ ct.nombre }}</td><td>{{ ct.ubicacion|default:'—' }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function () {
+  ['#tablaComunidades', '#tablaSectores', '#tablaCentros'].forEach(function(selector){
+    if (!$.fn.DataTable.isDataTable(selector) && window.initDataTable) {
+      window.initDataTable(selector, { pageLength: 10 });
+    }
+  });
+});
+</script>
+{% endblock %}
