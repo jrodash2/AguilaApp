@@ -10,7 +10,7 @@ from afiliados_app.form import (
     ReunionTerritorialForm,
     ResponsableTerritorialForm,
 )
-from afiliados_app.models import Comunidad, CoordinadorOrganizacion, EstructuraOrganizativa, Sector
+from afiliados_app.models import Comunidad, CoordinadorJuventud, CoordinadorOrganizacion, EstructuraJuventud, EstructuraOrganizativa, Sector
 
 
 @override_settings(
@@ -19,11 +19,14 @@ from afiliados_app.models import Comunidad, CoordinadorOrganizacion, EstructuraO
 class OrganizacionUIWiringTests(TestCase):
     def setUp(self):
         self.group = Group.objects.create(name="Organizacion")
+        self.jovenes_group = Group.objects.create(name="Jovenes")
         self.admin_group = Group.objects.create(name="Administrador")
         self.user = User.objects.create_user(username="org_user", password="12345")
         self.user.groups.add(self.group)
         self.admin_user = User.objects.create_user(username="admin_user", password="12345")
         self.admin_user.groups.add(self.admin_group)
+        self.joven_user = User.objects.create_user(username="joven_user", password="12345")
+        self.joven_user.groups.add(self.jovenes_group)
 
         self.creator = User.objects.create_user(username="creator", password="12345")
 
@@ -90,6 +93,81 @@ class OrganizacionUIWiringTests(TestCase):
         msgs = "\n".join(str(m) for m in response.context["messages"])
         self.assertIn("Primero debe verificar empadronamiento", msgs)
 
+    def test_organizacion_estructura_template_has_expected_modal_and_fields(self):
+        self.client.login(username="org_user", password="12345")
+        response = self.client.get(reverse("afiliados:crear_estructura"))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('id="modalCoordinadores"', html)
+        self.assertIn('id="tablaCoordinadoresModal"', html)
+        self.assertIn('id="coordinador_responsable_display"', html)
+        self.assertIn('id="id_coordinador_responsable"', html)
+        self.assertIn("js-select-coordinador", html)
+        self.assertIn("data-coord-id", html)
+        self.assertIn("data-coord-nombre", html)
+
+    def test_organizacion_crear_estructura_guarda_coordinador(self):
+        self.client.login(username="org_user", password="12345")
+        coordinador = CoordinadorOrganizacion.objects.create(
+            nombre_completo="COORD ORG TEST",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+        response = self.client.post(
+            reverse("afiliados:crear_estructura"),
+            {
+                "tipo_estructura": "Comité",
+                "nombre": "Estructura ORG 1",
+                "comunidad": str(self.comunidad.pk),
+                "estado": "ACTIVO",
+                "coordinador_responsable": str(coordinador.pk),
+                "observaciones": "test",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        estructura = EstructuraOrganizativa.objects.get(nombre="Estructura ORG 1")
+        self.assertEqual(estructura.coordinador_responsable_id, coordinador.pk)
+
+    def test_organizacion_editar_estructura_permite_cambiar_coordinador(self):
+        self.client.login(username="org_user", password="12345")
+        coordinador_a = CoordinadorOrganizacion.objects.create(
+            nombre_completo="COORD ORG A",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+        coordinador_b = CoordinadorOrganizacion.objects.create(
+            nombre_completo="COORD ORG B",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+        estructura = EstructuraOrganizativa.objects.create(
+            tipo_estructura="Comité",
+            nombre="Estructura Edit ORG",
+            comunidad=self.comunidad,
+            coordinador_responsable=coordinador_a,
+            usuario_creador=self.creator,
+        )
+        response_get = self.client.get(reverse("afiliados:editar_estructura", args=[estructura.pk]))
+        self.assertEqual(response_get.status_code, 200)
+        self.assertIn("COORD ORG A", response_get.content.decode())
+
+        response_post = self.client.post(
+            reverse("afiliados:editar_estructura", args=[estructura.pk]),
+            {
+                "tipo_estructura": "Comité",
+                "nombre": "Estructura Edit ORG",
+                "comunidad": str(self.comunidad.pk),
+                "estado": "ACTIVO",
+                "coordinador_responsable": str(coordinador_b.pk),
+                "observaciones": "update",
+            },
+            follow=True,
+        )
+        self.assertEqual(response_post.status_code, 200)
+        estructura.refresh_from_db()
+        self.assertEqual(estructura.coordinador_responsable_id, coordinador_b.pk)
+
     def test_organizacion_forms_do_not_expose_manual_sector_or_centro(self):
         forms = [
             CoordinadorOrganizacionForm(),
@@ -111,3 +189,93 @@ class OrganizacionUIWiringTests(TestCase):
         html = response.content.decode()
         self.assertIn("Afiliación", html)
         self.assertIn("Organización", html)
+        self.assertIn("Juventud", html)
+
+    def test_login_redirects_jovenes_to_dashboard_juventud(self):
+        response = self.client.post(
+            reverse("afiliados:signin"),
+            {"username": "joven_user", "password": "12345"},
+            follow=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("afiliados:dashboard_juventud"))
+
+    def test_dashboard_juventud_access_for_jovenes_group(self):
+        self.client.login(username="joven_user", password="12345")
+        response = self.client.get(reverse("afiliados:dashboard_juventud"))
+        self.assertEqual(response.status_code, 200)
+
+    def test_juventud_estructura_template_has_expected_modal_and_fields(self):
+        self.client.login(username="joven_user", password="12345")
+        response = self.client.get(reverse("afiliados:crear_estructura_juventud"))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('id="modalCoordinadores"', html)
+        self.assertIn('id="tablaCoordinadoresModal"', html)
+        self.assertIn('id="coordinador_responsable_display"', html)
+        self.assertIn('id="id_coordinador_responsable"', html)
+        self.assertIn("js-select-coordinador", html)
+        self.assertIn("data-coord-id", html)
+        self.assertIn("data-coord-nombre", html)
+
+    def test_juventud_crear_estructura_guarda_coordinador_desde_hidden_field(self):
+        self.client.login(username="joven_user", password="12345")
+        coordinador = CoordinadorJuventud.objects.create(
+            nombre_completo="COORD JUV TEST",
+            comunidad=self.comunidad,
+            usuario_creador=self.joven_user,
+        )
+        response = self.client.post(
+            reverse("afiliados:crear_estructura_juventud"),
+            {
+                "tipo_estructura": "Comité juvenil",
+                "nombre": "Estructura JUV 1",
+                "comunidad": str(self.comunidad.pk),
+                "estado": "ACTIVO",
+                "coordinador_responsable": str(coordinador.pk),
+                "observaciones": "test",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        estructura = EstructuraJuventud.objects.get(nombre="Estructura JUV 1")
+        self.assertEqual(estructura.coordinador_responsable_id, coordinador.pk)
+
+    def test_juventud_editar_estructura_permite_cambiar_coordinador(self):
+        self.client.login(username="joven_user", password="12345")
+        coordinador_a = CoordinadorJuventud.objects.create(
+            nombre_completo="COORD JUV A",
+            comunidad=self.comunidad,
+            usuario_creador=self.joven_user,
+        )
+        coordinador_b = CoordinadorJuventud.objects.create(
+            nombre_completo="COORD JUV B",
+            comunidad=self.comunidad,
+            usuario_creador=self.joven_user,
+        )
+        estructura = EstructuraJuventud.objects.create(
+            tipo_estructura="Brigada",
+            nombre="Estructura Edit JUV",
+            comunidad=self.comunidad,
+            coordinador_responsable=coordinador_a,
+            usuario_creador=self.joven_user,
+        )
+        response_get = self.client.get(reverse("afiliados:editar_estructura_juventud", args=[estructura.pk]))
+        self.assertEqual(response_get.status_code, 200)
+        self.assertIn("COORD JUV A", response_get.content.decode())
+
+        response_post = self.client.post(
+            reverse("afiliados:editar_estructura_juventud", args=[estructura.pk]),
+            {
+                "tipo_estructura": "Brigada",
+                "nombre": "Estructura Edit JUV",
+                "comunidad": str(self.comunidad.pk),
+                "estado": "ACTIVO",
+                "coordinador_responsable": str(coordinador_b.pk),
+                "observaciones": "update",
+            },
+            follow=True,
+        )
+        self.assertEqual(response_post.status_code, 200)
+        estructura.refresh_from_db()
+        self.assertEqual(estructura.coordinador_responsable_id, coordinador_b.pk)

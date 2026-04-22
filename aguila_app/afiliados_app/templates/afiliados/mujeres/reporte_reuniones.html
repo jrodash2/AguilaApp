@@ -1,0 +1,4 @@
+{% extends 'afiliados/base.html' %}
+{% block content %}
+<div class="page-body"><div class="container-fluid"><h4>Reporte reuniones mujeres</h4><p class="text-muted">Muestra reuniones registradas, su ubicación comunitaria y el estado de seguimiento de acuerdos.</p><div class="card"><div class="card-body table-responsive"><table class="display datatable"><thead><tr><th>Fecha</th><th>Título</th><th>Comunidad</th><th>Seguimiento</th></tr></thead><tbody>{% for r in reuniones %}<tr><td>{{ r.fecha|date:'d/m/Y' }}</td><td>{{ r.titulo }}</td><td>{{ r.comunidad|default:'—' }}</td><td>{{ r.get_estado_seguimiento_display }}</td></tr>{% endfor %}</tbody></table></div></div></div></div>
+{% endblock %}
