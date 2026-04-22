@@ -2957,8 +2957,15 @@ def lista_integrantes_mujeres(request):
     if denied:
         return denied
 
-    integrantes = MujeresIntegrante.objects.select_related('afiliado', 'usuario_registro')
-    return safe_render(request, 'afiliados/mujeres/lista.html', {'integrantes': integrantes})
+    integrantes = MujeresIntegrante.objects.select_related('afiliado', 'usuario_registro').order_by('-fecha_creacion')
+    context = {
+        'integrantes': integrantes,
+        'total_integrantes': integrantes.count(),
+        'total_pendientes': integrantes.filter(estado=MujeresIntegrante.Estado.PENDIENTE).count(),
+        'total_revisados': integrantes.filter(estado=MujeresIntegrante.Estado.REVISADO).count(),
+        'total_aprobados': integrantes.filter(estado=MujeresIntegrante.Estado.APROBADO).count(),
+    }
+    return safe_render(request, 'afiliados/mujeres/lista.html', context)
 
 
 @login_required
