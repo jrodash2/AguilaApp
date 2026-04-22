@@ -78,7 +78,7 @@
             <!-- LOGO -->
             <div class="header-logo-wrapper col-auto p-0">
                 <div class="logo-wrapper">
-                    <a href="{% url 'afiliados:dahsboard' %}">
+                    <a href="javascript:void(0);" role="button" aria-label="Logo">
                         {% if institucion and institucion.logo2 %}
                             <img class="b-r-10" src="{{ institucion.logo2.url }}" alt="Logo Institución">
                         {% else %}
@@ -182,7 +182,7 @@
     <div class="sidebar-wrapper" data-layout="stroke-svg">
 
         <div class="logo-wrapper">
-            <a href="{% url 'afiliados:dahsboard' %}">
+            <a href="javascript:void(0);" role="button" aria-label="Logo">
                 {% if institucion and institucion.logo %}
                     <img class="b-r-10" src="{{ institucion.logo.url }}" alt="Logo Institución">
                 {% else %}
@@ -304,22 +304,6 @@
                         </a>
                     </li>
                     {% endif %}
-
-                    <li class="sidebar-list {% if '/afiliados/filtros/' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:dashboard_filtros' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-form' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-form' %}"></use></svg>
-                            <span>Filtros</span>
-                        </a>
-                    </li>
-
-                    <li class="sidebar-list {% if '/afiliados/elecciones/' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:elecciones_dashboard' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-widget' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-widget' %}"></use></svg>
-                            <span>Elecciones</span>
-                        </a>
-                    </li>
 
                     {% if es_administrador %}
                     <li class="sidebar-list {% if '/afiliados/padron/cargar/' in request.path %}active{% endif %}">

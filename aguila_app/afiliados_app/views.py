@@ -45,7 +45,7 @@ from django.template.loader import get_template
 from django.http import HttpResponse
 from xhtml2pdf import pisa
 from weasyprint import HTML
-from django.db.models.functions import Cast, TruncWeek
+from django.db.models.functions import Cast, TruncWeek, TruncMonth
 from django.utils import timezone
 from datetime import timedelta
 from reportlab.lib.pagesizes import landscape, letter
@@ -1804,10 +1804,22 @@ def panorama_municipal_organizacion(request):
     )
 
     crecimiento = {
-        'coordinadores': list(coordinadores.annotate(mes=TruncWeek('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-        'lideres': list(lideres.annotate(mes=TruncWeek('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-        'estructuras': list(estructuras.annotate(mes=TruncWeek('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-        'reuniones': list(reuniones.annotate(mes=TruncWeek('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+        'coordinadores': list(coordinadores.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+        'lideres': list(lideres.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+        'estructuras': list(estructuras.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+        'reuniones': list(reuniones.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+    }
+
+    def _serie_por_mes(key):
+        return {item['mes'].strftime('%Y-%m'): item['total'] for item in crecimiento.get(key, []) if item.get('mes')}
+
+    meses = sorted(set(_serie_por_mes('coordinadores').keys()) | set(_serie_por_mes('lideres').keys()) | set(_serie_por_mes('estructuras').keys()) | set(_serie_por_mes('reuniones').keys()))
+    crecimiento_series = {
+        'labels': meses,
+        'coordinadores': [_serie_por_mes('coordinadores').get(m, 0) for m in meses],
+        'lideres': [_serie_por_mes('lideres').get(m, 0) for m in meses],
+        'estructuras': [_serie_por_mes('estructuras').get(m, 0) for m in meses],
+        'reuniones': [_serie_por_mes('reuniones').get(m, 0) for m in meses],
     }
 
     context = {
@@ -1841,6 +1853,19 @@ def panorama_municipal_organizacion(request):
             reuniones_total=Count('reuniones_organizacion', distinct=True),
         ),
         'crecimiento': json.dumps(crecimiento, cls=DjangoJSONEncoder),
+        'charts_data': json.dumps({
+            'cobertura': {
+                'comunidades': [len(comunidad_ids_cubiertas), max(comunidad_qs.count() - len(comunidad_ids_cubiertas), 0)],
+                'sectores': [len(sector_ids_cubiertos), max(sector_qs.count() - len(sector_ids_cubiertos), 0)],
+                'centros': [len(centro_ids_cubiertos), max(centro_qs.count() - len(centro_ids_cubiertos), 0)],
+            },
+            'estructura': {
+                'coordinadores': [coordinadores.filter(estado=EstadoRegistro.ACTIVO).count(), coordinadores.filter(estado=EstadoRegistro.INACTIVO).count()],
+                'lideres_total': lideres.count(),
+                'estructuras_activas': estructuras.filter(estado=EstadoRegistro.ACTIVO).count(),
+            },
+            'crecimiento': crecimiento_series,
+        }, cls=DjangoJSONEncoder),
         'sector_ids_cubiertos': sector_ids_cubiertos,
         'centro_ids_cubiertos': centro_ids_cubiertos,
         'comunidad_ids_cubiertas': comunidad_ids_cubiertas,
