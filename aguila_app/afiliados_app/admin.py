@@ -1,7 +1,9 @@
 from django.contrib import admin
 from .models import (
     Institucion, Perfil, FraseMotivacional,
-    Comunidad, CentroVotacion, Comision, Afiliado, Sector
+    Comunidad, CentroVotacion, Comision, Afiliado, Sector, OrganizacionIntegrante,
+    CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa,
+    ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial
 )
 
 # -------------------------------
@@ -77,3 +79,18 @@ class AfiliadoAdmin(admin.ModelAdmin):
     comisiones_list.short_description = 'Comisiones'
 
 admin.site.register(Afiliado, AfiliadoAdmin)
+
+
+@admin.register(OrganizacionIntegrante)
+class OrganizacionIntegranteAdmin(admin.ModelAdmin):
+    list_display = ('afiliado', 'estado', 'usuario_registro', 'usuario_modificacion', 'fecha_creacion')
+    search_fields = ('afiliado__nombre_completo', 'afiliado__dpi', 'usuario_registro__username')
+    list_filter = ('estado', 'fecha_creacion')
+
+
+admin.site.register(CoordinadorOrganizacion)
+admin.site.register(LiderComunitarioOrganizacion)
+admin.site.register(EstructuraOrganizativa)
+admin.site.register(ResponsableTerritorial)
+admin.site.register(ReunionTerritorial)
+admin.site.register(IncidenciaTerritorial)
