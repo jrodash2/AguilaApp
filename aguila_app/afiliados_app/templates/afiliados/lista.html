@@ -262,6 +262,33 @@ $(document).ready(function() {
         // $('.form-control[multiple]').select2(); // Descomentar si usas Select2
     });
 
+    // Prefill desde la vista de pendientes por secretaría
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('abrir_modal') === '1') {
+        const dpi = params.get('prefill_dpi') || '';
+        const nombre = params.get('prefill_nombre') || '';
+        const comunidad = params.get('prefill_comunidad') || '';
+
+        $('#dpi_afiliado').val(dpi);
+        $('input[name="nombre_completo"]').val(nombre);
+
+        if (comunidad) {
+            const $comunidad = $('#id_comunidad');
+            const comunidadLower = comunidad.toLowerCase();
+            $comunidad.find('option').each(function() {
+                if ($(this).text().trim().toLowerCase() === comunidadLower) {
+                    $comunidad.val($(this).val());
+                }
+            });
+        }
+
+        const modalEl = document.getElementById('nuevoAfiliadoModal');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+    }
+
 
     // --- GUARDAR NUEVO AFILIADO CON AJAX ---
     $('#formNuevoAfiliado').on('submit', function(e){

@@ -1,0 +1,77 @@
+{% extends 'afiliados/base.html' %}
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title mb-3">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <h4>Detalle de reunión mujeres</h4>
+          <p class="text-muted mb-0">{{ reunion.titulo }}</p>
+        </div>
+        <div class="col-md-4 text-md-end mt-2 mt-md-0">
+          <span class="badge bg-info fs-6">{{ reunion.get_estado_seguimiento_display }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-header"><h5 class="mb-0">Información general</h5></div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4"><strong>Fecha:</strong> {{ reunion.fecha|date:'d/m/Y' }}</div>
+          <div class="col-md-4"><strong>Tipo:</strong> {{ reunion.tipo_reunion|default:'—' }}</div>
+          <div class="col-md-4"><strong>Asistentes:</strong> {{ reunion.asistentes|default:0 }}</div>
+          <div class="col-md-4"><strong>Comunidad:</strong> {{ reunion.comunidad|default:'—' }}</div>
+          <div class="col-md-4"><strong>Sector:</strong> {{ reunion.sector|default:'—' }}</div>
+          <div class="col-md-4"><strong>Centro de votación:</strong> {{ reunion.centro_votacion|default:'—' }}</div>
+          <div class="col-md-6"><strong>Responsable:</strong> {{ reunion.responsables|default:'—' }}</div>
+          <div class="col-md-6"><strong>Estado:</strong> {{ reunion.get_estado_seguimiento_display }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <div class="col-lg-6">
+        <div class="card h-100">
+          <div class="card-header"><h5 class="mb-0">Acuerdos</h5></div>
+          <div class="card-body">
+            {% if reunion.acuerdos %}
+              <p class="mb-0">{{ reunion.acuerdos|linebreaksbr }}</p>
+            {% else %}
+              <p class="text-muted mb-0">Sin acuerdos registrados.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card h-100">
+          <div class="card-header"><h5 class="mb-0">Observaciones</h5></div>
+          <div class="card-body">
+            {% if reunion.observaciones %}
+              <p class="mb-0">{{ reunion.observaciones|linebreaksbr }}</p>
+            {% else %}
+              <p class="text-muted mb-0">Sin observaciones registradas.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card mt-3">
+      <div class="card-header"><h5 class="mb-0">Trazabilidad</h5></div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-4"><strong>Creado por:</strong> {{ reunion.usuario_creador|default:'—' }}</div>
+          <div class="col-md-4"><strong>Fecha creación:</strong> {{ reunion.fecha_creacion|date:'d/m/Y H:i' }}</div>
+          <div class="col-md-4"><strong>Última actualización:</strong> {{ reunion.fecha_actualizacion|date:'d/m/Y H:i' }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+      <a href="{% url 'afiliados:editar_reunion_mujeres' reunion.pk %}" class="btn btn-primary">Editar reunión</a>
+      <a href="{% url 'afiliados:lista_reuniones_mujeres' %}" class="btn btn-outline-secondary">Volver al listado</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
