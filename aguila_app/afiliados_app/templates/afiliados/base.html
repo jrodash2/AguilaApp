@@ -327,7 +327,7 @@
                     <li class="sidebar-list {% if '/afiliados/organizacion/reportes/' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:reporte_cobertura_comunidades' %}"><span>Reportes</span></a>
                     </li>
-                    {% endif %}
+                    {% endif %} {# /if es_organizacion #}
 
                     {% if es_afiliados or es_gestor %}
                     <li class="sidebar-list {% if '/afiliados/afiliado' in request.path %}active{% endif %}">
@@ -377,8 +377,8 @@
                             <span>Comisiones</span>
                         </a>
                     </li>
-                    {% endif %}
-                    {% endif %}
+                    {% endif %} {# /if es_afiliados or es_gestor #}
+                    {% endif %} {# /if es_administrador else #}
 
                     {% if es_departamento %}
                     <li class="sidebar-list {% if '/afiliados/dashboard/' in request.path and '/afiliados/filtros/' not in request.path %}active{% endif %}">
@@ -388,9 +388,9 @@
                             <span>Departamento</span>
                         </a>
                     </li>
-                    {% endif %}
+                    {% endif %} {# /if es_departamento #}
 
-                    {% endif %}
+                    {% endif %} {# /if request.user.is_authenticated #}
 
                 </ul>
             </div>
