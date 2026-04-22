@@ -9,10 +9,13 @@
   {% endif %}
   <div class="card"><div class="card-body">
     <form method="post">{% csrf_token %}
-      {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+      {% for hidden in form.hidden_fields %}
+        {% if hidden.name != 'coordinador_responsable' %}{{ hidden }}{% endif %}
+      {% endfor %}
       <div class="row g-3">
         <div class="col-12 col-md-6">
           <label class="form-label" for="coordinador_responsable_display">Coordinador responsable</label>
+          {{ form.coordinador_responsable.as_hidden }}
           <div class="input-group">
             <input
               type="text"
@@ -101,9 +104,9 @@
                 <td>
                   <button
                     type="button"
-                    class="btn btn-sm btn-primary btn-seleccionar-coordinador"
-                    data-coordinador-id="{{ c.id }}"
-                    data-coordinador-nombre="{{ c.nombre }}"
+                    class="btn btn-sm btn-primary js-select-coordinador"
+                    data-coord-id="{{ c.id }}"
+                    data-coord-nombre="{{ c.nombre }}"
                   >Agregar coordinador</button>
                 </td>
               </tr>
@@ -121,7 +124,7 @@
 $(function(){
   const comunidad = $('#id_comunidad');
   const campoCoordinadorVisible = $('#coordinador_responsable_display');
-  const campoCoordinadorId = $('#id_coordinador_responsable, input[name=\"coordinador_responsable\"]').first();
+  const campoCoordinadorId = $('#id_coordinador_responsable');
   const modalEl = document.getElementById('modalCoordinadores');
   const modalCoordinadores = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
 
@@ -152,21 +155,33 @@ $(function(){
   }
 
   function aplicarCoordinadorSeleccionado(id, nombre) {
-    if (!campoCoordinadorId.length || !campoCoordinadorVisible.length) return;
-    campoCoordinadorId.val(id || '').trigger('change');
-    campoCoordinadorVisible.val(nombre || '').trigger('change');
+    if (!campoCoordinadorId.length || !campoCoordinadorVisible.length) return false;
+    if (!id) return false;
+    campoCoordinadorId.val(String(id)).trigger('input').trigger('change');
+    campoCoordinadorVisible.val((nombre || '').trim()).trigger('input').trigger('change');
+    return true;
   }
 
-  $(document).on('click', '#tablaCoordinadoresModal .btn-seleccionar-coordinador', function(){
+  $(document).on('click', '#tablaCoordinadoresModal .js-select-coordinador', function(e){
+    e.preventDefault();
     const boton = this;
     const fila = boton.closest('tr');
-    const id = boton.getAttribute('data-coordinador-id') || '';
-    const nombre = boton.getAttribute('data-coordinador-nombre') || (fila && fila.cells && fila.cells[0] ? fila.cells[0].innerText.trim() : '');
-    aplicarCoordinadorSeleccionado(id, nombre);
+    const id = boton.getAttribute('data-coord-id') || '';
+    const nombre = boton.getAttribute('data-coord-nombre') || (fila && fila.cells && fila.cells[0] ? fila.cells[0].innerText.trim() : '');
+    const aplicado = aplicarCoordinadorSeleccionado(id, nombre);
+    if (!aplicado) return;
     if (modalCoordinadores) {
       modalCoordinadores.hide();
     }
   });
+
+  if (campoCoordinadorId.length && campoCoordinadorId.val() && !campoCoordinadorVisible.val()) {
+    const selector = `#tablaCoordinadoresModal .js-select-coordinador[data-coord-id="${campoCoordinadorId.val()}"]`;
+    const btn = document.querySelector(selector);
+    if (btn) {
+      campoCoordinadorVisible.val(btn.getAttribute('data-coord-nombre') || '');
+    }
+  }
 
   comunidad.on('change', cargarTerritorio);
   cargarTerritorio();

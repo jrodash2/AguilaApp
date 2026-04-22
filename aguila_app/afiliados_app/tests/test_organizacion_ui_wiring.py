@@ -139,9 +139,9 @@ class OrganizacionUIWiringTests(TestCase):
         self.assertIn('id="tablaCoordinadoresModal"', html)
         self.assertIn('id="coordinador_responsable_display"', html)
         self.assertIn('id="id_coordinador_responsable"', html)
-        self.assertIn("btn-seleccionar-coordinador", html)
-        self.assertIn("data-coordinador-id", html)
-        self.assertIn("data-coordinador-nombre", html)
+        self.assertIn("js-select-coordinador", html)
+        self.assertIn("data-coord-id", html)
+        self.assertIn("data-coord-nombre", html)
 
     def test_juventud_crear_estructura_guarda_coordinador_desde_hidden_field(self):
         self.client.login(username="joven_user", password="12345")
