@@ -78,7 +78,7 @@
             <!-- LOGO -->
             <div class="header-logo-wrapper col-auto p-0">
                 <div class="logo-wrapper">
-                    <a href="{% url 'afiliados:dahsboard' %}">
+                    <a href="javascript:void(0);" role="button" aria-label="Logo">
                         {% if institucion and institucion.logo2 %}
                             <img class="b-r-10" src="{{ institucion.logo2.url }}" alt="Logo Institución">
                         {% else %}
@@ -182,7 +182,7 @@
     <div class="sidebar-wrapper" data-layout="stroke-svg">
 
         <div class="logo-wrapper">
-            <a href="{% url 'afiliados:dahsboard' %}">
+            <a href="javascript:void(0);" role="button" aria-label="Logo">
                 {% if institucion and institucion.logo %}
                     <img class="b-r-10" src="{{ institucion.logo.url }}" alt="Logo Institución">
                 {% else %}
@@ -199,117 +199,148 @@
                 <ul class="sidebar-links" id="simple-bar">
 
                     {% if request.user.is_authenticated %}
+                        <li class="sidebar-list {% if '/afiliados/dahsboard/' in request.path %}active{% endif %}">
+                            <a class="sidebar-link" href="{% url 'afiliados:dahsboard' %}">
+                                <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-home' %}"></use></svg>
+                                <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-home' %}"></use></svg>
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
 
-                    <li class="sidebar-list {% if '/afiliados/dahsboard/' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:dahsboard' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-home' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-home' %}"></use></svg>
-                            <span>Dashboard</span>
-                        </a>
-                    </li>
+                        {% if es_administrador %}
+                            <li class="sidebar-list {% if '/afiliados/lista/' in request.path or '/afiliados/lideres' in request.path or '/afiliados/comunidades/' in request.path or '/afiliados/sectores/' in request.path or '/afiliados/centros/' in request.path or '/afiliados/comisiones/' in request.path or '/afiliados/padron/cargar/' in request.path or '/afiliados/editar_institucion' in request.path or '/afiliados/usuario/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link sidebar-title link-nav" href="javascript:void(0)">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
+                                    <span>Afiliación</span>
+                                </a>
+                                <ul class="sidebar-submenu">
+                                    <li><a href="{% url 'afiliados:afiliado_lista' %}">Afiliados</a></li>
+                                    <li><a href="{% url 'afiliados:lideres_lista' %}">Líderes</a></li>
+                                    <li><a href="{% url 'afiliados:comunidad_lista' %}">Comunidades</a></li>
+                                    <li><a href="{% url 'afiliados:sector_lista' %}">Sectores</a></li>
+                                    <li><a href="{% url 'afiliados:centro_lista' %}">Centros de Votación</a></li>
+                                    <li><a href="{% url 'afiliados:comision_lista' %}">Comisiones</a></li>
+                                    <li><a href="{% url 'afiliados:padron_cargar' %}">Cargar Padrón</a></li>
+                                    <li><a href="{% url 'afiliados:editar_institucion' %}">Configuración</a></li>
+                                    <li><a href="{% url 'afiliados:user_create' %}">Usuarios</a></li>
+                                </ul>
+                            </li>
 
-                    {% if es_administrador or es_afiliados or es_gestor %}
-                    <li class="sidebar-list {% if '/afiliados/afiliado' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:afiliado_lista' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
-                            <span>Afiliados</span>
-                        </a>
-                    </li>
+                            <li class="sidebar-list {% if '/afiliados/organizacion/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link sidebar-title link-nav" href="javascript:void(0)">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-board' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-board' %}"></use></svg>
+                                    <span>Organización</span>
+                                </a>
+                                <ul class="sidebar-submenu">
+                                    <li><a href="{% url 'afiliados:dashboard_organizacion' %}">Dashboard Organización</a></li>
+                                    <li><a href="{% url 'afiliados:panorama_municipal_organizacion' %}">Panorama general</a></li>
+                                    <li><a href="{% url 'afiliados:lista_estructura_territorial' %}">Estructura territorial</a></li>
+                                    <li><a href="{% url 'afiliados:lista_integrantes_organizacion' %}">Integrantes</a></li>
+                                    <li><a href="{% url 'afiliados:lista_coordinadores' %}">Coordinadores</a></li>
+                                    <li><a href="{% url 'afiliados:lista_lideres' %}">Líderes comunitarios</a></li>
+                                    <li><a href="{% url 'afiliados:lista_responsables' %}">Responsables</a></li>
+                                    <li><a href="{% url 'afiliados:lista_estructuras' %}">Estructuras</a></li>
+                                    <li><a href="{% url 'afiliados:lista_reuniones' %}">Reuniones</a></li>
+                                    <li><a href="{% url 'afiliados:lista_incidencias' %}">Incidencias</a></li>
+                                    <li><a href="{% url 'afiliados:reporte_cobertura_comunidades' %}">Cobertura</a></li>
+                                    <li><a href="{% url 'afiliados:reporte_coordinadores' %}">Reportes</a></li>
+                                </ul>
+                            </li>
+                        {% elif es_organizacion %}
+                            <li class="sidebar-list {% if '/afiliados/organizacion/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:dashboard_organizacion' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-board' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-board' %}"></use></svg>
+                                    <span>Organización</span>
+                                </a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/organizacion/panorama/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:panorama_municipal_organizacion' %}"><span>Panorama Municipal</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/organizacion/estructura-territorial/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_estructura_territorial' %}"><span>Estructura Territorial</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/organizacion/coordinadores/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_coordinadores' %}"><span>Coordinadores</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/organizacion/lideres/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_lideres' %}"><span>Líderes</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/organizacion/responsables/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_responsables' %}"><span>Responsables</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/organizacion/estructuras/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_estructuras' %}"><span>Estructuras</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/organizacion/reuniones/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_reuniones' %}"><span>Reuniones</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/organizacion/incidencias/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_incidencias' %}"><span>Incidencias</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/organizacion/reportes/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:reporte_cobertura_comunidades' %}"><span>Reportes</span></a>
+                            </li>
+                        {% endif %}
 
-                    <li class="sidebar-list {% if '/afiliados/lideres' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:lideres_lista' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
-                            <span>Líderes</span>
-                        </a>
-                    </li>
+                        {% if not es_administrador %}
+                        {% if es_afiliados or es_gestor %}
+                            <li class="sidebar-list {% if '/afiliados/afiliado' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:afiliado_lista' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
+                                    <span>Afiliados</span>
+                                </a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/lideres' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lideres_lista' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
+                                    <span>Líderes</span>
+                                </a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/comunidad' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:comunidad_lista' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
+                                    <span>Comunidades</span>
+                                </a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/sector' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:sector_lista' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
+                                    <span>Sectores</span>
+                                </a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/centro' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:centro_lista' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
+                                    <span>Centros de Votación</span>
+                                </a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/comision' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:comision_lista' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
+                                    <span>Comisiones</span>
+                                </a>
+                            </li>
+                        {% endif %}
+                        {% endif %}
 
-                    <li class="sidebar-list {% if '/afiliados/comunidad' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:comunidad_lista' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
-                            <span>Comunidades</span>
-                        </a>
-                    </li>
-
-                    <li class="sidebar-list {% if '/afiliados/sector' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:sector_lista' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
-                            <span>Sectores</span>
-                        </a>
-                    </li>
-
-                    <li class="sidebar-list {% if '/afiliados/centro' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:centro_lista' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
-                            <span>Centros de Votación</span>
-                        </a>
-                    </li>
-
-                    <li class="sidebar-list {% if '/afiliados/comision' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:comision_lista' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
-                            <span>Comisiones</span>
-                        </a>
-                    </li>
-                    {% endif %}
-
-                    {% if es_departamento %}
-                    <li class="sidebar-list {% if '/afiliados/dashboard/' in request.path and '/afiliados/filtros/' not in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:dashboard_elecciones' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-widget' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-widget' %}"></use></svg>
-                            <span>Departamento</span>
-                        </a>
-                    </li>
-                    {% endif %}
-
-                    <li class="sidebar-list {% if '/afiliados/filtros/' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:dashboard_filtros' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-form' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-form' %}"></use></svg>
-                            <span>Filtros</span>
-                        </a>
-                    </li>
-
-                    <li class="sidebar-list {% if '/afiliados/elecciones/' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:elecciones_dashboard' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-widget' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-widget' %}"></use></svg>
-                            <span>Elecciones</span>
-                        </a>
-                    </li>
-
-                    {% if es_administrador %}
-                    <li class="sidebar-list {% if '/afiliados/padron/cargar/' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:padron_cargar' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-file' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-file' %}"></use></svg>
-                            <span>Cargar Padrón</span>
-                        </a>
-                    </li>
-
-                    <li class="sidebar-list {% if '/afiliados/editar_institucion' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:editar_institucion' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-setting' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-setting' %}"></use></svg>
-                            <span>Configuración</span>
-                        </a>
-                    </li>
-
-                    <li class="sidebar-list {% if '/afiliados/usuario/' in request.path %}active{% endif %}">
-                        <a class="sidebar-link" href="{% url 'afiliados:user_create' %}">
-                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-user' %}"></use></svg>
-                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-user' %}"></use></svg>
-                            <span>Usuarios</span>
-                        </a>
-                    </li>
-                    {% endif %}
-
+                        {% if es_departamento %}
+                            <li class="sidebar-list {% if '/afiliados/dashboard/' in request.path and '/afiliados/filtros/' not in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:dashboard_elecciones' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-widget' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-widget' %}"></use></svg>
+                                    <span>Departamento</span>
+                                </a>
+                            </li>
+                        {% endif %}
                     {% endif %}
 
                 </ul>
