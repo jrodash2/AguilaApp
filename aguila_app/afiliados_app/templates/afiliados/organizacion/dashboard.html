@@ -1,27 +1,186 @@
 {% extends 'afiliados/base.html' %}
 {% load static %}
+{% block title %}Dashboard Organización{% endblock %}
 {% block content %}
 <div class="page-body">
-  <div class="container-fluid">
-    <div class="page-title">
-      <div class="row">
-        <div class="col-6"><h4 class="card-title mb-0">Secretaría de Organización</h4></div>
-        <div class="col-6 text-end">
-          <a href="{% url 'afiliados:crear_integrante_organizacion' %}" class="btn btn-primary">+ Nuevo integrante</a>
+  <style>
+    .org-dashboard .hero-card {
+      background: linear-gradient(135deg, #0d47a1 0%, #1565c0 45%, #42a5f5 100%);
+      border: none;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(21, 101, 192, 0.2);
+      color: #fff;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .org-dashboard .hero-card::after {
+      content: "";
+      position: absolute;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.12);
+      right: -80px;
+      top: -90px;
+    }
+
+    .org-dashboard .hero-title {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin-bottom: .3rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .org-dashboard .hero-text {
+      font-size: .98rem;
+      opacity: .95;
+      margin-bottom: 0;
+      position: relative;
+      z-index: 1;
+      max-width: 720px;
+    }
+
+    .org-dashboard .metric-card {
+      background: #e3f2fd;
+      border: none;
+      border-radius: 18px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+      transition: all .35s ease;
+      color: #0d2145;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .org-dashboard .metric-card:hover {
+      transform: translateY(-6px) scale(1.01);
+      box-shadow: 0 12px 26px rgba(0, 0, 0, 0.13);
+    }
+
+    .org-dashboard .metric-icon {
+      position: absolute;
+      right: -14px;
+      bottom: -22px;
+      opacity: .14;
+      transform: rotate(-12deg);
+      width: 92px;
+      height: 92px;
+    }
+
+    .org-dashboard .metric-label {
+      font-size: .92rem;
+      font-weight: 600;
+      margin-bottom: .2rem;
+      color: #0d2145;
+    }
+
+    .org-dashboard .metric-value {
+      font-size: 2rem;
+      line-height: 1;
+      font-weight: 800;
+      color: #0d47a1;
+      margin-bottom: 0;
+    }
+
+    .org-dashboard .table-card {
+      border: none;
+      border-radius: 18px;
+      box-shadow: 0 8px 22px rgba(13, 71, 161, 0.08);
+    }
+
+    .org-dashboard .table-card .card-header {
+      background: #fff;
+      border-bottom: 1px solid #edf1f7;
+      border-radius: 18px 18px 0 0;
+      padding: 1rem 1.25rem;
+    }
+
+    .org-dashboard .table-card .card-body {
+      background: #f9fbff;
+      border-radius: 0 0 18px 18px;
+    }
+
+    .org-dashboard .state-pill {
+      padding: .3rem .6rem;
+      border-radius: 999px;
+      font-size: .75rem;
+      font-weight: 700;
+      letter-spacing: .3px;
+      text-transform: uppercase;
+      display: inline-block;
+      border: 1px solid transparent;
+    }
+
+    .org-dashboard .state-pill.pendiente { background: #fff8e1; color: #b26a00; border-color: #ffe08a; }
+    .org-dashboard .state-pill.revisado { background: #e8f0fe; color: #0d47a1; border-color: #bbd4ff; }
+    .org-dashboard .state-pill.aprobado { background: #e6f7ef; color: #0f6c3e; border-color: #bce6cf; }
+    .org-dashboard .state-pill.default { background: #eef2f7; color: #5e7185; border-color: #d9e2ec; }
+  </style>
+
+  <div class="container-fluid org-dashboard">
+    <div class="card hero-card mt-3 mb-4">
+      <div class="card-body p-4 p-lg-5 d-flex flex-column flex-lg-row align-items-start align-items-lg-center justify-content-between gap-3">
+        <div>
+          <h1 class="hero-title">Secretaría de Organización</h1>
+          <p class="hero-text">Panel de control para seguimiento territorial, estado de revisión y gestión operativa de los integrantes registrados.</p>
         </div>
+        <a href="{% url 'afiliados:crear_integrante_organizacion' %}" class="btn btn-light btn-pill px-4">
+          <i class="icon-plus me-1"></i> Nuevo integrante
+        </a>
       </div>
     </div>
   </div>
 
   <div class="container-fluid">
-    <div class="row">
-      <div class="col-md-3"><div class="card"><div class="card-body"><h6>Total</h6><h3>{{ total_integrantes }}</h3></div></div></div>
-      <div class="col-md-3"><div class="card"><div class="card-body"><h6>Pendientes</h6><h3>{{ total_pendientes }}</h3></div></div></div>
-      <div class="col-md-3"><div class="card"><div class="card-body"><h6>Revisados</h6><h3>{{ total_revisados }}</h3></div></div></div>
-      <div class="col-md-3"><div class="card"><div class="card-body"><h6>Aprobados</h6><h3>{{ total_aprobados }}</h3></div></div></div>
+    <div class="row org-dashboard g-4">
+      <div class="col-xl-3 col-md-6">
+        <div class="card metric-card h-100">
+          <div class="card-body">
+            <p class="metric-label">Total de integrantes</p>
+            <h3 class="metric-value">{{ total_integrantes }}</h3>
+            <svg class="stroke-icon metric-icon">
+              <use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-user"></use>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-md-6">
+        <div class="card metric-card h-100">
+          <div class="card-body">
+            <p class="metric-label">Pendientes</p>
+            <h3 class="metric-value">{{ total_pendientes }}</h3>
+            <svg class="stroke-icon metric-icon">
+              <use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-task"></use>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-md-6">
+        <div class="card metric-card h-100">
+          <div class="card-body">
+            <p class="metric-label">Revisados</p>
+            <h3 class="metric-value">{{ total_revisados }}</h3>
+            <svg class="stroke-icon metric-icon">
+              <use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-task"></use>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-3 col-md-6">
+        <div class="card metric-card h-100">
+          <div class="card-body">
+            <p class="metric-label">Aprobados</p>
+            <h3 class="metric-value">{{ total_aprobados }}</h3>
+            <svg class="stroke-icon metric-icon">
+              <use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-gallery"></use>
+            </svg>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="card">
+    <div class="card table-card org-dashboard mt-4">
       <div class="card-header d-flex justify-content-between">
         <h5 class="mb-0">Últimos registros</h5>
         <a href="{% url 'afiliados:lista_integrantes_organizacion' %}" class="btn btn-outline-primary btn-sm">Ver bandeja</a>
@@ -35,7 +194,11 @@
               <tr>
                 <td>{{ item.afiliado.nombre_completo }}</td>
                 <td>{{ item.afiliado.dpi }}</td>
-                <td>{{ item.get_estado_display }}</td>
+                <td>
+                  <span class="state-pill {% if item.estado == 'pendiente' %}pendiente{% elif item.estado == 'revisado' %}revisado{% elif item.estado == 'aprobado' %}aprobado{% else %}default{% endif %}">
+                    {{ item.get_estado_display }}
+                  </span>
+                </td>
                 <td>{{ item.fecha_creacion|date:'d/m/Y H:i' }}</td>
                 <td><a href="{% url 'afiliados:detalle_integrante_organizacion' item.id %}"><i class="icon-eye"></i></a></td>
               </tr>
