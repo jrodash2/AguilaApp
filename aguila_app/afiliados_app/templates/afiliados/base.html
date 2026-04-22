@@ -215,6 +215,7 @@
                                     <span>Afiliación</span>
                                 </a>
                                 <ul class="sidebar-submenu">
+                                    <li><a href="{% url 'afiliados:dahsboard' %}">Dashboard Afiliación</a></li>
                                     <li><a href="{% url 'afiliados:afiliado_lista' %}">Afiliados</a></li>
                                     <li><a href="{% url 'afiliados:lideres_lista' %}">Líderes</a></li>
                                     <li><a href="{% url 'afiliados:comunidad_lista' %}">Comunidades</a></li>
@@ -234,10 +235,9 @@
                                     <span>Organización</span>
                                 </a>
                                 <ul class="sidebar-submenu">
-                                    <li><a href="{% url 'afiliados:dashboard_organizacion' %}">Dashboard Organización</a></li>
-                                    <li><a href="{% url 'afiliados:panorama_municipal_organizacion' %}">Panorama general</a></li>
+                                    <li><a href="{% url 'afiliados:panorama_municipal_organizacion' %}">Dashboard Organización</a></li>
                                     <li><a href="{% url 'afiliados:lista_estructura_territorial' %}">Estructura territorial</a></li>
-                                    <li><a href="{% url 'afiliados:lista_integrantes_organizacion' %}">Integrantes</a></li>
+                                    <li><a href="{% url 'afiliados:dashboard_organizacion' %}">Integrantes</a></li>
                                     <li><a href="{% url 'afiliados:lista_coordinadores' %}">Coordinadores</a></li>
                                     <li><a href="{% url 'afiliados:lista_lideres' %}">Líderes comunitarios</a></li>
                                     <li><a href="{% url 'afiliados:lista_responsables' %}">Responsables</a></li>
@@ -249,20 +249,23 @@
                                 </ul>
                             </li>
                         {% elif es_organizacion %}
-                            <li class="sidebar-list {% if '/afiliados/organizacion/' in request.path %}active{% endif %}">
-                                <a class="sidebar-link" href="{% url 'afiliados:dashboard_organizacion' %}">
+                            <li class="sidebar-list {% if '/afiliados/organizacion/panorama/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:panorama_municipal_organizacion' %}">
                                     <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-board' %}"></use></svg>
                                     <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-board' %}"></use></svg>
                                     <span>Organización</span>
                                 </a>
                             </li>
                             <li class="sidebar-list {% if '/afiliados/organizacion/panorama/' in request.path %}active{% endif %}">
-                                <a class="sidebar-link" href="{% url 'afiliados:panorama_municipal_organizacion' %}"><span>Panorama Municipal</span></a>
+                                <a class="sidebar-link" href="{% url 'afiliados:panorama_municipal_organizacion' %}"><span>Dashboard Organización</span></a>
                             </li>
                             <li class="sidebar-list {% if '/afiliados/organizacion/estructura-territorial/' in request.path %}active{% endif %}">
                                 <a class="sidebar-link" href="{% url 'afiliados:lista_estructura_territorial' %}"><span>Estructura Territorial</span></a>
                             </li>
-                            <li class="sidebar-list {% if '/afiliados/organizacion/coordinadores/' in request.path %}active{% endif %}">
+                            <li class="sidebar-list {% if '/afiliados/organizacion/dashboard/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:dashboard_organizacion' %}"><span>Integrantes</span></a>
+                            </li>
+                                <li class="sidebar-list {% if '/afiliados/organizacion/coordinadores/' in request.path %}active{% endif %}">
                                 <a class="sidebar-link" href="{% url 'afiliados:lista_coordinadores' %}"><span>Coordinadores</span></a>
                             </li>
                             <li class="sidebar-list {% if '/afiliados/organizacion/lideres/' in request.path %}active{% endif %}">
@@ -287,13 +290,23 @@
 
                         {% if not es_administrador %}
                         {% if es_afiliados or es_gestor %}
-                            <li class="sidebar-list {% if '/afiliados/afiliado' in request.path %}active{% endif %}">
+                           <li class="sidebar-list {% if '/afiliados/afiliado' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:dahsboard' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
+                                    <span>Dashboard Afilición</span>
+                                </a>
+                            </li>
+                               
+                        <li class="sidebar-list {% if '/afiliados/afiliado' in request.path %}active{% endif %}">
                                 <a class="sidebar-link" href="{% url 'afiliados:afiliado_lista' %}">
                                     <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
                                     <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
                                     <span>Afiliados</span>
                                 </a>
                             </li>
+                          
+
                             <li class="sidebar-list {% if '/afiliados/lideres' in request.path %}active{% endif %}">
                                 <a class="sidebar-link" href="{% url 'afiliados:lideres_lista' %}">
                                     <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
