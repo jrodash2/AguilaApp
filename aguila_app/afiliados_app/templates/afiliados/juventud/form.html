@@ -1,0 +1,80 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title"><h4>{% if es_edicion %}Editar{% else %}Nuevo{% endif %} integrante de Juventud</h4></div>
+    <div class="card">
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          {% if form.errors %}
+          <div class="alert alert-danger">{{ form.errors }}</div>
+          {% endif %}
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label" for="id_dpi">DPI</label>
+              {{ form.dpi }}
+            </div>
+            <div class="col-md-6 mb-3 d-flex align-items-end gap-2">
+              <button type="button" class="btn btn-outline-primary" id="btnBuscarDpiJuventud" data-url="{% url 'afiliados:buscar_por_dpi_juventud' %}">Buscar por DPI</button>
+              <button type="button" class="btn btn-info" id="btnVerificarEmpadronamiento" data-url="{% url 'afiliados:verificar_empadronamiento_juventud' %}" data-dpi-input="id_dpi" data-output-id="resultado_tse">Verificar empadronamiento</button>
+            </div>
+          </div>
+          <div id="resultado_tse" class="mb-3"></div>
+          <div id="resultado_busqueda_dpi" class="mb-3"></div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label" for="id_estado">Estado</label>
+              {{ form.estado }}
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label" for="id_observaciones">Observaciones</label>
+              {{ form.observaciones }}
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+          <a href="{% url 'afiliados:lista_integrantes_juventud' %}" class="btn btn-secondary">Cancelar</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+$(function(){
+  $('#btnBuscarDpiJuventud').on('click', function(){
+    const url = $(this).data('url');
+    const dpi = ($('#id_dpi').val() || '').replace(/\D/g, '');
+    if (dpi.length !== 13) {
+      $('#resultado_busqueda_dpi').html('<div class="alert alert-warning">DPI inválido. Debe contener 13 dígitos.</div>');
+      return;
+    }
+    $.get(url, { dpi: dpi }).done(function(res){
+      if (!res.ok || !res.exists) {
+        $('#resultado_busqueda_dpi').html('<div class="alert alert-warning">' + (res.message || 'No se encontró afiliado.') + '</div>');
+        return;
+      }
+      const data = res.data || {};
+      const warning = res.already_registered ? ' <strong>Ya registrado en Juventud.</strong>' : '';
+      $('#resultado_busqueda_dpi').html('<div class="alert alert-success">Afiliado encontrado: ' + (data.nombre_completo || '') + warning + '</div>');
+    }).fail(function(xhr){
+      const msg = xhr.responseJSON?.error || 'Error al buscar por DPI.';
+      $('#resultado_busqueda_dpi').html('<div class="alert alert-danger">' + msg + '</div>');
+    });
+  });
+});
+</script>
+
+<script src="{% static 'js/verificar_empadronamiento.js' %}?v=2"></script>
+<script>
+$(function(){
+  document.addEventListener('empadronamiento:resultado', function(e){
+    const res = e.detail || {};
+    if (res.ok && res.empadronado && res.data?.nombre_completo) {
+      $('#resultado_tse').append('<div class="small text-muted mt-1">Nombre en padrón: ' + res.data.nombre_completo + '</div>');
+    }
+  });
+});
+</script>
+{% endblock %}

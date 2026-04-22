@@ -19,11 +19,14 @@ from afiliados_app.models import Comunidad, CoordinadorOrganizacion, EstructuraO
 class OrganizacionUIWiringTests(TestCase):
     def setUp(self):
         self.group = Group.objects.create(name="Organizacion")
+        self.jovenes_group = Group.objects.create(name="Jovenes")
         self.admin_group = Group.objects.create(name="Administrador")
         self.user = User.objects.create_user(username="org_user", password="12345")
         self.user.groups.add(self.group)
         self.admin_user = User.objects.create_user(username="admin_user", password="12345")
         self.admin_user.groups.add(self.admin_group)
+        self.joven_user = User.objects.create_user(username="joven_user", password="12345")
+        self.joven_user.groups.add(self.jovenes_group)
 
         self.creator = User.objects.create_user(username="creator", password="12345")
 
@@ -111,3 +114,18 @@ class OrganizacionUIWiringTests(TestCase):
         html = response.content.decode()
         self.assertIn("Afiliación", html)
         self.assertIn("Organización", html)
+        self.assertIn("Juventud", html)
+
+    def test_login_redirects_jovenes_to_dashboard_juventud(self):
+        response = self.client.post(
+            reverse("afiliados:signin"),
+            {"username": "joven_user", "password": "12345"},
+            follow=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("afiliados:dashboard_juventud"))
+
+    def test_dashboard_juventud_access_for_jovenes_group(self):
+        self.client.login(username="joven_user", password="12345")
+        response = self.client.get(reverse("afiliados:dashboard_juventud"))
+        self.assertEqual(response.status_code, 200)
