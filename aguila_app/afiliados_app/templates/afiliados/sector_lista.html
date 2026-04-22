@@ -2,11 +2,6 @@
 {% load static %}
 {% block content %}
 
-<!-- Scripts -->
-<script src="{% static 'assets/js/jquery.min.js' %}"></script>
-<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
-<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
-
 <div class="page-body">
   <div class="container-fluid">
     <div class="page-title">
@@ -87,7 +82,7 @@
 <div class="mt-5">
   <h5>Listado de Sectores</h5>
   <div class="table-responsive custom-scrollbar">
-    <table class="display" id="basic-9">
+                  <table class="display datatable" id="tabla-sectores">
       <thead>
         <tr>
           <th>ID</th>

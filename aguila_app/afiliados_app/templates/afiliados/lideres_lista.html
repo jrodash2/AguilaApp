@@ -1,10 +1,6 @@
 {% extends 'afiliados/base.html' %}
 {% load static %}
 {% block content %}
-
-<script src="{% static 'assets/js/jquery.min.js' %}"></script>
-<script src="{% static 'assets/js/datatable/datatables/jquery.dataTables.min.js' %}"></script>
-<script src="{% static 'assets/js/datatable/datatables/datatable.custom.js' %}"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <div class="page-body">
@@ -49,7 +45,7 @@
                             {% endif %}
 
                             <div class="table-responsive custom-scrollbar">
-                                <table class="display" id="basic-9">
+                                <table class="display datatable" id="tabla-lideres">
                                     <thead>
                                         <tr>
                                             <th>Nombre</th>
@@ -188,7 +184,7 @@ $(document).ready(function(){
         });
     });
 
-    // Nota: Se asume que DataTables ya se inicializa globalmente mediante datatable.custom.js.
+    // Nota: DataTables se inicializa globalmente desde la base mediante datatables_global.js.
 });
 </script>
 
