@@ -269,6 +269,27 @@
                                     <li><a href="{% url 'afiliados:reporte_coordinadores_juventud' %}">Reportes</a></li>
                                 </ul>
                             </li>
+
+                            <li class="sidebar-list {% if '/afiliados/mujeres/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link sidebar-title link-nav" href="javascript:void(0)">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-user' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-user' %}"></use></svg>
+                                    <span>Mujeres</span>
+                                </a>
+                                <ul class="sidebar-submenu">
+                                    <li><a href="{% url 'afiliados:dashboard_mujeres' %}">Dashboard Mujeres</a></li>
+                                    <li><a href="{% url 'afiliados:lista_estructura_territorial_mujeres' %}">Estructura territorial</a></li>
+                                    <li><a href="{% url 'afiliados:lista_integrantes_mujeres' %}">Integrantes</a></li>
+                                    <li><a href="{% url 'afiliados:lista_coordinadores_mujeres' %}">Coordinadoras</a></li>
+                                    <li><a href="{% url 'afiliados:lista_lideres_mujeres' %}">Líderes</a></li>
+                                    <li><a href="{% url 'afiliados:lista_responsables_mujeres' %}">Responsables</a></li>
+                                    <li><a href="{% url 'afiliados:lista_estructuras_mujeres' %}">Estructuras</a></li>
+                                    <li><a href="{% url 'afiliados:lista_reuniones_mujeres' %}">Reuniones</a></li>
+                                    <li><a href="{% url 'afiliados:lista_incidencias_mujeres' %}">Incidencias</a></li>
+                                    <li><a href="{% url 'afiliados:reporte_cobertura_mujeres' %}">Cobertura</a></li>
+                                    <li><a href="{% url 'afiliados:reporte_coordinadores_mujeres' %}">Reportes</a></li>
+                                </ul>
+                            </li>
                         {% elif es_organizacion %}
                             <li class="sidebar-list {% if '/afiliados/organizacion/panorama/' in request.path %}active{% endif %}">
                                 <a class="sidebar-link" href="{% url 'afiliados:panorama_municipal_organizacion' %}">
@@ -344,6 +365,44 @@
                             </li>
                             <li class="sidebar-list {% if '/afiliados/juventud/reportes/' in request.path %}active{% endif %}">
                                 <a class="sidebar-link" href="{% url 'afiliados:reporte_cobertura_juventud' %}"><span>Reportes</span></a>
+                            </li>
+                        {% elif es_mujeres %}
+                            <li class="sidebar-list {% if '/afiliados/mujeres/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:dashboard_mujeres' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-user' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-user' %}"></use></svg>
+                                    <span>Mujeres</span>
+                                </a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/mujeres/dashboard/' in request.path or '/afiliados/mujeres/' == request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:dashboard_mujeres' %}"><span>Dashboard Mujeres</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/mujeres/estructura-territorial/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_estructura_territorial_mujeres' %}"><span>Estructura Territorial</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/mujeres/integrantes/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_integrantes_mujeres' %}"><span>Integrantes</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/mujeres/coordinadores/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_coordinadores_mujeres' %}"><span>Coordinadoras</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/mujeres/lideres/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_lideres_mujeres' %}"><span>Líderes</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/mujeres/responsables/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_responsables_mujeres' %}"><span>Responsables</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/mujeres/estructuras/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_estructuras_mujeres' %}"><span>Estructuras</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/mujeres/reuniones/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_reuniones_mujeres' %}"><span>Reuniones</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/mujeres/incidencias/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_incidencias_mujeres' %}"><span>Incidencias</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/mujeres/reportes/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:reporte_cobertura_mujeres' %}"><span>Reportes</span></a>
                             </li>
                         {% endif %}
 
