@@ -200,6 +200,48 @@
 
                     {% if request.user.is_authenticated %}
 
+                    {% if es_administrador %}
+                    <li class="sidebar-list {% if '/afiliados/organizacion/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link sidebar-title link-nav" href="javascript:void(0)">
+                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-board' %}"></use></svg>
+                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-board' %}"></use></svg>
+                            <span>Organización</span>
+                        </a>
+                        <ul class="sidebar-submenu">
+                            <li><a href="{% url 'afiliados:dashboard_organizacion' %}">Dashboard Organización</a></li>
+                            <li><a href="{% url 'afiliados:panorama_municipal_organizacion' %}">Panorama Municipal</a></li>
+                            <li><a href="{% url 'afiliados:lista_estructura_territorial' %}">Estructura Territorial</a></li>
+                            <li><a href="{% url 'afiliados:lista_integrantes_organizacion' %}">Integrantes</a></li>
+                            <li><a href="{% url 'afiliados:lista_coordinadores' %}">Coordinadores</a></li>
+                            <li><a href="{% url 'afiliados:lista_lideres' %}">Líderes Comunitarios</a></li>
+                            <li><a href="{% url 'afiliados:lista_responsables' %}">Responsables</a></li>
+                            <li><a href="{% url 'afiliados:lista_estructuras' %}">Estructuras</a></li>
+                            <li><a href="{% url 'afiliados:lista_reuniones' %}">Reuniones</a></li>
+                            <li><a href="{% url 'afiliados:lista_incidencias' %}">Incidencias</a></li>
+                            <li><a href="{% url 'afiliados:reporte_cobertura_comunidades' %}">Cobertura</a></li>
+                            <li><a href="{% url 'afiliados:reporte_coordinadores' %}">Reporte de Coordinadores</a></li>
+                            <li><a href="{% url 'afiliados:reporte_reuniones' %}">Reporte de Reuniones</a></li>
+                            <li><a href="{% url 'afiliados:reporte_crecimiento_mensual' %}">Crecimiento Mensual</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="sidebar-list {% if '/afiliados/dahsboard/' in request.path or '/afiliados/lista/' in request.path or '/afiliados/lideres' in request.path or '/afiliados/comunidades/' in request.path or '/afiliados/sectores/' in request.path or '/afiliados/centros/' in request.path or '/afiliados/comisiones/' in request.path %}active{% endif %}">
+                        <a class="sidebar-link sidebar-title link-nav" href="javascript:void(0)">
+                            <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
+                            <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
+                            <span>Afiliados</span>
+                        </a>
+                        <ul class="sidebar-submenu">
+                            <li><a href="{% url 'afiliados:dahsboard' %}">Dashboard Afiliados</a></li>
+                            <li><a href="{% url 'afiliados:afiliado_lista' %}">Bandeja de Afiliados</a></li>
+                            <li><a href="{% url 'afiliados:lideres_lista' %}">Líderes</a></li>
+                            <li><a href="{% url 'afiliados:comunidad_lista' %}">Comunidades</a></li>
+                            <li><a href="{% url 'afiliados:sector_lista' %}">Sectores</a></li>
+                            <li><a href="{% url 'afiliados:centro_lista' %}">Centros de Votación</a></li>
+                            <li><a href="{% url 'afiliados:comision_lista' %}">Comisiones</a></li>
+                        </ul>
+                    </li>
+                    {% else %}
                     <li class="sidebar-list {% if '/afiliados/dahsboard/' in request.path %}active{% endif %}">
                         <a class="sidebar-link" href="{% url 'afiliados:dahsboard' %}">
                             <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-home' %}"></use></svg>
@@ -299,6 +341,7 @@
                             <span>Comisiones</span>
                         </a>
                     </li>
+                    {% endif %}
                     {% endif %}
 
                     {% if es_departamento %}
