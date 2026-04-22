@@ -248,6 +248,27 @@
                                     <li><a href="{% url 'afiliados:reporte_coordinadores' %}">Reportes</a></li>
                                 </ul>
                             </li>
+
+                            <li class="sidebar-list {% if '/afiliados/juventud/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link sidebar-title link-nav" href="javascript:void(0)">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-user' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-board' %}"></use></svg>
+                                    <span>Juventud</span>
+                                </a>
+                                <ul class="sidebar-submenu">
+                                    <li><a href="{% url 'afiliados:panorama_municipal_juventud' %}">Dashboard Juventud</a></li>
+                                    <li><a href="{% url 'afiliados:lista_estructura_territorial_juventud' %}">Estructura territorial</a></li>
+                                    <li><a href="{% url 'afiliados:dashboard_juventud' %}">Integrantes</a></li>
+                                    <li><a href="{% url 'afiliados:lista_coordinadores_juventud' %}">Coordinadores juveniles</a></li>
+                                    <li><a href="{% url 'afiliados:lista_lideres_juveniles' %}">Líderes juveniles</a></li>
+                                    <li><a href="{% url 'afiliados:lista_responsables_juventud' %}">Responsables</a></li>
+                                    <li><a href="{% url 'afiliados:lista_estructuras_juventud' %}">Estructuras</a></li>
+                                    <li><a href="{% url 'afiliados:lista_reuniones_juventud' %}">Reuniones</a></li>
+                                    <li><a href="{% url 'afiliados:lista_incidencias_juventud' %}">Incidencias</a></li>
+                                    <li><a href="{% url 'afiliados:reporte_cobertura_juventud' %}">Cobertura</a></li>
+                                    <li><a href="{% url 'afiliados:reporte_coordinadores_juventud' %}">Reportes</a></li>
+                                </ul>
+                            </li>
                         {% elif es_organizacion %}
                             <li class="sidebar-list {% if '/afiliados/organizacion/panorama/' in request.path %}active{% endif %}">
                                 <a class="sidebar-link" href="{% url 'afiliados:panorama_municipal_organizacion' %}">
@@ -285,6 +306,44 @@
                             </li>
                             <li class="sidebar-list {% if '/afiliados/organizacion/reportes/' in request.path %}active{% endif %}">
                                 <a class="sidebar-link" href="{% url 'afiliados:reporte_cobertura_comunidades' %}"><span>Reportes</span></a>
+                            </li>
+                        {% elif es_juventud %}
+                            <li class="sidebar-list {% if '/afiliados/juventud/panorama/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:panorama_municipal_juventud' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-user' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-board' %}"></use></svg>
+                                    <span>Juventud</span>
+                                </a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/juventud/panorama/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:panorama_municipal_juventud' %}"><span>Dashboard Juventud</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/juventud/estructura-territorial/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_estructura_territorial_juventud' %}"><span>Estructura Territorial</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/juventud/dashboard/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:dashboard_juventud' %}"><span>Integrantes</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/juventud/coordinadores/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_coordinadores_juventud' %}"><span>Coordinadores juveniles</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/juventud/lideres/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_lideres_juveniles' %}"><span>Líderes juveniles</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/juventud/responsables/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_responsables_juventud' %}"><span>Responsables</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/juventud/estructuras/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_estructuras_juventud' %}"><span>Estructuras</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/juventud/reuniones/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_reuniones_juventud' %}"><span>Reuniones</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/juventud/incidencias/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_incidencias_juventud' %}"><span>Incidencias</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/juventud/reportes/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:reporte_cobertura_juventud' %}"><span>Reportes</span></a>
                             </li>
                         {% endif %}
 
