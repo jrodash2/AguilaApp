@@ -14,8 +14,8 @@ from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 import requests
 import unicodedata
-from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm, OrganizacionIntegranteForm, CoordinadorOrganizacionForm, LiderComunitarioOrganizacionForm, EstructuraOrganizativaForm, ResponsableTerritorialForm, ReunionTerritorialForm, IncidenciaTerritorialForm, JuventudIntegranteForm, CoordinadorJuventudForm, LiderJuvenilForm, EstructuraJuventudForm, ResponsableJuventudForm, ReunionJuventudForm, IncidenciaJuventudForm
-from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, EstructuraIntegrante, EstadoRegistro, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, EstructuraIntegranteJuventud
+from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm, OrganizacionIntegranteForm, CoordinadorOrganizacionForm, LiderComunitarioOrganizacionForm, EstructuraOrganizativaForm, ResponsableTerritorialForm, ReunionTerritorialForm, IncidenciaTerritorialForm, JuventudIntegranteForm, CoordinadorJuventudForm, LiderJuvenilForm, EstructuraJuventudForm, ResponsableJuventudForm, ReunionJuventudForm, IncidenciaJuventudForm, MujeresIntegranteForm, CoordinadoraMujeresForm, LiderMujeresForm, EstructuraMujeresForm, ResponsableMujeresForm, ReunionMujeresForm, IncidenciaMujeresForm
+from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, EstructuraIntegrante, EstadoRegistro, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, EstructuraIntegranteJuventud, MujeresIntegrante, CoordinadoraMujeres, LiderMujeres, EstructuraMujeres, ResponsableMujeres, ReunionMujeres, IncidenciaMujeres, EstructuraIntegranteMujeres
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
@@ -392,6 +392,8 @@ def signin(request):
                     return redirect('afiliados:dashboard_organizacion')
                 elif g.name == 'Jovenes':
                     return redirect('afiliados:dashboard_juventud')
+                elif g.name == 'Mujeres':
+                    return redirect('afiliados:dashboard_mujeres')
             # Si no se encuentra el grupo adecuado, se redirige a una página por defecto
             return redirect('afiliados:dahsboard')
         else:
@@ -2909,6 +2911,569 @@ def reporte_crecimiento_mensual_juventud(request):
 @require_GET
 def juventud_comunidad_lookup(request):
     denied = _require_juventud(request)
+    if denied:
+        return denied
+    comunidad_id = request.GET.get('comunidad_id')
+    comunidad = Comunidad.objects.select_related('sector').filter(pk=comunidad_id).first()
+    if not comunidad:
+        return JsonResponse({'ok': False, 'error': 'Comunidad no encontrada.'}, status=404)
+
+    centro = comunidad.sector.centros.first() if comunidad.sector else None
+    return JsonResponse({'ok': True, 'data': {'comunidad': comunidad.nombre, 'sector': comunidad.sector.nombre if comunidad.sector else None, 'centro_votacion': centro.nombre if centro else None}})
+
+
+def _es_usuario_mujeres(user):
+    if not user.is_authenticated:
+        return False
+    return user.groups.filter(name__in=['Mujeres', 'Administrador']).exists()
+
+
+def _require_mujeres(request):
+    if not _es_usuario_mujeres(request.user):
+        return HttpResponseForbidden("No tiene permisos para acceder a Secretaría de la Mujeres.")
+    return None
+
+
+@login_required
+def dashboard_mujeres(request):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+
+    registros = MujeresIntegrante.objects.select_related('afiliado')
+    context = {
+        'total_integrantes': registros.count(),
+        'total_pendientes': registros.filter(estado=MujeresIntegrante.Estado.PENDIENTE).count(),
+        'total_revisados': registros.filter(estado=MujeresIntegrante.Estado.REVISADO).count(),
+        'total_aprobados': registros.filter(estado=MujeresIntegrante.Estado.APROBADO).count(),
+        'ultimos_registros': registros.order_by('-fecha_creacion')[:10],
+    }
+    return safe_render(request, 'afiliados/mujeres/dashboard.html', context)
+
+
+@login_required
+def lista_integrantes_mujeres(request):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+
+    integrantes = MujeresIntegrante.objects.select_related('afiliado', 'usuario_registro')
+    return safe_render(request, 'afiliados/mujeres/lista.html', {'integrantes': integrantes})
+
+
+@login_required
+def crear_integrante_mujeres(request):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+
+    form = MujeresIntegranteForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
+
+        if error_dpi:
+            form.add_error('dpi', error_dpi)
+        elif not afiliado:
+            form.add_error('dpi', 'No existe un afiliado registrado con este DPI.')
+        elif MujeresIntegrante.objects.filter(afiliado=afiliado).exists():
+            form.add_error('dpi', 'Este afiliado ya está registrado en Secretaría de la Mujeres.')
+        else:
+            integrante = form.save(commit=False)
+            integrante.afiliado = afiliado
+            integrante.usuario_registro = request.user
+            integrante.usuario_modificacion = request.user
+            integrante.save()
+            messages.success(request, 'Integrante agregado a Secretaría de la Mujeres correctamente.')
+            return redirect('afiliados:lista_integrantes_mujeres')
+
+    return safe_render(request, 'afiliados/mujeres/form.html', {'form': form, 'es_edicion': False})
+
+
+@login_required
+def detalle_integrante_mujeres(request, pk):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+
+    integrante = get_object_or_404(
+        MujeresIntegrante.objects.select_related('afiliado', 'usuario_registro', 'usuario_modificacion'),
+        pk=pk,
+    )
+    return safe_render(request, 'afiliados/mujeres/detalle.html', {'integrante': integrante})
+
+
+@login_required
+def editar_integrante_mujeres(request, pk):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+
+    integrante = get_object_or_404(MujeresIntegrante, pk=pk)
+    form = MujeresIntegranteForm(request.POST or None, instance=integrante)
+    form.fields['dpi'].initial = integrante.afiliado.dpi
+
+    if request.method == 'POST' and form.is_valid():
+        afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
+        if error_dpi:
+            form.add_error('dpi', error_dpi)
+        elif not afiliado:
+            form.add_error('dpi', 'No existe un afiliado registrado con este DPI.')
+        elif MujeresIntegrante.objects.filter(afiliado=afiliado).exclude(pk=integrante.pk).exists():
+            form.add_error('dpi', 'Este afiliado ya está registrado en Secretaría de la Mujeres.')
+        else:
+            integrante = form.save(commit=False)
+            integrante.afiliado = afiliado
+            integrante.usuario_modificacion = request.user
+            integrante.save()
+            messages.success(request, 'Integrante de Secretaría de la Mujeres actualizado correctamente.')
+            return redirect('afiliados:detalle_integrante_mujeres', pk=integrante.pk)
+
+    return safe_render(request, 'afiliados/mujeres/form.html', {'form': form, 'es_edicion': True, 'integrante': integrante})
+
+
+@login_required
+@require_GET
+def buscar_por_dpi_mujeres(request):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+
+    afiliado, dpi_limpio, error_dpi = _afiliado_por_dpi(request.GET.get('dpi', ''))
+    if error_dpi:
+        return JsonResponse({'ok': False, 'error': error_dpi}, status=400)
+
+    if not afiliado:
+        return JsonResponse({'ok': True, 'exists': False, 'message': 'No existe afiliado con ese DPI.'})
+
+    ya_registrado = MujeresIntegrante.objects.filter(afiliado=afiliado).exists()
+    return JsonResponse({
+        'ok': True,
+        'exists': True,
+        'already_registered': ya_registrado,
+        'data': {
+            'dpi': dpi_limpio,
+            'nombre_completo': afiliado.nombre_completo,
+            'telefono': afiliado.telefono,
+            'direccion': afiliado.direccion,
+            'comunidad': afiliado.comunidad.nombre if afiliado.comunidad else None,
+            'empadronado': afiliado.empadronado,
+        }
+    })
+
+
+@login_required
+@require_GET
+def verificar_empadronamiento_mujeres(request):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+    payload, status_code = _resultado_padron_local(request.GET.get("dpi", ""))
+    return JsonResponse(payload, status=status_code)
+
+
+@login_required
+@require_POST
+def cambiar_estado_mujeres(request, pk):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+
+    integrante = get_object_or_404(MujeresIntegrante, pk=pk)
+    nuevo_estado = request.POST.get('estado', '').strip().upper()
+    estados_validos = {choice[0] for choice in MujeresIntegrante.Estado.choices}
+
+    if nuevo_estado not in estados_validos:
+        messages.error(request, 'Estado inválido.')
+        return redirect('afiliados:detalle_integrante_mujeres', pk=pk)
+
+    integrante.estado = nuevo_estado
+    integrante.usuario_modificacion = request.user
+    integrante.save(update_fields=['estado', 'usuario_modificacion', 'fecha_actualizacion'])
+    messages.success(request, 'Estado actualizado correctamente.')
+    return redirect('afiliados:detalle_integrante_mujeres', pk=pk)
+
+
+@login_required
+def panorama_municipal_mujeres(request):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+
+    comunidad_qs = Comunidad.objects.select_related('sector')
+    sector_qs = Sector.objects.all()
+    centro_qs = CentroVotacion.objects.all()
+    coordinadores = CoordinadoraMujeres.objects.all()
+    lideres = LiderMujeres.objects.all()
+    estructuras = EstructuraMujeres.objects.all()
+    reuniones = ReunionMujeres.objects.all()
+    incidencias = IncidenciaMujeres.objects.filter(estado=EstadoRegistro.ACTIVO)
+    responsables = ResponsableMujeres.objects.filter(estado=EstadoRegistro.ACTIVO)
+
+    comunidad_ids_cubiertas = set(CoordinadoraMujeres.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)) | set(LiderMujeres.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)) | set(EstructuraMujeres.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)) | set(ResponsableMujeres.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True))
+
+    sector_ids_cubiertos = set(CoordinadoraMujeres.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)) | set(EstructuraMujeres.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)) | set(ResponsableMujeres.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True))
+
+    centro_ids_cubiertos = set(CoordinadoraMujeres.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)) | set(EstructuraMujeres.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)) | set(ResponsableMujeres.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True))
+
+    crecimiento = {
+        'coordinadores': list(coordinadores.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+        'lideres': list(lideres.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+        'estructuras': list(estructuras.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+        'reuniones': list(reuniones.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+    }
+
+    def _serie_por_mes(key):
+        return {item['mes'].strftime('%Y-%m'): item['total'] for item in crecimiento.get(key, []) if item.get('mes')}
+
+    meses = sorted(set(_serie_por_mes('coordinadores').keys()) | set(_serie_por_mes('lideres').keys()) | set(_serie_por_mes('estructuras').keys()) | set(_serie_por_mes('reuniones').keys()))
+    crecimiento_series = {
+        'labels': meses,
+        'coordinadores': [_serie_por_mes('coordinadores').get(m, 0) for m in meses],
+        'lideres': [_serie_por_mes('lideres').get(m, 0) for m in meses],
+        'estructuras': [_serie_por_mes('estructuras').get(m, 0) for m in meses],
+        'reuniones': [_serie_por_mes('reuniones').get(m, 0) for m in meses],
+    }
+
+    resumen_estructuras_por_comunidad = comunidad_qs.annotate(estructuras_total=Count('estructuras_mujeres', distinct=True)).order_by('nombre')
+
+    resumen_miembros_por_estructura = EstructuraMujeres.objects.select_related('comunidad').annotate(miembros_total=Count('integrantes', distinct=True)).order_by('nombre')
+
+    context = {
+        'total_comunidades': comunidad_qs.count(),
+        'comunidades_cubiertas': len(comunidad_ids_cubiertas),
+        'comunidades_no_cubiertas': max(comunidad_qs.count() - len(comunidad_ids_cubiertas), 0),
+        'total_sectores': sector_qs.count(),
+        'sectores_con_responsable': responsables.exclude(sector__isnull=True).values('sector_id').distinct().count(),
+        'sectores_sin_responsable': max(sector_qs.count() - responsables.exclude(sector__isnull=True).values('sector_id').distinct().count(), 0),
+        'total_centros': centro_qs.count(),
+        'centros_con_cobertura': len(centro_ids_cubiertos),
+        'centros_sin_cobertura': max(centro_qs.count() - len(centro_ids_cubiertos), 0),
+        'coordinadores_activos': coordinadores.filter(estado=EstadoRegistro.ACTIVO).count(),
+        'coordinadores_inactivos': coordinadores.filter(estado=EstadoRegistro.INACTIVO).count(),
+        'total_lideres': lideres.count(),
+        'estructuras_activas': estructuras.filter(estado=EstadoRegistro.ACTIVO).count(),
+        'reuniones_mes': reuniones.filter(fecha__month=timezone.now().month, fecha__year=timezone.now().year).count(),
+        'incidencias_abiertas': incidencias.count(),
+        'resumen_comunidad': comunidad_qs.annotate(total_sectores=Count('sector', distinct=True), reuniones_total=Count('reuniones_mujeres', distinct=True), incidencias_abiertas=Count('incidencias_mujeres', filter=Q(incidencias_mujeres__estado=EstadoRegistro.ACTIVO), distinct=True)),
+        'resumen_sector': sector_qs.annotate(lideres_total=Count('lideres_mujeres', distinct=True), estructuras_total=Count('estructuras_mujeres', distinct=True), incidencias_total=Count('incidencias_mujeres', distinct=True)),
+        'resumen_centro': centro_qs.annotate(incidencias_total=Count('incidencias_mujeres', distinct=True), reuniones_total=Count('reuniones_mujeres', distinct=True)),
+        'resumen_estructuras_por_comunidad': resumen_estructuras_por_comunidad,
+        'resumen_miembros_por_estructura': resumen_miembros_por_estructura,
+        'crecimiento': json.dumps(crecimiento, cls=DjangoJSONEncoder),
+        'charts_data': json.dumps({'cobertura': {'comunidades': [len(comunidad_ids_cubiertas), max(comunidad_qs.count() - len(comunidad_ids_cubiertas), 0)], 'sectores': [len(sector_ids_cubiertos), max(sector_qs.count() - len(sector_ids_cubiertos), 0)], 'centros': [len(centro_ids_cubiertos), max(centro_qs.count() - len(centro_ids_cubiertos), 0)]}, 'estructura': {'coordinadores': [coordinadores.filter(estado=EstadoRegistro.ACTIVO).count(), coordinadores.filter(estado=EstadoRegistro.INACTIVO).count()], 'lideres_total': lideres.count(), 'estructuras_activas': estructuras.filter(estado=EstadoRegistro.ACTIVO).count()}, 'crecimiento': crecimiento_series}, cls=DjangoJSONEncoder),
+        'sector_ids_cubiertos': sector_ids_cubiertos,
+        'centro_ids_cubiertos': centro_ids_cubiertos,
+        'comunidad_ids_cubiertas': comunidad_ids_cubiertas,
+    }
+    return safe_render(request, 'afiliados/mujeres/panorama.html', context)
+
+
+def _muj_crud(request, model, form_class, template, list_name, create_name, edit_name, pk=None, extra_context=None):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+    instance = get_object_or_404(model, pk=pk) if pk else None
+    form = form_class(request.POST or None, instance=instance)
+    if request.method == 'POST' and form.is_valid():
+        obj = form.save(commit=False)
+        if not getattr(obj, 'usuario_creador_id', None):
+            obj.usuario_creador = request.user
+        obj.usuario_modificador = request.user
+        obj.save()
+        messages.success(request, 'Registro guardado correctamente.')
+        return redirect(list_name)
+
+    items_qs = model.objects.all().order_by('-id')
+    if template == 'reuniones':
+        items_qs = items_qs.select_related('comunidad', 'sector', 'centro_votacion')
+
+    context = {
+        'form': form,
+        'items': items_qs[:200],
+        'entity_label': template,
+        'create_name': create_name,
+        'edit_name': edit_name,
+        'detail_name': {
+            'coordinadores': 'afiliados:detalle_coordinador_mujeres',
+            'lideres': 'afiliados:detalle_lider_mujeres',
+            'estructuras': 'afiliados:detalle_estructura_mujeres',
+            'responsables': 'afiliados:detalle_responsable_mujeres',
+            'reuniones': 'afiliados:detalle_reunion_mujeres',
+            'incidencias': 'afiliados:detalle_incidencia_mujeres',
+        }.get(template),
+        'comunidad_lookup_url': reverse('afiliados:mujeres_comunidad_lookup'),
+        'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_mujeres'),
+    }
+
+    if template == 'reuniones':
+        responsables_modal = []
+        for responsable in ResponsableMujeres.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({'tipo': 'RESPONSABLE', 'tipo_label': 'Responsable', 'id': responsable.id, 'nombre': responsable.nombre_completo, 'dpi': responsable.dpi, 'comunidad': responsable.comunidad.nombre if responsable.comunidad else ''})
+        for coordinador in CoordinadoraMujeres.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({'tipo': 'COORDINADOR', 'tipo_label': 'Coordinador', 'id': coordinador.id, 'nombre': coordinador.nombre_completo, 'dpi': coordinador.dpi, 'comunidad': coordinador.comunidad.nombre if coordinador.comunidad else ''})
+        for lider in LiderMujeres.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({'tipo': 'LIDER', 'tipo_label': 'Líder mujeres', 'id': lider.id, 'nombre': lider.nombre_completo, 'dpi': lider.dpi, 'comunidad': lider.comunidad.nombre if lider.comunidad else ''})
+        context['responsables_modal'] = responsables_modal
+
+    if template == 'estructuras':
+        coordinadores_modal = []
+        for coordinador in CoordinadoraMujeres.objects.select_related('comunidad').order_by('nombre_completo'):
+            coordinadores_modal.append({'id': coordinador.id, 'nombre': coordinador.nombre_completo, 'dpi': coordinador.dpi, 'comunidad': coordinador.comunidad.nombre if coordinador.comunidad else '', 'estado': coordinador.get_estado_display()})
+        coordinador_responsable_display = ''
+        coordinador_id = form['coordinador_responsable'].value()
+        if coordinador_id:
+            coordinador_actual = CoordinadoraMujeres.objects.filter(pk=coordinador_id).first()
+            if coordinador_actual:
+                coordinador_responsable_display = coordinador_actual.nombre_completo
+        context['coordinadores_modal'] = coordinadores_modal
+        context['coordinador_responsable_display'] = coordinador_responsable_display
+
+    if extra_context:
+        context.update(extra_context)
+    return safe_render(request, f'afiliados/mujeres/crud_{template}.html', context)
+
+
+@login_required
+def lista_estructura_territorial_mujeres(request):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+    comunidades = Comunidad.objects.select_related('sector').order_by('nombre')
+    sectores = Sector.objects.order_by('nombre')
+    centros = CentroVotacion.objects.order_by('nombre')
+    return safe_render(request, 'afiliados/mujeres/estructura_territorial.html', {'comunidades': comunidades, 'sectores': sectores, 'centros': centros, 'total_comunidades': comunidades.count(), 'total_sectores': sectores.count(), 'total_centros': centros.count()})
+
+
+@login_required
+def lista_coordinadores_mujeres(request):
+    return _muj_crud(request, CoordinadoraMujeres, CoordinadoraMujeresForm, 'coordinadores', 'afiliados:lista_coordinadores_mujeres', 'afiliados:crear_coordinador_mujeres', 'afiliados:editar_coordinador_mujeres')
+
+
+@login_required
+def crear_coordinador_mujeres(request):
+    return _muj_crud(request, CoordinadoraMujeres, CoordinadoraMujeresForm, 'coordinadores', 'afiliados:lista_coordinadores_mujeres', 'afiliados:crear_coordinador_mujeres', 'afiliados:editar_coordinador_mujeres')
+
+
+@login_required
+def editar_coordinador_mujeres(request, pk):
+    return _muj_crud(request, CoordinadoraMujeres, CoordinadoraMujeresForm, 'coordinadores', 'afiliados:lista_coordinadores_mujeres', 'afiliados:crear_coordinador_mujeres', 'afiliados:editar_coordinador_mujeres', pk=pk)
+
+
+@login_required
+def detalle_coordinador_mujeres(request, pk):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/mujeres/detalle_generico.html', {'obj': get_object_or_404(CoordinadoraMujeres, pk=pk), 'titulo': 'Coordinador mujeres'})
+
+
+@login_required
+def lista_lideres_mujeres(request):
+    return _muj_crud(request, LiderMujeres, LiderMujeresForm, 'lideres', 'afiliados:lista_lideres_mujeres', 'afiliados:crear_lider_mujeres', 'afiliados:editar_lider_mujeres')
+
+
+@login_required
+def crear_lider_mujeres(request):
+    return _muj_crud(request, LiderMujeres, LiderMujeresForm, 'lideres', 'afiliados:lista_lideres_mujeres', 'afiliados:crear_lider_mujeres', 'afiliados:editar_lider_mujeres')
+
+
+@login_required
+def editar_lider_mujeres(request, pk):
+    return _muj_crud(request, LiderMujeres, LiderMujeresForm, 'lideres', 'afiliados:lista_lideres_mujeres', 'afiliados:crear_lider_mujeres', 'afiliados:editar_lider_mujeres', pk=pk)
+
+
+@login_required
+def detalle_lider_mujeres(request, pk):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/mujeres/detalle_generico.html', {'obj': get_object_or_404(LiderMujeres, pk=pk), 'titulo': 'Líder mujeres'})
+
+
+@login_required
+def lista_estructuras_mujeres(request):
+    return _muj_crud(request, EstructuraMujeres, EstructuraMujeresForm, 'estructuras', 'afiliados:lista_estructuras_mujeres', 'afiliados:crear_estructura_mujeres', 'afiliados:editar_estructura_mujeres')
+
+
+@login_required
+def crear_estructura_mujeres(request):
+    return _muj_crud(request, EstructuraMujeres, EstructuraMujeresForm, 'estructuras', 'afiliados:lista_estructuras_mujeres', 'afiliados:crear_estructura_mujeres', 'afiliados:editar_estructura_mujeres')
+
+
+@login_required
+def editar_estructura_mujeres(request, pk):
+    return _muj_crud(request, EstructuraMujeres, EstructuraMujeresForm, 'estructuras', 'afiliados:lista_estructuras_mujeres', 'afiliados:crear_estructura_mujeres', 'afiliados:editar_estructura_mujeres', pk=pk)
+
+
+@login_required
+def detalle_estructura_mujeres(request, pk):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+    estructura = get_object_or_404(EstructuraMujeres.objects.select_related('comunidad', 'sector', 'centro_votacion', 'coordinador_responsable'), pk=pk)
+
+    if request.method == 'POST':
+        is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+        dpi = re.sub(r"\D", "", request.POST.get('dpi', ''))
+        verified_dpi = re.sub(r"\D", "", request.POST.get('verified_dpi', ''))
+
+        if not dpi or verified_dpi != dpi:
+            msg = 'Primero debe verificar empadronamiento del DPI antes de confirmar agregado.'
+            if is_ajax:
+                return JsonResponse({'ok': False, 'message': msg}, status=400)
+            messages.error(request, msg)
+            return redirect('afiliados:detalle_estructura_mujeres', pk=estructura.pk)
+
+        payload, status_code = _resultado_padron_local(dpi)
+        if status_code != 200 or not payload.get('ok') or not payload.get('found'):
+            msg = payload.get('error') or payload.get('message') or 'No aparece empadronado en padrón local.'
+            if is_ajax:
+                return JsonResponse({'ok': False, 'message': msg}, status=400)
+            messages.error(request, msg)
+            return redirect('afiliados:detalle_estructura_mujeres', pk=estructura.pk)
+
+        persona = payload.get('data') or {}
+        if EstructuraIntegranteMujeres.objects.filter(estructura=estructura, dpi=dpi).exists():
+            msg = 'Este integrante ya está registrado en la estructura mujeres.'
+            if is_ajax:
+                return JsonResponse({'ok': False, 'message': msg}, status=409)
+            messages.warning(request, msg)
+            return redirect('afiliados:detalle_estructura_mujeres', pk=estructura.pk)
+
+        comunidad = Comunidad.objects.filter(nombre=persona.get('comunidad')).first() if persona.get('comunidad') else None
+        integrante = EstructuraIntegranteMujeres.objects.create(
+            estructura=estructura,
+            dpi=dpi,
+            nombre_completo=persona.get('nombre_completo') or f"Integrante {dpi}",
+            comunidad=comunidad,
+            usuario_registro=request.user,
+        )
+
+        if is_ajax:
+            total = estructura.integrantes.count()
+            return JsonResponse({'ok': True, 'message': 'Integrante agregado correctamente a la estructura mujeres.', 'integrante': {'id': integrante.id, 'dpi': integrante.dpi, 'nombre_completo': integrante.nombre_completo, 'estado': integrante.estado, 'fecha_registro': timezone.localtime(integrante.fecha_registro).strftime('%d/%m/%Y %H:%M')}, 'total_integrantes': total})
+
+        messages.success(request, 'Integrante agregado correctamente a la estructura mujeres.')
+        return redirect('afiliados:detalle_estructura_mujeres', pk=estructura.pk)
+
+    integrantes = estructura.integrantes.select_related('usuario_registro').all()
+    return safe_render(request, 'afiliados/mujeres/detalle_estructura.html', {'estructura': estructura, 'integrantes': integrantes, 'total_integrantes': integrantes.count(), 'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_mujeres')})
+
+
+@login_required
+@require_POST
+def eliminar_integrante_estructura_mujeres(request, pk, integrante_id):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+
+    estructura = get_object_or_404(EstructuraMujeres, pk=pk)
+    integrante = get_object_or_404(EstructuraIntegranteMujeres, pk=integrante_id, estructura=estructura)
+    integrante.delete()
+    messages.success(request, 'Integrante eliminado correctamente de la estructura mujeres.')
+    return redirect('afiliados:detalle_estructura_mujeres', pk=estructura.pk)
+
+
+@login_required
+def lista_responsables_mujeres(request):
+    return _muj_crud(request, ResponsableMujeres, ResponsableMujeresForm, 'responsables', 'afiliados:lista_responsables_mujeres', 'afiliados:crear_responsable_mujeres', 'afiliados:editar_responsable_mujeres')
+
+
+@login_required
+def crear_responsable_mujeres(request):
+    return _muj_crud(request, ResponsableMujeres, ResponsableMujeresForm, 'responsables', 'afiliados:lista_responsables_mujeres', 'afiliados:crear_responsable_mujeres', 'afiliados:editar_responsable_mujeres')
+
+
+@login_required
+def editar_responsable_mujeres(request, pk):
+    return _muj_crud(request, ResponsableMujeres, ResponsableMujeresForm, 'responsables', 'afiliados:lista_responsables_mujeres', 'afiliados:crear_responsable_mujeres', 'afiliados:editar_responsable_mujeres', pk=pk)
+
+
+@login_required
+def detalle_responsable_mujeres(request, pk):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/mujeres/detalle_generico.html', {'obj': get_object_or_404(ResponsableMujeres, pk=pk), 'titulo': 'Responsable mujeres'})
+
+
+@login_required
+def lista_reuniones_mujeres(request):
+    return _muj_crud(request, ReunionMujeres, ReunionMujeresForm, 'reuniones', 'afiliados:lista_reuniones_mujeres', 'afiliados:crear_reunion_mujeres', 'afiliados:editar_reunion_mujeres')
+
+
+@login_required
+def crear_reunion_mujeres(request):
+    return _muj_crud(request, ReunionMujeres, ReunionMujeresForm, 'reuniones', 'afiliados:lista_reuniones_mujeres', 'afiliados:crear_reunion_mujeres', 'afiliados:editar_reunion_mujeres')
+
+
+@login_required
+def editar_reunion_mujeres(request, pk):
+    return _muj_crud(request, ReunionMujeres, ReunionMujeresForm, 'reuniones', 'afiliados:lista_reuniones_mujeres', 'afiliados:crear_reunion_mujeres', 'afiliados:editar_reunion_mujeres', pk=pk)
+
+
+@login_required
+def detalle_reunion_mujeres(request, pk):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+    reunion = get_object_or_404(ReunionMujeres, pk=pk)
+    return safe_render(request, 'afiliados/mujeres/detalle_reunion.html', {'reunion': reunion})
+
+
+@login_required
+def lista_incidencias_mujeres(request):
+    return _muj_crud(request, IncidenciaMujeres, IncidenciaMujeresForm, 'incidencias', 'afiliados:lista_incidencias_mujeres', 'afiliados:crear_incidencia_mujeres', 'afiliados:editar_incidencia_mujeres')
+
+
+@login_required
+def crear_incidencia_mujeres(request):
+    return _muj_crud(request, IncidenciaMujeres, IncidenciaMujeresForm, 'incidencias', 'afiliados:lista_incidencias_mujeres', 'afiliados:crear_incidencia_mujeres', 'afiliados:editar_incidencia_mujeres')
+
+
+@login_required
+def editar_incidencia_mujeres(request, pk):
+    return _muj_crud(request, IncidenciaMujeres, IncidenciaMujeresForm, 'incidencias', 'afiliados:lista_incidencias_mujeres', 'afiliados:crear_incidencia_mujeres', 'afiliados:editar_incidencia_mujeres', pk=pk)
+
+
+@login_required
+def detalle_incidencia_mujeres(request, pk):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/mujeres/detalle_generico.html', {'obj': get_object_or_404(IncidenciaMujeres, pk=pk), 'titulo': 'Incidencia mujeres'})
+
+
+@login_required
+def reporte_cobertura_mujeres(request):
+    return panorama_municipal_mujeres(request)
+
+
+@login_required
+def reporte_coordinadores_mujeres(request):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/mujeres/reporte_coordinadores.html', {'coordinadores': CoordinadoraMujeres.objects.select_related('comunidad', 'sector', 'centro_votacion').order_by('-fecha_creacion')})
+
+
+@login_required
+def reporte_reuniones_mujeres(request):
+    denied = _require_mujeres(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/mujeres/reporte_reuniones.html', {'reuniones': ReunionMujeres.objects.select_related('comunidad', 'sector', 'centro_votacion').order_by('-fecha')})
+
+
+@login_required
+def reporte_crecimiento_mensual_mujeres(request):
+    return panorama_municipal_mujeres(request)
+
+
+@login_required
+@require_GET
+def mujeres_comunidad_lookup(request):
+    denied = _require_mujeres(request)
     if denied:
         return denied
     comunidad_id = request.GET.get('comunidad_id')

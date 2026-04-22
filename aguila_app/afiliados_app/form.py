@@ -4,7 +4,7 @@ from django.forms import CheckboxInput, DateInput, inlineformset_factory, modelf
 from django.core.exceptions import ValidationError
 
 
-from .models import  Perfil,  Institucion, Afiliado, Comunidad, CentroVotacion, Comision, Sector, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud
+from .models import  Perfil,  Institucion, Afiliado, Comunidad, CentroVotacion, Comision, Sector, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, MujeresIntegrante, CoordinadoraMujeres, LiderMujeres, EstructuraMujeres, ResponsableMujeres, ReunionMujeres, IncidenciaMujeres
 
 from django.db.models import Sum, F, Value
 from django.db.models.functions import Coalesce
@@ -696,6 +696,184 @@ class ReunionJuventudForm(OrganizacionTerritorialBaseForm):
 class IncidenciaJuventudForm(OrganizacionTerritorialBaseForm):
     class Meta:
         model = IncidenciaJuventud
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'tipo_incidencia': forms.TextInput(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'prioridad': forms.Select(attrs={'class': 'form-select'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+            'responsable_asignado': forms.Select(attrs={'class': 'form-select'}),
+            'seguimiento': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._setup_territorio_derivado()
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        self._aplicar_territorio_desde_comunidad(obj)
+        if commit:
+            obj.save()
+        return obj
+
+
+class MujeresIntegranteForm(forms.ModelForm):
+    dpi = forms.CharField(
+        max_length=20,
+        required=True,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        label='DPI',
+    )
+
+    class Meta:
+        model = MujeresIntegrante
+        fields = ['estado', 'observaciones']
+        widgets = {
+            'estado': forms.Select(attrs={'class': 'form-control'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+
+class CoordinadoraMujeresForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = CoordinadoraMujeres
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {f: forms.TextInput(attrs={'class': 'form-control'}) for f in ['nombre_completo', 'dpi', 'telefono', 'tipo_coordinacion']}
+        widgets.update({
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        })
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._setup_territorio_derivado()
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        self._aplicar_territorio_desde_comunidad(obj)
+        if commit:
+            obj.save()
+        return obj
+
+
+class LiderMujeresForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = LiderMujeres
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}),
+            'dpi': forms.TextInput(attrs={'class': 'form-control'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-control'}),
+            'coordinador': forms.Select(attrs={'class': 'form-select'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._setup_territorio_derivado()
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        self._aplicar_territorio_desde_comunidad(obj)
+        if commit:
+            obj.save()
+        return obj
+
+
+class EstructuraMujeresForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = EstructuraMujeres
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion', 'cantidad_integrantes']
+        widgets = {
+            'tipo_estructura': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej.: Comité mujeres, Brigada territorial, Equipo de activismo'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'coordinador_responsable': forms.HiddenInput(),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+        help_texts = {
+            'tipo_estructura': 'Ejemplos: Comité mujeres, Brigada barrial, Célula de voluntariado, Red mujeres.',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._setup_territorio_derivado()
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        self._aplicar_territorio_desde_comunidad(obj)
+        if commit:
+            obj.save()
+        return obj
+
+
+class ResponsableMujeresForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = ResponsableMujeres
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}),
+            'dpi': forms.TextInput(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._setup_territorio_derivado()
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        self._aplicar_territorio_desde_comunidad(obj)
+        if commit:
+            obj.save()
+        return obj
+
+
+class ReunionMujeresForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = ReunionMujeres
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'fecha': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),
+            'tipo_reunion': forms.TextInput(attrs={'class': 'form-control'}),
+            'titulo': forms.TextInput(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'responsables': forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly', 'placeholder': 'Selecciona desde el modal'}),
+            'responsable_tipo': forms.HiddenInput(),
+            'responsable_referencia_id': forms.HiddenInput(),
+            'asistentes': forms.NumberInput(attrs={'class': 'form-control'}),
+            'acuerdos': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'estado_seguimiento': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._setup_territorio_derivado()
+        self.fields['fecha'].input_formats = ['%Y-%m-%d']
+        if self.instance and self.instance.pk and self.instance.fecha:
+            self.initial['fecha'] = self.instance.fecha.strftime('%Y-%m-%d')
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        self._aplicar_territorio_desde_comunidad(obj)
+        if commit:
+            obj.save()
+        return obj
+
+
+class IncidenciaMujeresForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = IncidenciaMujeres
         exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
         widgets = {
             'tipo_incidencia': forms.TextInput(attrs={'class': 'form-control'}),
