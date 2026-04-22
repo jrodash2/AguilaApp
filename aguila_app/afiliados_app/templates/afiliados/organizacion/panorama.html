@@ -1,0 +1,138 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+<div class="page-body"><div class="container-fluid">
+  <div class="page-title"><h4>Panorama municipal - Organización</h4></div>
+  <p class="text-muted">Vista resumen del municipio: muestra cobertura organizativa por comunidad, métricas de gestión y estado general de la estructura territorial.</p>
+  <div class="row g-3 mb-3">
+    <div class="col-md-6 col-xl"><div class="card h-100"><div class="card-body"><small class="text-muted">Comunidades</small><h3 class="mb-0">{{ total_comunidades }}</h3></div></div></div>
+    <div class="col-md-6 col-xl"><div class="card h-100"><div class="card-body"><small class="text-muted">Coordinadores activos</small><h3 class="mb-0">{{ coordinadores_activos }}</h3></div></div></div>
+    <div class="col-md-6 col-xl"><div class="card h-100"><div class="card-body"><small class="text-muted">Líderes</small><h3 class="mb-0">{{ total_lideres }}</h3></div></div></div>
+    <div class="col-md-6 col-xl"><div class="card h-100"><div class="card-body"><small class="text-muted">Estructuras activas</small><h3 class="mb-0">{{ estructuras_activas }}</h3></div></div></div>
+    <div class="col-md-6 col-xl"><div class="card h-100"><div class="card-body"><small class="text-muted">Reuniones del mes</small><h3 class="mb-0">{{ reuniones_mes }}</h3></div></div></div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-xl-4">
+      <div class="card h-100">
+        <div class="card-header pb-0"><h5 class="mb-0">Cobertura de comunidades</h5></div>
+        <div class="card-body"><div id="chartCoberturaComunidades" style="height: 290px;"></div></div>
+      </div>
+    </div>
+    <div class="col-xl-4">
+      <div class="card h-100">
+        <div class="card-header pb-0"><h5 class="mb-0">Cobertura de sectores y centros</h5></div>
+        <div class="card-body"><div id="chartCoberturaTerritorial" style="height: 290px;"></div></div>
+      </div>
+    </div>
+    <div class="col-xl-4">
+      <div class="card h-100">
+        <div class="card-header pb-0"><h5 class="mb-0">Estructura organizativa</h5></div>
+        <div class="card-body"><div id="chartEstructuraOrganizativa" style="height: 290px;"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mt-1">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header pb-0"><h5 class="mb-0">Crecimiento organizativo mensual</h5></div>
+        <div class="card-body"><div id="chartCrecimientoMensual" style="height: 340px;"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-3"><div class="card-header"><h5>Resumen por comunidad</h5></div><div class="card-body table-responsive">
+    <table class="display datatable"><thead><tr><th>Comunidad</th><th>Sectores</th><th>Reuniones</th><th>Incidencias</th><th>Cobertura</th></tr></thead><tbody>
+      {% for c in resumen_comunidad %}
+      <tr><td>{{ c.nombre }}</td><td>{{ c.total_sectores }}</td><td>{{ c.reuniones_total }}</td><td>{{ c.incidencias_abiertas }}</td><td>{% if c.id in comunidad_ids_cubiertas %}Sí{% else %}No{% endif %}</td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div></div>
+</div></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'assets/js/dist/echarts.js' %}"></script>
+<script>
+$(function () {
+  const chartsData = JSON.parse('{{ charts_data|escapejs }}');
+  if (!window.echarts) return;
+
+  const textColor = '#52526c';
+  const axisColor = '#e8ebf2';
+
+  const coberturaComunidades = echarts.init(document.getElementById('chartCoberturaComunidades'));
+  coberturaComunidades.setOption({
+    tooltip: { trigger: 'item' },
+    legend: { bottom: 0, textStyle: { color: textColor } },
+    color: ['#7366ff', '#f4f4fb'],
+    series: [{
+      type: 'pie',
+      radius: ['48%', '72%'],
+      avoidLabelOverlap: true,
+      label: { formatter: '{b}: {c}' },
+      data: [
+        { value: chartsData.cobertura.comunidades[0], name: 'Cubiertas' },
+        { value: chartsData.cobertura.comunidades[1], name: 'No cubiertas' }
+      ]
+    }]
+  });
+
+  const coberturaTerritorial = echarts.init(document.getElementById('chartCoberturaTerritorial'));
+  coberturaTerritorial.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { bottom: 0, textStyle: { color: textColor } },
+    grid: { left: 10, right: 10, top: 20, bottom: 60, containLabel: true },
+    xAxis: { type: 'category', data: ['Sectores', 'Centros'], axisLine: { lineStyle: { color: axisColor } } },
+    yAxis: { type: 'value', splitLine: { lineStyle: { color: axisColor } } },
+    color: ['#54ba4a', '#f73164'],
+    series: [
+      { name: 'Con cobertura', type: 'bar', barMaxWidth: 30, data: [chartsData.cobertura.sectores[0], chartsData.cobertura.centros[0]] },
+      { name: 'Sin cobertura', type: 'bar', barMaxWidth: 30, data: [chartsData.cobertura.sectores[1], chartsData.cobertura.centros[1]] }
+    ]
+  });
+
+  const estructuraOrganizativa = echarts.init(document.getElementById('chartEstructuraOrganizativa'));
+  estructuraOrganizativa.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: 10, right: 10, top: 25, bottom: 30, containLabel: true },
+    xAxis: { type: 'category', data: ['Coord. activos', 'Coord. inactivos', 'Líderes', 'Estructuras'], axisLine: { lineStyle: { color: axisColor } } },
+    yAxis: { type: 'value', splitLine: { lineStyle: { color: axisColor } } },
+    color: ['#7366ff'],
+    series: [{
+      type: 'bar',
+      barMaxWidth: 36,
+      data: [
+        chartsData.estructura.coordinadores[0],
+        chartsData.estructura.coordinadores[1],
+        chartsData.estructura.lideres_total,
+        chartsData.estructura.estructuras_activas
+      ]
+    }]
+  });
+
+  const crecimientoMensual = echarts.init(document.getElementById('chartCrecimientoMensual'));
+  crecimientoMensual.setOption({
+    tooltip: { trigger: 'axis' },
+    legend: { top: 0, textStyle: { color: textColor } },
+    grid: { left: 10, right: 10, top: 40, bottom: 25, containLabel: true },
+    xAxis: { type: 'category', data: chartsData.crecimiento.labels, axisLine: { lineStyle: { color: axisColor } } },
+    yAxis: { type: 'value', splitLine: { lineStyle: { color: axisColor } } },
+    series: [
+      { name: 'Coordinadores', type: 'line', smooth: true, data: chartsData.crecimiento.coordinadores },
+      { name: 'Líderes', type: 'line', smooth: true, data: chartsData.crecimiento.lideres },
+      { name: 'Estructuras', type: 'line', smooth: true, data: chartsData.crecimiento.estructuras },
+      { name: 'Reuniones', type: 'line', smooth: true, data: chartsData.crecimiento.reuniones }
+    ]
+  });
+
+  window.addEventListener('resize', function () {
+    coberturaComunidades.resize();
+    coberturaTerritorial.resize();
+    estructuraOrganizativa.resize();
+    crecimientoMensual.resize();
+  });
+});
+</script>
+{% endblock %}
