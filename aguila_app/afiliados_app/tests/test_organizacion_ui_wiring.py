@@ -19,8 +19,11 @@ from afiliados_app.models import Comunidad, CoordinadorOrganizacion, EstructuraO
 class OrganizacionUIWiringTests(TestCase):
     def setUp(self):
         self.group = Group.objects.create(name="Organizacion")
+        self.admin_group = Group.objects.create(name="Administrador")
         self.user = User.objects.create_user(username="org_user", password="12345")
         self.user.groups.add(self.group)
+        self.admin_user = User.objects.create_user(username="admin_user", password="12345")
+        self.admin_user.groups.add(self.admin_group)
 
         self.creator = User.objects.create_user(username="creator", password="12345")
 
@@ -100,3 +103,11 @@ class OrganizacionUIWiringTests(TestCase):
             self.assertNotIn("sector", form.fields)
             self.assertNotIn("centro_votacion", form.fields)
         self.assertNotIn("cantidad_integrantes", EstructuraOrganizativaForm().fields)
+
+    def test_admin_dashboard_renders_sidebar_without_template_syntax_errors(self):
+        self.client.login(username="admin_user", password="12345")
+        response = self.client.get(reverse("afiliados:dahsboard"))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn("Afiliación", html)
+        self.assertIn("Organización", html)
