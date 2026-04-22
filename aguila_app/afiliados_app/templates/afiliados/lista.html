@@ -262,6 +262,40 @@ $(document).ready(function() {
         // $('.form-control[multiple]').select2(); // Descomentar si usas Select2
     });
 
+    // Prefill desde la vista de pendientes por secretaría
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('abrir_modal') === '1') {
+        const dpi = params.get('prefill_dpi') || '';
+        const nombre = params.get('prefill_nombre') || '';
+        const comunidad = params.get('prefill_comunidad') || '';
+        const comunidadId = params.get('prefill_comunidad_id') || '';
+        const telefono = params.get('prefill_telefono') || '';
+        const direccion = params.get('prefill_direccion') || '';
+
+        $('#dpi_afiliado').val(dpi);
+        $('input[name="nombre_completo"]').val(nombre);
+        $('#id_telefono').val(telefono);
+        $('#id_direccion').val(direccion);
+
+        const $comunidad = $('#id_comunidad');
+        if (comunidadId && $comunidad.find(`option[value="${comunidadId}"]`).length) {
+            $comunidad.val(comunidadId);
+        } else if (comunidad) {
+            const comunidadLower = comunidad.toLowerCase();
+            $comunidad.find('option').each(function() {
+                if ($(this).text().trim().toLowerCase() === comunidadLower) {
+                    $comunidad.val($(this).val());
+                }
+            });
+        }
+
+        const modalEl = document.getElementById('nuevoAfiliadoModal');
+        if (modalEl) {
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+    }
+
 
     // --- GUARDAR NUEVO AFILIADO CON AJAX ---
     $('#formNuevoAfiliado').on('submit', function(e){
