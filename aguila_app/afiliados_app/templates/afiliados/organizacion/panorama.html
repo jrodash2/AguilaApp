@@ -49,6 +49,22 @@
       {% endfor %}
     </tbody></table>
   </div></div>
+
+  <div class="card mt-3"><div class="card-header"><h5>Estructuras por comunidad</h5></div><div class="card-body table-responsive">
+    <table class="display datatable"><thead><tr><th>Comunidad</th><th>Total de estructuras</th></tr></thead><tbody>
+      {% for c in resumen_estructuras_por_comunidad %}
+      <tr><td>{{ c.nombre }}</td><td>{{ c.estructuras_total }}</td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div></div>
+
+  <div class="card mt-3"><div class="card-header"><h5>Miembros por estructura</h5></div><div class="card-body table-responsive">
+    <table class="display datatable"><thead><tr><th>Estructura</th><th>Comunidad</th><th>Total de miembros</th></tr></thead><tbody>
+      {% for estructura in resumen_miembros_por_estructura %}
+      <tr><td>{{ estructura.nombre }}</td><td>{{ estructura.comunidad.nombre|default:'N/A' }}</td><td>{{ estructura.miembros_total }}</td></tr>
+      {% endfor %}
+    </tbody></table>
+  </div></div>
 </div></div>
 {% endblock %}
 

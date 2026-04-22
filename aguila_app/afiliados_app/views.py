@@ -1664,7 +1664,7 @@ def detalle_integrante_organizacion(request, pk):
         return denied
 
     integrante = get_object_or_404(
-        OrganizacionIntegrante.objects.select_related('afiliado', 'usuario_registro'),
+        OrganizacionIntegrante.objects.select_related('afiliado', 'usuario_registro', 'usuario_modificacion'),
         pk=pk,
     )
     return safe_render(request, 'afiliados/organizacion/detalle.html', {'integrante': integrante})
@@ -1822,6 +1822,14 @@ def panorama_municipal_organizacion(request):
         'reuniones': [_serie_por_mes('reuniones').get(m, 0) for m in meses],
     }
 
+    resumen_estructuras_por_comunidad = comunidad_qs.annotate(
+        estructuras_total=Count('estructuras_organizacion', distinct=True),
+    ).order_by('nombre')
+
+    resumen_miembros_por_estructura = EstructuraOrganizativa.objects.select_related('comunidad').annotate(
+        miembros_total=Count('integrantes', distinct=True),
+    ).order_by('nombre')
+
     context = {
         'total_comunidades': comunidad_qs.count(),
         'comunidades_cubiertas': len(comunidad_ids_cubiertas),
@@ -1852,6 +1860,8 @@ def panorama_municipal_organizacion(request):
             incidencias_total=Count('incidencias_organizacion', distinct=True),
             reuniones_total=Count('reuniones_organizacion', distinct=True),
         ),
+        'resumen_estructuras_por_comunidad': resumen_estructuras_por_comunidad,
+        'resumen_miembros_por_estructura': resumen_miembros_por_estructura,
         'crecimiento': json.dumps(crecimiento, cls=DjangoJSONEncoder),
         'charts_data': json.dumps({
             'cobertura': {

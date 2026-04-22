@@ -10,8 +10,20 @@
         <p><strong>Teléfono:</strong> {{ integrante.afiliado.telefono|default:'N/A' }}</p>
         <p><strong>Estado:</strong> {{ integrante.get_estado_display }}</p>
         <p><strong>Observaciones:</strong> {{ integrante.observaciones|default:'Sin observaciones' }}</p>
-        <p><strong>Registrado por:</strong> {{ integrante.usuario_registro.get_full_name|default:integrante.usuario_registro.username }}</p>
-        <p><strong>Modificado por:</strong> {{ integrante.usuario_modificacion.get_full_name|default:integrante.usuario_modificacion.username|default:'N/A' }}</p>
+        <p><strong>Registrado por:</strong>
+          {% if integrante.usuario_registro %}
+            {{ integrante.usuario_registro.get_full_name|default:integrante.usuario_registro.username }}
+          {% else %}
+            N/A
+          {% endif %}
+        </p>
+        <p><strong>Modificado por:</strong>
+          {% if integrante.usuario_modificacion %}
+            {{ integrante.usuario_modificacion.get_full_name|default:integrante.usuario_modificacion.username }}
+          {% else %}
+            N/A
+          {% endif %}
+        </p>
         <p><strong>Creado:</strong> {{ integrante.fecha_creacion|date:'d/m/Y H:i' }}</p>
         <p><strong>Actualizado:</strong> {{ integrante.fecha_actualizacion|date:'d/m/Y H:i' }}</p>
         <form method="post" action="{% url 'afiliados:cambiar_estado_organizacion' integrante.pk %}" class="mb-3">
