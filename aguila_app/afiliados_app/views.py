@@ -1143,6 +1143,11 @@ SECRETARIAS_AFILIACION_FUENTES = [
 ]
 
 
+SECRETARIAS_AFILIACION_MODELOS = {
+    clave: modelo for _secretaria, clave, modelo, _campo_fecha in SECRETARIAS_AFILIACION_FUENTES
+}
+
+
 def _extraer_prefill_desde_fuente(persona):
     comunidad_obj = getattr(persona, 'comunidad', None)
     comunidad_nombre = getattr(comunidad_obj, 'nombre', '') or ''
@@ -1156,15 +1161,19 @@ def _extraer_prefill_desde_fuente(persona):
     }
 
 
-def _fuente_por_clave_y_dpi(fuente_clave, dpi):
-    for _secretaria, clave, modelo, _campo_fecha in SECRETARIAS_AFILIACION_FUENTES:
-        if clave != fuente_clave:
-            continue
-        for persona in modelo.objects.select_related('comunidad').filter(dpi__isnull=False):
-            if _normalizar_dpi(getattr(persona, 'dpi', '')) == dpi:
-                return persona
+def _fuente_por_referencia(fuente_clave, fuente_id, dpi):
+    modelo = SECRETARIAS_AFILIACION_MODELOS.get(fuente_clave)
+    if not modelo:
         return None
-    return None
+    if not fuente_id:
+        return None
+    try:
+        persona = modelo.objects.select_related('comunidad').get(pk=fuente_id)
+    except modelo.DoesNotExist:
+        return None
+    if _normalizar_dpi(getattr(persona, 'dpi', '')) != dpi:
+        return None
+    return persona
 
 
 @login_required
@@ -1218,6 +1227,7 @@ def pendientes_afiliacion_secretarias(request):
             info['fuentes'].append({
                 'secretaria': secretaria,
                 'fuente_clave': fuente_clave,
+                'fuente_id': persona.pk,
                 'prefill': _extraer_prefill_desde_fuente(persona),
             })
 
@@ -1248,7 +1258,7 @@ def pendientes_afiliacion_secretarias(request):
             'fecha_registro': item['fecha_registro'],
             'afiliar_url': (
                 f"{reverse('afiliados:afiliar_desde_secretaria')}?"
-                f"{urlencode({'dpi': item['dpi'], 'fuente': fuente_preferida['fuente_clave'], 'nombre': prefill.get('nombre') or item['nombre_completo'], 'comunidad': prefill.get('comunidad') or (item['comunidad'] if item['comunidad'] != 'N/A' else ''), 'comunidad_id': prefill.get('comunidad_id', ''), 'telefono': prefill.get('telefono', ''), 'direccion': prefill.get('direccion', '')})}"
+                f"{urlencode({'dpi': item['dpi'], 'fuente': fuente_preferida['fuente_clave'], 'fuente_id': fuente_preferida['fuente_id'], 'nombre': prefill.get('nombre') or item['nombre_completo'], 'comunidad': prefill.get('comunidad') or (item['comunidad'] if item['comunidad'] != 'N/A' else ''), 'comunidad_id': prefill.get('comunidad_id', ''), 'telefono': prefill.get('telefono', ''), 'direccion': prefill.get('direccion', '')})}"
             ),
         })
 
@@ -1271,6 +1281,7 @@ def afiliar_desde_secretaria(request):
 
     dpi = _normalizar_dpi(request.GET.get('dpi', ''))
     fuente_clave = (request.GET.get('fuente') or '').strip()
+    fuente_id = (request.GET.get('fuente_id') or '').strip()
 
     if len(dpi) != 13:
         messages.error(request, "No se puede afiliar: DPI inválido.")
@@ -1281,11 +1292,12 @@ def afiliar_desde_secretaria(request):
         messages.info(request, f"El DPI {dpi} ya está afiliado. Se abrió su detalle.")
         return redirect('afiliados:afiliado_detalle', pk=afiliado_existente.pk)
 
-    persona_fuente = _fuente_por_clave_y_dpi(fuente_clave, dpi) if fuente_clave else None
+    persona_fuente = _fuente_por_referencia(fuente_clave, fuente_id, dpi) if fuente_clave else None
     if not persona_fuente:
         messages.error(
             request,
-            "No se encontró un registro fuente válido para ese DPI. Actualice la lista e intente nuevamente."
+            "No se encontró un registro fuente válido para ese DPI y secretaría de origen. "
+            "Actualice la lista e intente nuevamente."
         )
         return redirect('afiliados:pendientes_afiliacion_secretarias')
 

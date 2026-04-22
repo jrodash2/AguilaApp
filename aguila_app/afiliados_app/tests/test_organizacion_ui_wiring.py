@@ -284,7 +284,7 @@ class OrganizacionUIWiringTests(TestCase):
 
     def test_pendientes_afiliacion_construye_boton_con_fuente_y_prefill(self):
         self.client.login(username="admin_user", password="12345")
-        CoordinadoraMujeres.objects.create(
+        registro_fuente = CoordinadoraMujeres.objects.create(
             nombre_completo="Persona Secretaria",
             dpi="1234 56789 0123",
             telefono="55551234",
@@ -301,12 +301,13 @@ class OrganizacionUIWiringTests(TestCase):
         parsed = parse_qs(urlparse(afiliar_url).query)
         self.assertEqual(parsed.get("dpi", [None])[0], "1234567890123")
         self.assertEqual(parsed.get("fuente", [None])[0], "coordinadora_mujeres")
+        self.assertEqual(parsed.get("fuente_id", [None])[0], str(registro_fuente.pk))
         self.assertEqual(parsed.get("telefono", [None])[0], "55551234")
         self.assertEqual(parsed.get("comunidad_id", [None])[0], str(self.comunidad.pk))
 
     def test_afiliar_desde_secretaria_redirige_con_prefill_reutilizando_datos(self):
         self.client.login(username="admin_user", password="12345")
-        CoordinadoraMujeres.objects.create(
+        registro_fuente = CoordinadoraMujeres.objects.create(
             nombre_completo="Persona Source",
             dpi="1234567890123",
             telefono="45678901",
@@ -316,7 +317,7 @@ class OrganizacionUIWiringTests(TestCase):
 
         response = self.client.get(
             reverse("afiliados:afiliar_desde_secretaria"),
-            {"dpi": "1234567890123", "fuente": "coordinadora_mujeres"},
+            {"dpi": "1234567890123", "fuente": "coordinadora_mujeres", "fuente_id": registro_fuente.pk},
             follow=False,
         )
         self.assertEqual(response.status_code, 302)
@@ -344,8 +345,28 @@ class OrganizacionUIWiringTests(TestCase):
 
         response = self.client.get(
             reverse("afiliados:afiliar_desde_secretaria"),
-            {"dpi": "1234567890123", "fuente": "coordinadora_mujeres"},
+            {"dpi": "1234567890123", "fuente": "coordinadora_mujeres", "fuente_id": 999999},
             follow=False,
         )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse("afiliados:afiliado_detalle", args=[afiliado.pk]))
+
+    def test_afiliar_desde_secretaria_muestra_error_si_fuente_no_corresponde(self):
+        self.client.login(username="admin_user", password="12345")
+        registro_fuente = CoordinadoraMujeres.objects.create(
+            nombre_completo="Persona Real",
+            dpi="1234567890123",
+            telefono="22223333",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+
+        response = self.client.get(
+            reverse("afiliados:afiliar_desde_secretaria"),
+            {"dpi": "9999999999999", "fuente": "coordinadora_mujeres", "fuente_id": registro_fuente.pk},
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.request["PATH_INFO"], reverse("afiliados:pendientes_afiliacion_secretarias"))
+        mensajes = "\n".join(str(m) for m in response.context["messages"])
+        self.assertIn("No se encontró un registro fuente válido", mensajes)
