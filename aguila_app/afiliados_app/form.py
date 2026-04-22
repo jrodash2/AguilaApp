@@ -434,7 +434,7 @@ class EstructuraOrganizativaForm(OrganizacionTerritorialBaseForm):
         widgets = {
             'tipo_estructura': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej.: Comité comunitario, Equipo sectorial, Célula territorial'}),
             'nombre': forms.TextInput(attrs={'class': 'form-control'}),
-            'coordinador_responsable': forms.Select(attrs={'class': 'form-select'}),
+            'coordinador_responsable': forms.HiddenInput(),
             'comunidad': forms.Select(attrs={'class': 'form-select'}),
             'estado': forms.Select(attrs={'class': 'form-select'}),
             'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),

@@ -1964,6 +1964,26 @@ def _org_crud(request, model, form_class, template, list_name, create_name, edit
             })
 
         context['responsables_modal'] = responsables_modal
+    if template == 'estructuras':
+        coordinadores_modal = []
+        for coordinador in CoordinadorOrganizacion.objects.select_related('comunidad').order_by('nombre_completo'):
+            coordinadores_modal.append({
+                'id': coordinador.id,
+                'nombre': coordinador.nombre_completo,
+                'dpi': coordinador.dpi,
+                'comunidad': coordinador.comunidad.nombre if coordinador.comunidad else '',
+                'estado': coordinador.get_estado_display(),
+            })
+
+        coordinador_responsable_display = ''
+        coordinador_id = form['coordinador_responsable'].value()
+        if coordinador_id:
+            coordinador_actual = CoordinadorOrganizacion.objects.filter(pk=coordinador_id).first()
+            if coordinador_actual:
+                coordinador_responsable_display = coordinador_actual.nombre_completo
+
+        context['coordinadores_modal'] = coordinadores_modal
+        context['coordinador_responsable_display'] = coordinador_responsable_display
     if extra_context:
         context.update(extra_context)
     return safe_render(request, f'afiliados/organizacion/crud_{template}.html', context)
