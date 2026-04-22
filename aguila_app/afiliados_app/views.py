@@ -1994,10 +1994,16 @@ def lista_estructura_territorial(request):
     denied = _require_organizacion(request)
     if denied:
         return denied
+    comunidades = Comunidad.objects.select_related('sector').order_by('nombre')
+    sectores = Sector.objects.order_by('nombre')
+    centros = CentroVotacion.objects.order_by('nombre')
     return safe_render(request, 'afiliados/organizacion/estructura_territorial.html', {
-        'comunidades': Comunidad.objects.select_related('sector').all(),
-        'sectores': Sector.objects.all(),
-        'centros': CentroVotacion.objects.prefetch_related('sectores').all(),
+        'comunidades': comunidades,
+        'sectores': sectores,
+        'centros': centros,
+        'total_comunidades': comunidades.count(),
+        'total_sectores': sectores.count(),
+        'total_centros': centros.count(),
     })
 
 

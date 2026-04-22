@@ -1,12 +1,137 @@
 {% extends 'afiliados/base.html' %}
 {% block content %}
 <div class="page-body"><div class="container-fluid">
-<h4>Estructura territorial (catálogos compartidos)</h4>
-<p class="text-muted">Aquí se consulta la base territorial oficial del sistema (comunidades, sectores y centros) reutilizada por Organización sin duplicar catálogos.</p>
-<div class="row">
-<div class="col-md-4"><div class="card"><div class="card-header">Comunidades</div><div class="card-body table-responsive"><table class="display datatable"><thead><tr><th>Nombre</th><th>Sector</th></tr></thead><tbody>{% for c in comunidades %}<tr><td>{{ c.nombre }}</td><td>{{ c.sector|default:'—' }}</td></tr>{% endfor %}</tbody></table></div></div></div>
-<div class="col-md-4"><div class="card"><div class="card-header">Sectores</div><div class="card-body table-responsive"><table class="display datatable"><thead><tr><th>Nombre</th></tr></thead><tbody>{% for s in sectores %}<tr><td>{{ s.nombre }}</td></tr>{% endfor %}</tbody></table></div></div></div>
-<div class="col-md-4"><div class="card"><div class="card-header">Centros de votación</div><div class="card-body table-responsive"><table class="display datatable"><thead><tr><th>Nombre</th><th>Ubicación</th></tr></thead><tbody>{% for ct in centros %}<tr><td>{{ ct.nombre }}</td><td>{{ ct.ubicacion }}</td></tr>{% endfor %}</tbody></table></div></div></div>
-</div>
+  <style>
+    .territorial-kpi .card-body { padding: 1rem 1.1rem; }
+    .territorial-kpi small { font-size: .78rem; letter-spacing: .02em; text-transform: uppercase; }
+    .territorial-kpi h3 { margin: .35rem 0 0; line-height: 1.1; }
+    .territorial-card { height: 100%; }
+    .territorial-card .card-header { padding: .9rem 1rem; }
+    .territorial-card .card-body { padding: .85rem 1rem 1rem; }
+    .territorial-table-wrap { min-height: 430px; }
+    .territorial-card .dataTables_wrapper .row:first-child,
+    .territorial-card .dataTables_wrapper .row:last-child {
+      align-items: center;
+      row-gap: .6rem;
+      margin-left: 0;
+      margin-right: 0;
+    }
+    .territorial-card .dataTables_wrapper .dataTables_length,
+    .territorial-card .dataTables_wrapper .dataTables_filter,
+    .territorial-card .dataTables_wrapper .dataTables_info,
+    .territorial-card .dataTables_wrapper .dataTables_paginate {
+      padding-top: .45rem;
+      padding-bottom: .15rem;
+      margin: 0;
+    }
+    .territorial-card .dataTables_wrapper .dataTables_filter { text-align: right; }
+    .territorial-card .dataTables_wrapper .dataTables_filter input { margin-left: .45rem; }
+    .territorial-card .dataTables_wrapper .dataTables_paginate .paginate_button {
+      margin-left: .1rem !important;
+      border-radius: .35rem;
+    }
+    @media (max-width: 991.98px) {
+      .territorial-table-wrap { min-height: 360px; }
+      .territorial-card .dataTables_wrapper .dataTables_filter { text-align: left; }
+    }
+  </style>
+
+  <div class="mb-3">
+    <h4 class="mb-1">Estructura territorial</h4>
+    <p class="text-muted mb-0">Consulta consolidada de catálogos compartidos para Organización: comunidades, sectores y centros de votación.</p>
+  </div>
+
+  <div class="row g-3 territorial-kpi mb-3">
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <small class="text-muted">Comunidades</small>
+          <h3>{{ total_comunidades }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <small class="text-muted">Sectores</small>
+          <h3>{{ total_sectores }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-body">
+          <small class="text-muted">Centros de votación</small>
+          <h3>{{ total_centros }}</h3>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-12 col-xl-4">
+      <div class="card territorial-card">
+        <div class="card-header"><h5 class="mb-0">Comunidades</h5></div>
+        <div class="card-body">
+          <div class="table-responsive territorial-table-wrap">
+            <table class="display datatable w-100" id="tablaComunidades">
+              <thead><tr><th>Nombre</th><th>Sector</th></tr></thead>
+              <tbody>
+                {% for c in comunidades %}
+                <tr><td>{{ c.nombre }}</td><td>{{ c.sector|default:'—' }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-xl-4">
+      <div class="card territorial-card">
+        <div class="card-header"><h5 class="mb-0">Sectores</h5></div>
+        <div class="card-body">
+          <div class="table-responsive territorial-table-wrap">
+            <table class="display datatable w-100" id="tablaSectores">
+              <thead><tr><th>Nombre</th></tr></thead>
+              <tbody>
+                {% for s in sectores %}
+                <tr><td>{{ s.nombre }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-12 col-xl-4">
+      <div class="card territorial-card">
+        <div class="card-header"><h5 class="mb-0">Centros de votación</h5></div>
+        <div class="card-body">
+          <div class="table-responsive territorial-table-wrap">
+            <table class="display datatable w-100" id="tablaCentros">
+              <thead><tr><th>Nombre</th><th>Ubicación</th></tr></thead>
+              <tbody>
+                {% for ct in centros %}
+                <tr><td>{{ ct.nombre }}</td><td>{{ ct.ubicacion|default:'—' }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function () {
+  ['#tablaComunidades', '#tablaSectores', '#tablaCentros'].forEach(function(selector){
+    if (!$.fn.DataTable.isDataTable(selector) && window.initDataTable) {
+      window.initDataTable(selector, { pageLength: 10 });
+    }
+  });
+});
+</script>
 {% endblock %}
