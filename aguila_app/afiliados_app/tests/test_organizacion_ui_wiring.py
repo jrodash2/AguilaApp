@@ -1,6 +1,7 @@
 from django.contrib.auth.models import Group, User
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from urllib.parse import parse_qs, urlparse
 
 from afiliados_app.form import (
     CoordinadorOrganizacionForm,
@@ -11,6 +12,7 @@ from afiliados_app.form import (
     ResponsableTerritorialForm,
 )
 from afiliados_app.models import Comunidad, CoordinadorJuventud, CoordinadorOrganizacion, EstructuraJuventud, EstructuraOrganizativa, Sector
+from afiliados_app.models import Afiliado, CoordinadoraMujeres
 
 
 @override_settings(
@@ -279,3 +281,71 @@ class OrganizacionUIWiringTests(TestCase):
         self.assertEqual(response_post.status_code, 200)
         estructura.refresh_from_db()
         self.assertEqual(estructura.coordinador_responsable_id, coordinador_b.pk)
+
+    def test_pendientes_afiliacion_construye_boton_con_fuente_y_prefill(self):
+        self.client.login(username="admin_user", password="12345")
+        CoordinadoraMujeres.objects.create(
+            nombre_completo="Persona Secretaria",
+            dpi="1234 56789 0123",
+            telefono="55551234",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+
+        response = self.client.get(reverse("afiliados:pendientes_afiliacion_secretarias"))
+        self.assertEqual(response.status_code, 200)
+
+        pendientes = response.context["pendientes"]
+        self.assertEqual(len(pendientes), 1)
+        afiliar_url = pendientes[0]["afiliar_url"]
+        parsed = parse_qs(urlparse(afiliar_url).query)
+        self.assertEqual(parsed.get("dpi", [None])[0], "1234567890123")
+        self.assertEqual(parsed.get("fuente", [None])[0], "coordinadora_mujeres")
+        self.assertEqual(parsed.get("telefono", [None])[0], "55551234")
+        self.assertEqual(parsed.get("comunidad_id", [None])[0], str(self.comunidad.pk))
+
+    def test_afiliar_desde_secretaria_redirige_con_prefill_reutilizando_datos(self):
+        self.client.login(username="admin_user", password="12345")
+        CoordinadoraMujeres.objects.create(
+            nombre_completo="Persona Source",
+            dpi="1234567890123",
+            telefono="45678901",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+
+        response = self.client.get(
+            reverse("afiliados:afiliar_desde_secretaria"),
+            {"dpi": "1234567890123", "fuente": "coordinadora_mujeres"},
+            follow=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        parsed = parse_qs(urlparse(response.url).query)
+        self.assertEqual(urlparse(response.url).path, reverse("afiliados:afiliado_lista"))
+        self.assertEqual(parsed.get("prefill_dpi", [None])[0], "1234567890123")
+        self.assertEqual(parsed.get("prefill_nombre", [None])[0], "Persona Source")
+        self.assertEqual(parsed.get("prefill_telefono", [None])[0], "45678901")
+        self.assertEqual(parsed.get("prefill_comunidad_id", [None])[0], str(self.comunidad.pk))
+
+    def test_afiliar_desde_secretaria_no_duplica_afiliado_existente(self):
+        self.client.login(username="admin_user", password="12345")
+        afiliado = Afiliado.objects.create(
+            nombre_completo="Ya Afiliado",
+            dpi="1234567890123",
+            fecha_nacimiento="1990-01-01",
+        )
+        CoordinadoraMujeres.objects.create(
+            nombre_completo="Ya Afiliado",
+            dpi="1234567890123",
+            telefono="11111111",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+
+        response = self.client.get(
+            reverse("afiliados:afiliar_desde_secretaria"),
+            {"dpi": "1234567890123", "fuente": "coordinadora_mujeres"},
+            follow=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("afiliados:afiliado_detalle", args=[afiliado.pk]))
