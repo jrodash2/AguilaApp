@@ -3,6 +3,7 @@
 
   function getDefaultOptions() {
     return {
+      retrieve: true,
       responsive: !!($.fn.dataTable && $.fn.dataTable.Responsive),
       pageLength: 10,
       lengthMenu: [10, 25, 50, 100],
@@ -45,7 +46,7 @@
   };
 
   $(function () {
-    var selector = '.datatable, table[id^="basic-"]';
+    var selector = '.datatable';
     $(selector).each(function () {
       window.initDataTable(this);
     });
