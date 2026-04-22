@@ -222,6 +222,7 @@
                                     <li><a href="{% url 'afiliados:sector_lista' %}">Sectores</a></li>
                                     <li><a href="{% url 'afiliados:centro_lista' %}">Centros de Votación</a></li>
                                     <li><a href="{% url 'afiliados:comision_lista' %}">Comisiones</a></li>
+                                    <li><a href="{% url 'afiliados:pendientes_afiliacion_secretarias' %}">Pendientes de afiliación</a></li>
                                     <li><a href="{% url 'afiliados:padron_cargar' %}">Cargar Padrón</a></li>
                                     <li><a href="{% url 'afiliados:editar_institucion' %}">Configuración</a></li>
                                     <li><a href="{% url 'afiliados:user_create' %}">Usuarios</a></li>
@@ -458,6 +459,13 @@
                                     <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
                                     <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
                                     <span>Comisiones</span>
+                                </a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/afiliacion/pendientes-secretarias/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:pendientes_afiliacion_secretarias' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-gallery' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-gallery' %}"></use></svg>
+                                    <span>Pendientes de afiliación</span>
                                 </a>
                             </li>
                         {% endif %}

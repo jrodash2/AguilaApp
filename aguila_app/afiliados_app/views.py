@@ -61,6 +61,7 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Font
 import re
+from urllib.parse import urlencode
 from django.views.generic.detail import DetailView
 from django.core.mail import BadHeaderError
 from smtplib import SMTPException
@@ -1106,6 +1107,143 @@ def afiliado_lista(request):
         'form': form,  # Pasamos el formulario al template
         'TSE_CONSULTA_URL': settings.TSE_CONSULTA_URL,
     })
+
+
+def _es_usuario_afiliacion(user):
+    if not user.is_authenticated:
+        return False
+    return user.groups.filter(name__in=['Administrador', 'Gestor', 'afiliados']).exists()
+
+
+def _normalizar_dpi(dpi_raw):
+    return re.sub(r"\D", "", (dpi_raw or ""))
+
+
+def _coalescer_texto(*values):
+    for value in values:
+        txt = (value or "").strip() if isinstance(value, str) else value
+        if txt:
+            return txt
+    return ""
+
+
+@login_required
+def pendientes_afiliacion_secretarias(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para acceder a esta vista.")
+
+    afiliados_dpi = {_normalizar_dpi(v) for v in Afiliado.objects.values_list('dpi', flat=True) if _normalizar_dpi(v)}
+    pendientes_por_dpi = {}
+
+    fuentes = [
+        ("Organización", CoordinadorOrganizacion.objects.select_related('comunidad').all(), 'fecha_creacion'),
+        ("Organización", LiderComunitarioOrganizacion.objects.select_related('comunidad').all(), 'fecha_creacion'),
+        ("Organización", ResponsableTerritorial.objects.select_related('comunidad').all(), 'fecha_creacion'),
+        ("Organización", EstructuraIntegrante.objects.select_related('comunidad').all(), 'fecha_registro'),
+        ("Juventud", CoordinadorJuventud.objects.select_related('comunidad').all(), 'fecha_creacion'),
+        ("Juventud", LiderJuvenil.objects.select_related('comunidad').all(), 'fecha_creacion'),
+        ("Juventud", ResponsableJuventud.objects.select_related('comunidad').all(), 'fecha_creacion'),
+        ("Juventud", EstructuraIntegranteJuventud.objects.select_related('comunidad').all(), 'fecha_registro'),
+        ("Mujeres", CoordinadoraMujeres.objects.select_related('comunidad').all(), 'fecha_creacion'),
+        ("Mujeres", LiderMujeres.objects.select_related('comunidad').all(), 'fecha_creacion'),
+        ("Mujeres", ResponsableMujeres.objects.select_related('comunidad').all(), 'fecha_creacion'),
+        ("Mujeres", EstructuraIntegranteMujeres.objects.select_related('comunidad').all(), 'fecha_registro'),
+    ]
+
+    for secretaria, queryset, campo_fecha in fuentes:
+        for persona in queryset:
+            dpi = _normalizar_dpi(getattr(persona, 'dpi', ''))
+            if len(dpi) != 13:
+                continue
+            if dpi in afiliados_dpi:
+                continue
+
+            info = pendientes_por_dpi.setdefault(
+                dpi,
+                {
+                    'dpi': dpi,
+                    'nombre_completo': _coalescer_texto(getattr(persona, 'nombre_completo', ''), f"Registro {dpi}"),
+                    'comunidad': getattr(getattr(persona, 'comunidad', None), 'nombre', '') or "N/A",
+                    'estado': _coalescer_texto(
+                        getattr(persona, 'get_estado_display', lambda: '')(),
+                        getattr(persona, 'estado', ''),
+                        'N/A',
+                    ),
+                    'fecha_registro': getattr(persona, campo_fecha, None),
+                    'secretarias': set(),
+                }
+            )
+
+            if not info['nombre_completo'] and getattr(persona, 'nombre_completo', None):
+                info['nombre_completo'] = persona.nombre_completo
+            if info['comunidad'] == "N/A":
+                info['comunidad'] = getattr(getattr(persona, 'comunidad', None), 'nombre', '') or "N/A"
+            if info['estado'] == 'N/A':
+                info['estado'] = _coalescer_texto(
+                    getattr(persona, 'get_estado_display', lambda: '')(),
+                    getattr(persona, 'estado', ''),
+                    'N/A',
+                )
+            if not info['fecha_registro'] and getattr(persona, campo_fecha, None):
+                info['fecha_registro'] = getattr(persona, campo_fecha, None)
+
+            info['secretarias'].add(secretaria)
+
+    filas = []
+    total_por_secretaria = defaultdict(int)
+
+    for item in pendientes_por_dpi.values():
+        secretarias = sorted(item['secretarias'])
+        for sec in secretarias:
+            total_por_secretaria[sec] += 1
+        filas.append({
+            'dpi': item['dpi'],
+            'nombre_completo': item['nombre_completo'],
+            'secretarias': ", ".join(secretarias),
+            'comunidad': item['comunidad'],
+            'estado': item['estado'],
+            'fecha_registro': item['fecha_registro'],
+            'afiliar_url': f"{reverse('afiliados:afiliar_desde_secretaria')}?{urlencode({'dpi': item['dpi'], 'nombre': item['nombre_completo'], 'comunidad': item['comunidad'] if item['comunidad'] != 'N/A' else ''})}",
+        })
+
+    filas.sort(key=lambda x: x['nombre_completo'].lower())
+
+    context = {
+        'pendientes': filas,
+        'total_pendientes': len(filas),
+        'total_organizacion': total_por_secretaria.get('Organización', 0),
+        'total_juventud': total_por_secretaria.get('Juventud', 0),
+        'total_mujeres': total_por_secretaria.get('Mujeres', 0),
+    }
+    return safe_render(request, 'afiliados/pendientes_afiliacion_secretarias.html', context)
+
+
+@login_required
+def afiliar_desde_secretaria(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para ejecutar esta acción.")
+
+    dpi = _normalizar_dpi(request.GET.get('dpi', ''))
+    nombre = (request.GET.get('nombre') or '').strip()
+    comunidad = (request.GET.get('comunidad') or '').strip()
+
+    if len(dpi) != 13:
+        messages.error(request, "No se puede afiliar: DPI inválido.")
+        return redirect('afiliados:pendientes_afiliacion_secretarias')
+
+    afiliado_existente = Afiliado.objects.filter(dpi=dpi).first()
+    if afiliado_existente:
+        messages.info(request, f"El DPI {dpi} ya está afiliado. Se abrió su detalle.")
+        return redirect('afiliados:afiliado_detalle', pk=afiliado_existente.pk)
+
+    query = urlencode({
+        'prefill_dpi': dpi,
+        'prefill_nombre': nombre,
+        'prefill_comunidad': comunidad,
+        'abrir_modal': '1',
+    })
+    messages.info(request, "Se abrió el formulario de afiliación con datos precargados.")
+    return redirect(f"{reverse('afiliados:afiliado_lista')}?{query}")
 
 
 @login_required
