@@ -1209,7 +1209,6 @@ def _buscar_afiliado_por_dpi_normalizado(dpi):
     return None
 
 
-@login_required
 def _obtener_pendientes_afiliacion_secretarias():
     afiliados_dpi = {_normalizar_dpi(v) for v in Afiliado.objects.values_list('dpi', flat=True) if _normalizar_dpi(v)}
     pendientes_por_dpi = {}
