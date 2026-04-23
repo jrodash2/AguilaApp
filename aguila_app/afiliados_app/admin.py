@@ -3,7 +3,10 @@ from .models import (
     Institucion, Perfil, FraseMotivacional,
     Comunidad, CentroVotacion, Comision, Afiliado, Sector, OrganizacionIntegrante,
     CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa,
-    ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial
+    ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial,
+    LogisticaIntegrante, CoordinadorLogistica, LiderLogistica, EstructuraLogistica,
+    ResponsableLogistica, ReunionLogistica, IncidenciaLogistica, RecursoLogistico,
+    AsignacionLogistica, SolicitudLogistica, EntregaLogistica, AgendaLogistica
 )
 
 # -------------------------------
@@ -94,3 +97,15 @@ admin.site.register(EstructuraOrganizativa)
 admin.site.register(ResponsableTerritorial)
 admin.site.register(ReunionTerritorial)
 admin.site.register(IncidenciaTerritorial)
+admin.site.register(LogisticaIntegrante)
+admin.site.register(CoordinadorLogistica)
+admin.site.register(LiderLogistica)
+admin.site.register(EstructuraLogistica)
+admin.site.register(ResponsableLogistica)
+admin.site.register(ReunionLogistica)
+admin.site.register(IncidenciaLogistica)
+admin.site.register(RecursoLogistico)
+admin.site.register(AsignacionLogistica)
+admin.site.register(SolicitudLogistica)
+admin.site.register(EntregaLogistica)
+admin.site.register(AgendaLogistica)

@@ -14,6 +14,7 @@ from afiliados_app.form import (
 )
 from afiliados_app.models import Comunidad, CoordinadorJuventud, CoordinadorOrganizacion, EstructuraJuventud, EstructuraOrganizativa, Sector
 from afiliados_app.models import Afiliado, CoordinadoraMujeres
+from afiliados_app.models import CoordinadorLogistica, RecursoLogistico
 
 
 @override_settings(
@@ -24,12 +25,15 @@ class OrganizacionUIWiringTests(TestCase):
         self.group = Group.objects.create(name="Organizacion")
         self.jovenes_group = Group.objects.create(name="Jovenes")
         self.admin_group = Group.objects.create(name="Administrador")
+        self.logistica_group = Group.objects.create(name="Logistica")
         self.user = User.objects.create_user(username="org_user", password="12345")
         self.user.groups.add(self.group)
         self.admin_user = User.objects.create_user(username="admin_user", password="12345")
         self.admin_user.groups.add(self.admin_group)
         self.joven_user = User.objects.create_user(username="joven_user", password="12345")
         self.joven_user.groups.add(self.jovenes_group)
+        self.logistica_user = User.objects.create_user(username="logistica_user", password="12345")
+        self.logistica_user.groups.add(self.logistica_group)
 
         self.creator = User.objects.create_user(username="creator", password="12345")
 
@@ -207,6 +211,69 @@ class OrganizacionUIWiringTests(TestCase):
         self.client.login(username="joven_user", password="12345")
         response = self.client.get(reverse("afiliados:dashboard_juventud"))
         self.assertEqual(response.status_code, 200)
+
+    def test_login_redirects_logistica_to_dashboard_logistica(self):
+        response = self.client.post(
+            reverse("afiliados:signin"),
+            {"username": "logistica_user", "password": "12345"},
+            follow=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("afiliados:dashboard_logistica"))
+
+    def test_dashboard_logistica_access_and_sidebar(self):
+        self.client.login(username="logistica_user", password="12345")
+        response = self.client.get(reverse("afiliados:dashboard_logistica"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Logística", response.content.decode())
+
+    def test_logistica_estructura_template_has_expected_modal_and_fields(self):
+        self.client.login(username="logistica_user", password="12345")
+        response = self.client.get(reverse("afiliados:crear_estructura_logistica"))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('id="modalCoordinadores"', html)
+        self.assertIn('id="tablaCoordinadoresModal"', html)
+        self.assertIn('id="coordinador_responsable_display"', html)
+        self.assertIn('id="id_coordinador_responsable"', html)
+
+    def test_logistica_crear_estructura_guarda_coordinador(self):
+        self.client.login(username="logistica_user", password="12345")
+        coordinador = CoordinadorLogistica.objects.create(
+            nombre_completo="COORD LOG TEST",
+            comunidad=self.comunidad,
+            usuario_creador=self.logistica_user,
+        )
+        response = self.client.post(
+            reverse("afiliados:crear_estructura_logistica"),
+            {
+                "tipo_estructura": "Brigada logística",
+                "nombre": "Estructura LOG 1",
+                "comunidad": str(self.comunidad.pk),
+                "estado": "ACTIVO",
+                "coordinador_responsable": str(coordinador.pk),
+                "observaciones": "test",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Registro guardado correctamente")
+
+    def test_logistica_recursos_view_allows_create(self):
+        self.client.login(username="logistica_user", password="12345")
+        response = self.client.post(
+            reverse("afiliados:lista_recursos_logisticos"),
+            {
+                "nombre": "Carpa móvil",
+                "tipo_recurso": "Infraestructura",
+                "descripcion": "Carpa para jornadas",
+                "estado": "DISPONIBLE",
+                "observaciones": "Sin novedades",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(RecursoLogistico.objects.filter(nombre="Carpa móvil").exists())
 
     def test_juventud_estructura_template_has_expected_modal_and_fields(self):
         self.client.login(username="joven_user", password="12345")
