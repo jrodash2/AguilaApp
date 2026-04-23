@@ -1303,8 +1303,60 @@ def pendientes_afiliacion_secretarias(request):
         'total_organizacion': total_por_secretaria.get('Organización', 0),
         'total_juventud': total_por_secretaria.get('Juventud', 0),
         'total_mujeres': total_por_secretaria.get('Mujeres', 0),
+        'form': AfiliadoForm(),
     }
     return safe_render(request, 'afiliados/pendientes_afiliacion_secretarias.html', context)
+
+
+@login_required
+def prefill_afiliacion_desde_secretaria(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para ejecutar esta acción.")
+
+    dpi = _normalizar_dpi(request.GET.get('dpi', ''))
+    fuente_clave = (request.GET.get('fuente') or '').strip()
+    fuente_id = (request.GET.get('fuente_id') or '').strip()
+
+    if len(dpi) != 13:
+        return JsonResponse({'ok': False, 'message': 'DPI inválido.'}, status=400)
+
+    afiliado_existente = _buscar_afiliado_por_dpi_normalizado(dpi)
+    if afiliado_existente:
+        return JsonResponse({
+            'ok': False,
+            'exists': True,
+            'message': f'El DPI {dpi} ya está afiliado.',
+            'detalle_url': reverse('afiliados:afiliado_detalle', args=[afiliado_existente.pk]),
+        }, status=409)
+
+    persona_fuente = _fuente_por_referencia(fuente_clave, fuente_id, dpi) if fuente_clave else None
+    if not persona_fuente:
+        return JsonResponse({
+            'ok': False,
+            'message': 'No se encontró un registro fuente válido para ese DPI y secretaría de origen.',
+        }, status=404)
+
+    prefill = _extraer_prefill_desde_fuente(persona_fuente)
+    nombre = prefill.get('nombre') or ''
+    if not nombre:
+        return JsonResponse({
+            'ok': False,
+            'message': 'No se puede afiliar: el registro fuente no tiene nombre completo.',
+        }, status=422)
+
+    return JsonResponse({
+        'ok': True,
+        'prefill': {
+            'dpi': dpi,
+            'nombre': nombre,
+            'comunidad': prefill.get('comunidad') or '',
+            'comunidad_id': prefill.get('comunidad_id') or '',
+            'telefono': prefill.get('telefono') or '',
+            'direccion': prefill.get('direccion') or '',
+            'fuente': fuente_clave,
+            'fuente_id': str(fuente_id),
+        }
+    })
 
 
 @login_required

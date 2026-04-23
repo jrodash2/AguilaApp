@@ -306,6 +306,11 @@ class OrganizacionUIWiringTests(TestCase):
         self.assertEqual(parsed.get("telefono", [None])[0], "55551234")
         self.assertEqual(parsed.get("comunidad_id", [None])[0], str(self.comunidad.pk))
 
+        html = response.content.decode()
+        self.assertIn('id="afiliarPendienteModal"', html)
+        self.assertIn('js-afiliar-desde-pendientes', html)
+        self.assertNotIn("Verificar Empadronamiento", html)
+
     def test_afiliar_desde_secretaria_redirige_con_prefill_reutilizando_datos(self):
         self.client.login(username="admin_user", password="12345")
         registro_fuente = CoordinadoraMujeres.objects.create(
@@ -334,6 +339,53 @@ class OrganizacionUIWiringTests(TestCase):
         self.assertEqual(payload.get("nombre"), "Persona Source")
         self.assertEqual(payload.get("telefono"), "45678901")
         self.assertEqual(payload.get("comunidad_id"), str(self.comunidad.pk))
+
+    def test_prefill_afiliacion_desde_secretaria_retorna_datos_para_modal(self):
+        self.client.login(username="admin_user", password="12345")
+        registro_fuente = CoordinadoraMujeres.objects.create(
+            nombre_completo="Persona Modal",
+            dpi="1234567890123",
+            telefono="10101010",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+
+        response = self.client.get(
+            reverse("afiliados:prefill_afiliacion_desde_secretaria"),
+            {"dpi": "1234567890123", "fuente": "coordinadora_mujeres", "fuente_id": registro_fuente.pk},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["prefill"]["dpi"], "1234567890123")
+        self.assertEqual(payload["prefill"]["nombre"], "Persona Modal")
+        self.assertEqual(payload["prefill"]["telefono"], "10101010")
+        self.assertEqual(payload["prefill"]["comunidad_id"], str(self.comunidad.pk))
+
+    def test_prefill_afiliacion_desde_secretaria_bloquea_si_ya_esta_afiliado(self):
+        self.client.login(username="admin_user", password="12345")
+        afiliado = Afiliado.objects.create(
+            nombre_completo="Ya Afiliado",
+            dpi="1234 56789 0123",
+            fecha_nacimiento="1990-01-01",
+            direccion="Zona 3",
+        )
+        registro_fuente = CoordinadoraMujeres.objects.create(
+            nombre_completo="Ya Afiliado",
+            dpi="1234567890123",
+            telefono="20202020",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+
+        response = self.client.get(
+            reverse("afiliados:prefill_afiliacion_desde_secretaria"),
+            {"dpi": "1234567890123", "fuente": "coordinadora_mujeres", "fuente_id": registro_fuente.pk},
+        )
+        self.assertEqual(response.status_code, 409)
+        payload = response.json()
+        self.assertTrue(payload["exists"])
+        self.assertEqual(payload["detalle_url"], reverse("afiliados:afiliado_detalle", args=[afiliado.pk]))
 
     def test_afiliar_desde_secretaria_no_duplica_afiliado_existente(self):
         self.client.login(username="admin_user", password="12345")
