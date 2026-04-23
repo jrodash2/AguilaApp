@@ -1,0 +1,342 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+<div class="page-body"><div class="container-fluid">
+  <div class="page-title mb-3">
+    <div class="row">
+      <div class="col-md-8">
+        <h4>Detalle de estructura</h4>
+        <p class="text-muted mb-0">{{ estructura.nombre }} ({{ estructura.tipo_estructura }})</p>
+      </div>
+      <div class="col-md-4 text-md-end mt-2 mt-md-0">
+        <span class="badge bg-primary fs-6" id="badgeTotalIntegrantes">Integrantes registrados: {{ total_integrantes }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-4"><strong>Comunidad:</strong> {{ estructura.comunidad|default:'—' }}</div>
+        <div class="col-md-4"><strong>Sector:</strong> {{ estructura.sector|default:'—' }}</div>
+        <div class="col-md-4"><strong>Centro:</strong> {{ estructura.centro_votacion|default:'—' }}</div>
+      </div>
+      <div class="mt-3 d-flex gap-2">
+        <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#modalAgregarIntegrante">Agregar integrante</button>
+        <a href="{% url 'afiliados:editar_estructura_logistica' estructura.pk %}" class="btn btn-outline-primary">Editar estructura</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h5 class="mb-0">Listado de integrantes</h5></div>
+    <div class="card-body table-responsive">
+      <table class="display datatable">
+        <thead>
+          <tr>
+            <th>DPI</th>
+            <th>Nombre</th>
+            <th>Estado</th>
+            <th>Fecha registro</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tablaIntegrantesBody">
+          {% for i in integrantes %}
+          <tr>
+            <td>{{ i.dpi }}</td>
+            <td>{{ i.nombre_completo }}</td>
+            <td>{{ i.estado }}</td>
+            <td>{{ i.fecha_registro|date:'d/m/Y H:i' }}</td>
+            <td>
+              <form method="post" action="{% url 'afiliados:eliminar_integrante_estructura_logistica' estructura.pk i.pk %}" class="d-inline form-eliminar-integrante" id="form-eliminar-integrante-{{ i.pk }}">
+                {% csrf_token %}
+                <button
+                  type="button"
+                  class="btn btn-outline-danger btn-sm btn-eliminar-integrante"
+                  data-form-id="form-eliminar-integrante-{{ i.pk }}"
+                  data-nombre="{{ i.nombre_completo|default:'integrante' }}"
+                >Eliminar</button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div></div>
+
+<div class="modal fade" id="modalAgregarIntegrante" tabindex="-1" aria-labelledby="modalAgregarIntegranteLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" id="formAgregarIntegrante">{% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalAgregarIntegranteLabel">Agregar integrante por DPI</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="id_dpi_integrante" class="form-label">DPI</label>
+            <div class="input-group">
+              <input type="text" name="dpi" id="id_dpi_integrante" class="form-control" maxlength="20" placeholder="Ingresa DPI" required>
+              <input type="hidden" name="verified_dpi" id="id_verified_dpi" value="">
+              <button type="button" id="btnVerificarEmpadronamiento" class="btn btn-outline-info" data-url="{{ empadronamiento_url }}" data-dpi-input="id_dpi_integrante" data-output-id="resultado_tse_integrante">Verificar empadronamiento</button>
+            </div>
+          </div>
+          <div id="resultado_tse_integrante" class="mb-2"></div>
+          <div class="alert alert-light border mb-0" id="info_integrante_modal">Verifica un DPI para cargar los datos.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btnConfirmarAgregar" disabled>Confirmar agregado</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="modalConfirmarEliminarIntegrante" tabindex="-1" aria-labelledby="modalConfirmarEliminarIntegranteLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalConfirmarEliminarIntegranteLabel">Confirmar eliminación</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-0" id="textoConfirmarEliminarIntegrante">¿Deseas eliminar este integrante de la estructura?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn btn-danger" id="btnConfirmarEliminarIntegrante">Sí, eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(function(){
+  const state = { verifiedDpi: '', verifiedData: null };
+  const modalEl = document.getElementById('modalAgregarIntegrante');
+  const modalAgregar = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+  const formAgregar = $('#formAgregarIntegrante');
+  const dpiInput = $('#id_dpi_integrante');
+  const verifiedInput = $('#id_verified_dpi');
+  const btnVerificar = $('#btnVerificarEmpadronamiento');
+  const btnConfirmar = $('#btnConfirmarAgregar');
+  const info = $('#info_integrante_modal');
+  const resultado = $('#resultado_tse_integrante');
+  const tablaBody = $('#tablaIntegrantesBody');
+  const badgeTotal = $('#badgeTotalIntegrantes');
+  const tablaEl = $('.datatable').first();
+  const modalConfirmarEliminarEl = document.getElementById('modalConfirmarEliminarIntegrante');
+  const modalConfirmarEliminar = modalConfirmarEliminarEl ? bootstrap.Modal.getOrCreateInstance(modalConfirmarEliminarEl) : null;
+  const textoConfirmarEliminar = $('#textoConfirmarEliminarIntegrante');
+  const btnConfirmarEliminar = $('#btnConfirmarEliminarIntegrante');
+  let formEliminarSeleccionado = null;
+
+  function dpiLimpio(valor) { return (valor || '').replace(/\D/g, ''); }
+
+  function setBotonConfirmarHabilitado(habilitado) {
+    btnConfirmar.prop('disabled', !habilitado);
+  }
+
+  function renderInicial() {
+    state.verifiedDpi = '';
+    state.verifiedData = null;
+    verifiedInput.val('');
+    setBotonConfirmarHabilitado(false);
+    resultado.html('');
+    info.html('<div class="alert alert-light border mb-0">Verifica un DPI para cargar los datos.</div>');
+  }
+
+  function renderCargando() {
+    state.verifiedDpi = '';
+    state.verifiedData = null;
+    verifiedInput.val('');
+    setBotonConfirmarHabilitado(false);
+    resultado.html('<div class="alert alert-info mb-0 py-2">Consultando padrón local...</div>');
+    info.html('<div class="alert alert-light border mb-0">Procesando verificación...</div>');
+  }
+
+  function renderError(mensaje) {
+    state.verifiedDpi = '';
+    state.verifiedData = null;
+    verifiedInput.val('');
+    setBotonConfirmarHabilitado(false);
+    resultado.html('<div class="alert alert-danger mb-0 py-2">' + (mensaje || 'No fue posible verificar el DPI.') + '</div>');
+    info.html('<div class="alert alert-danger mb-0">No se puede confirmar agregado hasta verificar un DPI empadronado.</div>');
+  }
+
+  function renderExito(data) {
+    const dpi = dpiLimpio((data && data.dpi) || dpiInput.val());
+    const nombre = (data && (data.nombre_completo || data.nombre)) || 'N/A';
+    const comunidad = (data && data.comunidad) || 'N/A';
+    const municipio = (data && data.municipio) || 'N/A';
+
+    state.verifiedDpi = dpi;
+    state.verifiedData = data || {};
+    verifiedInput.val(dpi);
+    resultado.html('<div class="alert alert-success mb-0 py-2">Empadronado: verificación válida.</div>');
+    info.html(
+      '<div class="alert alert-success mb-0">' +
+      '<div><strong>Nombre:</strong> ' + nombre + '</div>' +
+      '<div><strong>DPI:</strong> ' + (dpi || 'N/A') + '</div>' +
+      '<div><strong>Estado:</strong> Empadronado</div>' +
+      '<div><strong>Comunidad:</strong> ' + comunidad + '</div>' +
+      '<div><strong>Municipio:</strong> ' + municipio + '</div>' +
+      '</div>'
+    );
+
+    setBotonConfirmarHabilitado(dpi && dpi === dpiLimpio(dpiInput.val()));
+  }
+
+  function limpiarPorCambioDpi() {
+    state.verifiedDpi = '';
+    state.verifiedData = null;
+    verifiedInput.val('');
+    setBotonConfirmarHabilitado(false);
+    resultado.html('');
+    info.html('<div class="alert alert-light border mb-0">Cambiaste el DPI. Debes verificar nuevamente.</div>');
+  }
+
+  function agregarFilaIntegrante(data) {
+    const deleteUrlBase = "{% url 'afiliados:eliminar_integrante_estructura_logistica' estructura.pk 0 %}";
+    const deleteUrl = deleteUrlBase.replace('/0/eliminar/', '/' + (data.id || 0) + '/eliminar/');
+    const formId = 'form-eliminar-integrante-' + (data.id || 'nuevo');
+    const fila = $('<tr>' +
+      '<td>' + (data.dpi || '—') + '</td>' +
+      '<td>' + (data.nombre_completo || '—') + '</td>' +
+      '<td>' + (data.estado || '—') + '</td>' +
+      '<td>' + (data.fecha_registro || '—') + '</td>' +
+      '<td>' +
+        '<form method="post" action="' + deleteUrl + '" class="d-inline form-eliminar-integrante" id="' + formId + '">' +
+          '<input type="hidden" name="csrfmiddlewaretoken" value="' + $('input[name=\"csrfmiddlewaretoken\"]', formAgregar).first().val() + '">' +
+          '<button type="button" class="btn btn-outline-danger btn-sm btn-eliminar-integrante" data-form-id="' + formId + '" data-nombre="' + (data.nombre_completo || 'integrante') + '">Eliminar</button>' +
+        '</form>' +
+      '</td>' +
+    '</tr>');
+    if ($.fn.DataTable && $.fn.dataTable.isDataTable(tablaEl)) {
+      tablaEl.DataTable().row.add(fila[0]).draw(false);
+    } else {
+      tablaBody.append(fila);
+    }
+  }
+
+  async function verificarEmpadronamiento() {
+    const dpi = dpiLimpio(dpiInput.val());
+    const endpoint = (btnVerificar.data('url') || '').toString();
+
+    if (!dpi) {
+      renderError('Ingresa un DPI válido para verificar.');
+      return;
+    }
+    if (!endpoint) {
+      renderError('No se encontró la URL de verificación.');
+      return;
+    }
+
+    renderCargando();
+    btnVerificar.prop('disabled', true).text('Consultando...');
+
+    try {
+      const response = await fetch(endpoint + '?dpi=' + encodeURIComponent(dpi), {
+        method: 'GET',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin',
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok || !payload) {
+        renderError((payload && (payload.error || payload.message)) || 'Error en consulta de empadronamiento.');
+        return;
+      }
+
+      const empadronado = !!(payload.ok && (payload.found || payload.empadronado) && payload.data);
+      if (!empadronado) {
+        renderError(payload.message || payload.error || 'No aparece empadronado en padrón local.');
+        return;
+      }
+      renderExito(payload.data);
+    } catch (_error) {
+      renderError('Error de red al consultar padrón.');
+    } finally {
+      btnVerificar.prop('disabled', false).text('Verificar empadronamiento');
+    }
+  }
+
+  async function confirmarAgregado(e) {
+    e.preventDefault();
+    const dpi = dpiLimpio(dpiInput.val());
+    const verified = dpiLimpio(verifiedInput.val());
+    if (!dpi || !verified || dpi !== verified || !state.verifiedData) {
+      renderError('Debes verificar empadronamiento del DPI antes de confirmar.');
+      return;
+    }
+
+    btnConfirmar.prop('disabled', true).text('Guardando...');
+    const url = formAgregar.attr('action') || window.location.pathname;
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        body: new FormData(formAgregar[0]),
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin',
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload || !payload.ok) {
+        renderError((payload && payload.message) || 'No se pudo agregar el integrante.');
+        return;
+      }
+
+      agregarFilaIntegrante(payload.integrante || {});
+      if (typeof payload.total_integrantes !== 'undefined') {
+        badgeTotal.text('Integrantes registrados: ' + payload.total_integrantes);
+      }
+      if (modalAgregar) {
+        modalAgregar.hide();
+      }
+      renderInicial();
+      dpiInput.val('');
+    } catch (_error) {
+      renderError('Error de red al guardar integrante.');
+    } finally {
+      btnConfirmar.text('Confirmar agregado');
+    }
+  }
+
+  btnVerificar.on('click', verificarEmpadronamiento);
+  dpiInput.on('input', limpiarPorCambioDpi);
+  formAgregar.on('submit', confirmarAgregado);
+  $(document).on('click', '.btn-eliminar-integrante', function(){
+    const formId = $(this).data('form-id');
+    const nombre = $(this).data('nombre') || 'este integrante';
+    formEliminarSeleccionado = formId ? document.getElementById(formId) : null;
+    textoConfirmarEliminar.text('¿Deseas eliminar a "' + nombre + '" de esta estructura?');
+    if (modalConfirmarEliminar) {
+      modalConfirmarEliminar.show();
+    }
+  });
+
+  btnConfirmarEliminar.on('click', function(){
+    if (formEliminarSeleccionado) {
+      formEliminarSeleccionado.submit();
+    }
+  });
+
+  if (modalEl) {
+    modalEl.addEventListener('show.bs.modal', renderInicial);
+    modalEl.addEventListener('hidden.bs.modal', function () {
+      dpiInput.val('');
+      renderInicial();
+    });
+  }
+
+  renderInicial();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,47 @@
+{% extends 'afiliados/base.html' %}
+{% block content %}
+<div class="page-body">
+  <div class="container-fluid">
+    <div class="page-title"><h4>Detalle de integrante - Logística</h4></div>
+    <div class="card">
+      <div class="card-body">
+        <h5>{{ integrante.afiliado.nombre_completo }}</h5>
+        <p><strong>DPI:</strong> {{ integrante.afiliado.dpi }}</p>
+        <p><strong>Teléfono:</strong> {{ integrante.afiliado.telefono|default:'N/A' }}</p>
+        <p><strong>Estado:</strong> {{ integrante.get_estado_display }}</p>
+        <p><strong>Observaciones:</strong> {{ integrante.observaciones|default:'Sin observaciones' }}</p>
+        <p><strong>Registrado por:</strong>
+          {% if integrante.usuario_registro %}
+            {{ integrante.usuario_registro.get_full_name|default:integrante.usuario_registro.username }}
+          {% else %}
+            N/A
+          {% endif %}
+        </p>
+        <p><strong>Modificado por:</strong>
+          {% if integrante.usuario_modificacion %}
+            {{ integrante.usuario_modificacion.get_full_name|default:integrante.usuario_modificacion.username }}
+          {% else %}
+            N/A
+          {% endif %}
+        </p>
+        <p><strong>Creado:</strong> {{ integrante.fecha_creacion|date:'d/m/Y H:i' }}</p>
+        <p><strong>Actualizado:</strong> {{ integrante.fecha_actualizacion|date:'d/m/Y H:i' }}</p>
+        <form method="post" action="{% url 'afiliados:cambiar_estado_logistica' integrante.pk %}" class="mb-3">
+          {% csrf_token %}
+          <label class="form-label"><strong>Cambiar estado:</strong></label>
+          <div class="d-flex gap-2">
+            <select class="form-control" name="estado" style="max-width: 220px;">
+              {% for value,label in integrante.Estado.choices %}
+              <option value="{{ value }}" {% if value == integrante.estado %}selected{% endif %}>{{ label }}</option>
+              {% endfor %}
+            </select>
+            <button class="btn btn-outline-primary" type="submit">Actualizar</button>
+          </div>
+        </form>
+        <a href="{% url 'afiliados:editar_integrante_logistica' integrante.pk %}" class="btn btn-primary">Editar</a>
+        <a href="{% url 'afiliados:lista_integrantes_logistica' %}" class="btn btn-secondary">Volver</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

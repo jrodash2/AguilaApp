@@ -14,8 +14,8 @@ from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 import requests
 import unicodedata
-from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm, OrganizacionIntegranteForm, CoordinadorOrganizacionForm, LiderComunitarioOrganizacionForm, EstructuraOrganizativaForm, ResponsableTerritorialForm, ReunionTerritorialForm, IncidenciaTerritorialForm, JuventudIntegranteForm, CoordinadorJuventudForm, LiderJuvenilForm, EstructuraJuventudForm, ResponsableJuventudForm, ReunionJuventudForm, IncidenciaJuventudForm, MujeresIntegranteForm, CoordinadoraMujeresForm, LiderMujeresForm, EstructuraMujeresForm, ResponsableMujeresForm, ReunionMujeresForm, IncidenciaMujeresForm
-from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, EstructuraIntegrante, EstadoRegistro, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, EstructuraIntegranteJuventud, MujeresIntegrante, CoordinadoraMujeres, LiderMujeres, EstructuraMujeres, ResponsableMujeres, ReunionMujeres, IncidenciaMujeres, EstructuraIntegranteMujeres
+from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm, OrganizacionIntegranteForm, CoordinadorOrganizacionForm, LiderComunitarioOrganizacionForm, EstructuraOrganizativaForm, ResponsableTerritorialForm, ReunionTerritorialForm, IncidenciaTerritorialForm, JuventudIntegranteForm, CoordinadorJuventudForm, LiderJuvenilForm, EstructuraJuventudForm, ResponsableJuventudForm, ReunionJuventudForm, IncidenciaJuventudForm, MujeresIntegranteForm, CoordinadoraMujeresForm, LiderMujeresForm, EstructuraMujeresForm, ResponsableMujeresForm, ReunionMujeresForm, IncidenciaMujeresForm, LogisticaIntegranteForm, CoordinadorLogisticaForm, LiderLogisticaForm, EstructuraLogisticaForm, ResponsableLogisticaForm, ReunionLogisticaForm, IncidenciaLogisticaForm, RecursoLogisticoForm, AsignacionLogisticaForm, SolicitudLogisticaForm, EntregaLogisticaForm, AgendaLogisticaForm, ComunicacionIntegranteForm, CoordinadorComunicacionForm, LiderComunicacionForm, EstructuraComunicacionForm, ResponsableComunicacionForm, ReunionComunicacionForm, IncidenciaComunicacionForm, AgendaPublicacionForm, SolicitudContenidoForm, CoberturaActividadForm, BancoMediosForm, CampanaComunicacionForm, MonitoreoRedForm
+from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, EstructuraIntegrante, EstadoRegistro, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, EstructuraIntegranteJuventud, MujeresIntegrante, CoordinadoraMujeres, LiderMujeres, EstructuraMujeres, ResponsableMujeres, ReunionMujeres, IncidenciaMujeres, EstructuraIntegranteMujeres, LogisticaIntegrante, CoordinadorLogistica, LiderLogistica, EstructuraLogistica, ResponsableLogistica, ReunionLogistica, IncidenciaLogistica, EstructuraIntegranteLogistica, RecursoLogistico, AsignacionLogistica, SolicitudLogistica, EntregaLogistica, AgendaLogistica, ComunicacionIntegrante, CoordinadorComunicacion, LiderComunicacion, EstructuraComunicacion, ResponsableComunicacion, ReunionComunicacion, IncidenciaComunicacion, EstructuraIntegranteComunicacion, AgendaPublicacion, SolicitudContenido, CoberturaActividad, BancoMedios, CampanaComunicacion, MonitoreoRed
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
@@ -61,6 +61,7 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Font
 import re
+import uuid
 from urllib.parse import urlencode
 from django.views.generic.detail import DetailView
 from django.core.mail import BadHeaderError
@@ -395,6 +396,10 @@ def signin(request):
                     return redirect('afiliados:dashboard_juventud')
                 elif g.name == 'Mujeres':
                     return redirect('afiliados:dashboard_mujeres')
+                elif g.name == 'Logistica':
+                    return redirect('afiliados:dashboard_logistica')
+                elif g.name == 'Comunicacion':
+                    return redirect('afiliados:dashboard_comunicacion')
             # Si no se encuentra el grupo adecuado, se redirige a una página por defecto
             return redirect('afiliados:dahsboard')
         else:
@@ -1083,6 +1088,12 @@ def exportar_filtros_pdf(request):
 
 @login_required
 def afiliado_lista(request):
+    prefill = None
+    prefill_token = (request.GET.get("prefill_token") or "").strip()
+    if prefill_token:
+        session_key = f"afiliacion_prefill:{prefill_token}"
+        prefill = request.session.pop(session_key, None)
+
     afiliados = (
         Afiliado.objects
         .select_related('comunidad__sector', 'centro_votacion')
@@ -1094,7 +1105,21 @@ def afiliado_lista(request):
         )
     )
     _adjuntar_centro_votacion_resuelto(afiliados)
-    form = AfiliadoForm()  # Instancia vacía para el modal
+    form_initial = {}
+    prefill_dpi = ""
+    abrir_modal_prefill = False
+
+    if prefill:
+        form_initial = {
+            "nombre_completo": prefill.get("nombre", ""),
+            "telefono": prefill.get("telefono", ""),
+            "direccion": prefill.get("direccion", ""),
+            "comunidad": prefill.get("comunidad_id") or None,
+        }
+        prefill_dpi = prefill.get("dpi", "")
+        abrir_modal_prefill = True
+
+    form = AfiliadoForm(initial=form_initial)
 
     if request.method == 'POST':
         form = AfiliadoForm(request.POST)
@@ -1106,6 +1131,9 @@ def afiliado_lista(request):
         'afiliados': afiliados,
         'form': form,  # Pasamos el formulario al template
         'TSE_CONSULTA_URL': settings.TSE_CONSULTA_URL,
+        'prefill_data': prefill or {},
+        'prefill_dpi': prefill_dpi,
+        'abrir_modal_prefill': abrir_modal_prefill,
     })
 
 
@@ -1176,11 +1204,16 @@ def _fuente_por_referencia(fuente_clave, fuente_id, dpi):
     return persona
 
 
-@login_required
-def pendientes_afiliacion_secretarias(request):
-    if not _es_usuario_afiliacion(request.user):
-        raise PermissionDenied("No tiene permisos para acceder a esta vista.")
+def _buscar_afiliado_por_dpi_normalizado(dpi):
+    if not dpi:
+        return None
+    for afiliado in Afiliado.objects.only("id", "dpi"):
+        if _normalizar_dpi(afiliado.dpi) == dpi:
+            return afiliado
+    return None
 
+
+def _obtener_pendientes_afiliacion_secretarias():
     afiliados_dpi = {_normalizar_dpi(v) for v in Afiliado.objects.values_list('dpi', flat=True) if _normalizar_dpi(v)}
     pendientes_por_dpi = {}
 
@@ -1254,8 +1287,11 @@ def pendientes_afiliacion_secretarias(request):
             'nombre_completo': item['nombre_completo'],
             'secretarias': ", ".join(secretarias),
             'comunidad': item['comunidad'],
+            'telefono': prefill.get('telefono') or '',
             'estado': item['estado'],
             'fecha_registro': item['fecha_registro'],
+            'fuente_clave': fuente_preferida['fuente_clave'],
+            'fuente_id': fuente_preferida['fuente_id'],
             'afiliar_url': (
                 f"{reverse('afiliados:afiliar_desde_secretaria')}?"
                 f"{urlencode({'dpi': item['dpi'], 'fuente': fuente_preferida['fuente_clave'], 'fuente_id': fuente_preferida['fuente_id'], 'nombre': prefill.get('nombre') or item['nombre_completo'], 'comunidad': prefill.get('comunidad') or (item['comunidad'] if item['comunidad'] != 'N/A' else ''), 'comunidad_id': prefill.get('comunidad_id', ''), 'telefono': prefill.get('telefono', ''), 'direccion': prefill.get('direccion', '')})}"
@@ -1263,6 +1299,15 @@ def pendientes_afiliacion_secretarias(request):
         })
 
     filas.sort(key=lambda x: x['nombre_completo'].lower())
+    return filas, total_por_secretaria
+
+
+@login_required
+def pendientes_afiliacion_secretarias(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para acceder a esta vista.")
+
+    filas, total_por_secretaria = _obtener_pendientes_afiliacion_secretarias()
 
     context = {
         'pendientes': filas,
@@ -1272,6 +1317,189 @@ def pendientes_afiliacion_secretarias(request):
         'total_mujeres': total_por_secretaria.get('Mujeres', 0),
     }
     return safe_render(request, 'afiliados/pendientes_afiliacion_secretarias.html', context)
+
+
+@login_required
+def exportar_pendientes_afiliacion_secretarias_excel(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para exportar pendientes de afiliación.")
+
+    filas, _totales = _obtener_pendientes_afiliacion_secretarias()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Pendientes afiliación"
+    headers = ["DPI", "Nombre completo", "Secretaría", "Comunidad", "Teléfono", "Estado", "Fecha registro"]
+    ws.append(headers)
+
+    for row in filas:
+        fecha = row.get('fecha_registro')
+        fecha_txt = fecha.strftime("%Y-%m-%d %H:%M:%S") if fecha else ""
+        ws.append([
+            row.get('dpi', ''),
+            row.get('nombre_completo', ''),
+            row.get('secretarias', ''),
+            row.get('comunidad', ''),
+            row.get('telefono', ''),
+            row.get('estado', ''),
+            fecha_txt,
+        ])
+
+    for col_idx, header in enumerate(headers, start=1):
+        ws.column_dimensions[get_column_letter(col_idx)].width = max(16, len(header) + 2)
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="pendientes_afiliacion_secretarias.xlsx"'
+    wb.save(response)
+    return response
+
+
+@login_required
+def prefill_afiliacion_desde_secretaria(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para ejecutar esta acción.")
+
+    dpi = _normalizar_dpi(request.GET.get('dpi', ''))
+    fuente_clave = (request.GET.get('fuente') or '').strip()
+    fuente_id = (request.GET.get('fuente_id') or '').strip()
+
+    if len(dpi) != 13:
+        return JsonResponse({'ok': False, 'message': 'DPI inválido.'}, status=400)
+
+    afiliado_existente = _buscar_afiliado_por_dpi_normalizado(dpi)
+    if afiliado_existente:
+        return JsonResponse({
+            'ok': False,
+            'exists': True,
+            'message': f'El DPI {dpi} ya está afiliado.',
+            'detalle_url': reverse('afiliados:afiliado_detalle', args=[afiliado_existente.pk]),
+        }, status=409)
+
+    persona_fuente = _fuente_por_referencia(fuente_clave, fuente_id, dpi) if fuente_clave else None
+    if not persona_fuente:
+        return JsonResponse({
+            'ok': False,
+            'message': 'No se encontró un registro fuente válido para ese DPI y secretaría de origen.',
+        }, status=404)
+
+    prefill = _extraer_prefill_desde_fuente(persona_fuente)
+    nombre = prefill.get('nombre') or ''
+    if not nombre:
+        return JsonResponse({
+            'ok': False,
+            'message': 'No se puede afiliar: el registro fuente no tiene nombre completo.',
+        }, status=422)
+
+    return JsonResponse({
+        'ok': True,
+        'prefill': {
+            'dpi': dpi,
+            'nombre': nombre,
+            'comunidad': prefill.get('comunidad') or '',
+            'comunidad_id': prefill.get('comunidad_id') or '',
+            'telefono': prefill.get('telefono') or '',
+            'direccion': prefill.get('direccion') or '',
+            'fuente': fuente_clave,
+            'fuente_id': str(fuente_id),
+        }
+    })
+
+
+@login_required
+def modal_afiliar_desde_secretaria_form(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para ejecutar esta acción.")
+
+    dpi = _normalizar_dpi(request.GET.get('dpi', ''))
+    fuente_clave = (request.GET.get('fuente') or '').strip()
+    fuente_id = (request.GET.get('fuente_id') or '').strip()
+
+    if len(dpi) != 13:
+        return JsonResponse({'ok': False, 'message': 'DPI inválido.'}, status=400)
+
+    afiliado_existente = _buscar_afiliado_por_dpi_normalizado(dpi)
+    if afiliado_existente:
+        return JsonResponse({
+            'ok': False,
+            'exists': True,
+            'message': f'El DPI {dpi} ya está afiliado.',
+            'detalle_url': reverse('afiliados:afiliado_detalle', args=[afiliado_existente.pk]),
+        }, status=409)
+
+    persona_fuente = _fuente_por_referencia(fuente_clave, fuente_id, dpi) if fuente_clave else None
+    if not persona_fuente:
+        return JsonResponse({
+            'ok': False,
+            'message': 'No se encontró un registro fuente válido para ese DPI y secretaría de origen.',
+        }, status=404)
+
+    prefill = _extraer_prefill_desde_fuente(persona_fuente)
+    form = AfiliadoForm(initial={
+        'dpi': dpi,
+        'nombre_completo': prefill.get('nombre', ''),
+        'telefono': prefill.get('telefono', ''),
+        'direccion': prefill.get('direccion', ''),
+        'comunidad': prefill.get('comunidad_id') or None,
+        'empadronado': True,
+    })
+    form_html = render_to_string(
+        'afiliados/partials/modal_afiliar_desde_secretaria_form.html',
+        {
+            'form': form,
+            'dpi': dpi,
+            'fuente': fuente_clave,
+            'fuente_id': fuente_id,
+        },
+        request=request,
+    )
+    return JsonResponse({'ok': True, 'form_html': form_html})
+
+
+@login_required
+def modal_afiliar_desde_secretaria_guardar(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para ejecutar esta acción.")
+
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': 'Método no permitido.'}, status=405)
+
+    dpi = _normalizar_dpi(request.POST.get('dpi', ''))
+    fuente_clave = (request.POST.get('fuente') or '').strip()
+    fuente_id = (request.POST.get('fuente_id') or '').strip()
+    persona_fuente = _fuente_por_referencia(fuente_clave, fuente_id, dpi) if fuente_clave else None
+    if not persona_fuente:
+        return JsonResponse({
+            'ok': False,
+            'message': 'No se encontró un registro fuente válido para guardar la afiliación.',
+        }, status=404)
+
+    afiliado_existente = _buscar_afiliado_por_dpi_normalizado(dpi)
+    if afiliado_existente:
+        return JsonResponse({
+            'ok': False,
+            'exists': True,
+            'message': f'El DPI {dpi} ya está afiliado.',
+            'detalle_url': reverse('afiliados:afiliado_detalle', args=[afiliado_existente.pk]),
+        }, status=409)
+
+    form = AfiliadoForm(request.POST)
+    if form.is_valid():
+        afiliado = form.save()
+        return JsonResponse({'ok': True, 'message': f"Afiliado '{afiliado.nombre_completo}' guardado con éxito."})
+
+    form_html = render_to_string(
+        'afiliados/partials/modal_afiliar_desde_secretaria_form.html',
+        {
+            'form': form,
+            'dpi': request.POST.get('dpi', ''),
+            'fuente': fuente_clave,
+            'fuente_id': fuente_id,
+        },
+        request=request,
+    )
+    return JsonResponse({'ok': False, 'message': 'Error de validación.', 'form_html': form_html}, status=400)
 
 
 @login_required
@@ -1287,7 +1515,7 @@ def afiliar_desde_secretaria(request):
         messages.error(request, "No se puede afiliar: DPI inválido.")
         return redirect('afiliados:pendientes_afiliacion_secretarias')
 
-    afiliado_existente = Afiliado.objects.filter(dpi=dpi).first()
+    afiliado_existente = _buscar_afiliado_por_dpi_normalizado(dpi)
     if afiliado_existente:
         messages.info(request, f"El DPI {dpi} ya está afiliado. Se abrió su detalle.")
         return redirect('afiliados:afiliado_detalle', pk=afiliado_existente.pk)
@@ -1312,15 +1540,18 @@ def afiliar_desde_secretaria(request):
         messages.error(request, "No se puede abrir la afiliación: el registro fuente no tiene nombre completo.")
         return redirect('afiliados:pendientes_afiliacion_secretarias')
 
-    query = urlencode({
-        'prefill_dpi': dpi,
-        'prefill_nombre': nombre,
-        'prefill_comunidad': comunidad,
-        'prefill_comunidad_id': comunidad_id,
-        'prefill_telefono': telefono,
-        'prefill_direccion': direccion,
-        'abrir_modal': '1',
-    })
+    prefill_token = uuid.uuid4().hex
+    request.session[f"afiliacion_prefill:{prefill_token}"] = {
+        "dpi": dpi,
+        "nombre": nombre,
+        "comunidad": comunidad,
+        "comunidad_id": comunidad_id,
+        "telefono": telefono,
+        "direccion": direccion,
+        "fuente": fuente_clave,
+        "fuente_id": str(fuente_id),
+    }
+    query = urlencode({'prefill_token': prefill_token})
     messages.info(request, "Se abrió el formulario de afiliación con datos precargados.")
     return redirect(f"{reverse('afiliados:afiliado_lista')}?{query}")
 
@@ -3707,3 +3938,993 @@ def mujeres_comunidad_lookup(request):
 
     centro = comunidad.sector.centros.first() if comunidad.sector else None
     return JsonResponse({'ok': True, 'data': {'comunidad': comunidad.nombre, 'sector': comunidad.sector.nombre if comunidad.sector else None, 'centro_votacion': centro.nombre if centro else None}})
+
+
+def _es_usuario_logistica(user):
+    if not user.is_authenticated:
+        return False
+    return user.groups.filter(name__in=['Logistica', 'Administrador']).exists()
+
+
+def _require_logistica(request):
+    if not _es_usuario_logistica(request.user):
+        return HttpResponseForbidden("No tiene permisos para acceder a Secretaría de Logística.")
+    return None
+
+
+@login_required
+def dashboard_logistica(request):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+
+    registros = LogisticaIntegrante.objects.select_related('afiliado')
+    context = {
+        'total_integrantes': registros.count(),
+        'total_pendientes': registros.filter(estado=LogisticaIntegrante.Estado.PENDIENTE).count(),
+        'total_revisados': registros.filter(estado=LogisticaIntegrante.Estado.REVISADO).count(),
+        'total_aprobados': registros.filter(estado=LogisticaIntegrante.Estado.APROBADO).count(),
+        'ultimos_registros': registros.order_by('-fecha_creacion')[:10],
+    }
+    return safe_render(request, 'afiliados/logistica/dashboard.html', context)
+
+
+@login_required
+def lista_integrantes_logistica(request):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+
+    integrantes = LogisticaIntegrante.objects.select_related('afiliado', 'usuario_registro').order_by('-fecha_creacion')
+    context = {
+        'integrantes': integrantes,
+        'total_integrantes': integrantes.count(),
+        'total_pendientes': integrantes.filter(estado=LogisticaIntegrante.Estado.PENDIENTE).count(),
+        'total_revisados': integrantes.filter(estado=LogisticaIntegrante.Estado.REVISADO).count(),
+        'total_aprobados': integrantes.filter(estado=LogisticaIntegrante.Estado.APROBADO).count(),
+    }
+    return safe_render(request, 'afiliados/logistica/lista.html', context)
+
+
+@login_required
+def crear_integrante_logistica(request):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+
+    form = LogisticaIntegranteForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
+
+        if error_dpi:
+            form.add_error('dpi', error_dpi)
+        elif not afiliado:
+            form.add_error('dpi', 'No existe un afiliado registrado con este DPI.')
+        elif LogisticaIntegrante.objects.filter(afiliado=afiliado).exists():
+            form.add_error('dpi', 'Este afiliado ya está registrado en Secretaría de Logística.')
+        else:
+            integrante = form.save(commit=False)
+            integrante.afiliado = afiliado
+            integrante.usuario_registro = request.user
+            integrante.usuario_modificacion = request.user
+            integrante.save()
+            messages.success(request, 'Integrante agregado a Secretaría de Logística correctamente.')
+            return redirect('afiliados:lista_integrantes_logistica')
+
+    return safe_render(request, 'afiliados/logistica/form.html', {'form': form, 'es_edicion': False})
+
+
+@login_required
+def detalle_integrante_logistica(request, pk):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+    integrante = get_object_or_404(
+        LogisticaIntegrante.objects.select_related('afiliado', 'usuario_registro', 'usuario_modificacion'),
+        pk=pk,
+    )
+    return safe_render(request, 'afiliados/logistica/detalle.html', {'integrante': integrante})
+
+
+@login_required
+def editar_integrante_logistica(request, pk):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+
+    integrante = get_object_or_404(LogisticaIntegrante, pk=pk)
+    form = LogisticaIntegranteForm(request.POST or None, instance=integrante)
+    form.fields['dpi'].initial = integrante.afiliado.dpi
+
+    if request.method == 'POST' and form.is_valid():
+        afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
+        if error_dpi:
+            form.add_error('dpi', error_dpi)
+        elif not afiliado:
+            form.add_error('dpi', 'No existe un afiliado registrado con este DPI.')
+        elif LogisticaIntegrante.objects.filter(afiliado=afiliado).exclude(pk=integrante.pk).exists():
+            form.add_error('dpi', 'Este afiliado ya está registrado en Secretaría de Logística.')
+        else:
+            integrante = form.save(commit=False)
+            integrante.afiliado = afiliado
+            integrante.usuario_modificacion = request.user
+            integrante.save()
+            messages.success(request, 'Integrante de Secretaría de Logística actualizado correctamente.')
+            return redirect('afiliados:detalle_integrante_logistica', pk=integrante.pk)
+
+    return safe_render(request, 'afiliados/logistica/form.html', {'form': form, 'es_edicion': True, 'integrante': integrante})
+
+
+@login_required
+@require_GET
+def buscar_por_dpi_logistica(request):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+
+    afiliado, dpi_limpio, error_dpi = _afiliado_por_dpi(request.GET.get('dpi', ''))
+    if error_dpi:
+        return JsonResponse({'ok': False, 'error': error_dpi}, status=400)
+    if not afiliado:
+        return JsonResponse({'ok': True, 'exists': False, 'message': 'No existe afiliado con ese DPI.'})
+
+    ya_registrado = LogisticaIntegrante.objects.filter(afiliado=afiliado).exists()
+    return JsonResponse({
+        'ok': True,
+        'exists': True,
+        'already_registered': ya_registrado,
+        'data': {
+            'dpi': dpi_limpio,
+            'nombre_completo': afiliado.nombre_completo,
+            'telefono': afiliado.telefono,
+            'direccion': afiliado.direccion,
+            'comunidad': afiliado.comunidad.nombre if afiliado.comunidad else None,
+            'empadronado': afiliado.empadronado,
+        }
+    })
+
+
+@login_required
+@require_GET
+def verificar_empadronamiento_logistica(request):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+    payload, status_code = _resultado_padron_local(request.GET.get("dpi", ""))
+    return JsonResponse(payload, status=status_code)
+
+
+@login_required
+@require_POST
+def cambiar_estado_logistica(request, pk):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+    integrante = get_object_or_404(LogisticaIntegrante, pk=pk)
+    nuevo_estado = request.POST.get('estado', '').strip().upper()
+    estados_validos = {choice[0] for choice in LogisticaIntegrante.Estado.choices}
+    if nuevo_estado not in estados_validos:
+        messages.error(request, 'Estado inválido.')
+        return redirect('afiliados:detalle_integrante_logistica', pk=pk)
+    integrante.estado = nuevo_estado
+    integrante.usuario_modificacion = request.user
+    integrante.save(update_fields=['estado', 'usuario_modificacion', 'fecha_actualizacion'])
+    messages.success(request, 'Estado actualizado correctamente.')
+    return redirect('afiliados:detalle_integrante_logistica', pk=pk)
+
+
+@login_required
+def panorama_municipal_logistica(request):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+
+    comunidad_qs = Comunidad.objects.select_related('sector')
+    sector_qs = Sector.objects.all()
+    centro_qs = CentroVotacion.objects.all()
+    coordinadores = CoordinadorLogistica.objects.all()
+    lideres = LiderLogistica.objects.all()
+    estructuras = EstructuraLogistica.objects.all()
+    reuniones = ReunionLogistica.objects.all()
+    incidencias = IncidenciaLogistica.objects.filter(estado=EstadoRegistro.ACTIVO)
+    responsables = ResponsableLogistica.objects.filter(estado=EstadoRegistro.ACTIVO)
+
+    comunidad_ids_cubiertas = set(CoordinadorLogistica.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)) | set(LiderLogistica.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)) | set(EstructuraLogistica.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)) | set(ResponsableLogistica.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True))
+    sector_ids_cubiertos = set(CoordinadorLogistica.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)) | set(EstructuraLogistica.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)) | set(ResponsableLogistica.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True))
+    centro_ids_cubiertos = set(CoordinadorLogistica.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)) | set(EstructuraLogistica.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)) | set(ResponsableLogistica.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True))
+
+    crecimiento = {
+        'coordinadores': list(coordinadores.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+        'lideres': list(lideres.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+        'estructuras': list(estructuras.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+        'reuniones': list(reuniones.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
+    }
+
+    def _serie_por_mes(key):
+        return {item['mes'].strftime('%Y-%m'): item['total'] for item in crecimiento.get(key, []) if item.get('mes')}
+
+    meses = sorted(set(_serie_por_mes('coordinadores').keys()) | set(_serie_por_mes('lideres').keys()) | set(_serie_por_mes('estructuras').keys()) | set(_serie_por_mes('reuniones').keys()))
+    crecimiento_series = {
+        'labels': meses,
+        'coordinadores': [_serie_por_mes('coordinadores').get(m, 0) for m in meses],
+        'lideres': [_serie_por_mes('lideres').get(m, 0) for m in meses],
+        'estructuras': [_serie_por_mes('estructuras').get(m, 0) for m in meses],
+        'reuniones': [_serie_por_mes('reuniones').get(m, 0) for m in meses],
+    }
+
+    resumen_estructuras_por_comunidad = comunidad_qs.annotate(estructuras_total=Count('estructuras_logistica', distinct=True)).order_by('nombre')
+    resumen_miembros_por_estructura = EstructuraLogistica.objects.select_related('comunidad').annotate(miembros_total=Count('integrantes', distinct=True)).order_by('nombre')
+
+    context = {
+        'total_comunidades': comunidad_qs.count(),
+        'comunidades_cubiertas': len(comunidad_ids_cubiertas),
+        'comunidades_no_cubiertas': max(comunidad_qs.count() - len(comunidad_ids_cubiertas), 0),
+        'total_sectores': sector_qs.count(),
+        'sectores_con_responsable': responsables.exclude(sector__isnull=True).values('sector_id').distinct().count(),
+        'sectores_sin_responsable': max(sector_qs.count() - responsables.exclude(sector__isnull=True).values('sector_id').distinct().count(), 0),
+        'total_centros': centro_qs.count(),
+        'centros_con_cobertura': len(centro_ids_cubiertos),
+        'centros_sin_cobertura': max(centro_qs.count() - len(centro_ids_cubiertos), 0),
+        'coordinadores_activos': coordinadores.filter(estado=EstadoRegistro.ACTIVO).count(),
+        'coordinadores_inactivos': coordinadores.filter(estado=EstadoRegistro.INACTIVO).count(),
+        'total_lideres': lideres.count(),
+        'estructuras_activas': estructuras.filter(estado=EstadoRegistro.ACTIVO).count(),
+        'reuniones_mes': reuniones.filter(fecha__month=timezone.now().month, fecha__year=timezone.now().year).count(),
+        'incidencias_abiertas': incidencias.count(),
+        'resumen_comunidad': comunidad_qs.annotate(total_sectores=Count('sector', distinct=True), reuniones_total=Count('reuniones_logistica', distinct=True), incidencias_abiertas=Count('incidencias_logistica', filter=Q(incidencias_logistica__estado=EstadoRegistro.ACTIVO), distinct=True)),
+        'resumen_sector': sector_qs.annotate(lideres_total=Count('lideres_logistica', distinct=True), estructuras_total=Count('estructuras_logistica', distinct=True), incidencias_total=Count('incidencias_logistica', distinct=True)),
+        'resumen_centro': centro_qs.annotate(incidencias_total=Count('incidencias_logistica', distinct=True), reuniones_total=Count('reuniones_logistica', distinct=True)),
+        'resumen_estructuras_por_comunidad': resumen_estructuras_por_comunidad,
+        'resumen_miembros_por_estructura': resumen_miembros_por_estructura,
+        'crecimiento': json.dumps(crecimiento, cls=DjangoJSONEncoder),
+        'charts_data': json.dumps({'cobertura': {'comunidades': [len(comunidad_ids_cubiertas), max(comunidad_qs.count() - len(comunidad_ids_cubiertas), 0)], 'sectores': [len(sector_ids_cubiertos), max(sector_qs.count() - len(sector_ids_cubiertos), 0)], 'centros': [len(centro_ids_cubiertos), max(centro_qs.count() - len(centro_ids_cubiertos), 0)]}, 'estructura': {'coordinadores': [coordinadores.filter(estado=EstadoRegistro.ACTIVO).count(), coordinadores.filter(estado=EstadoRegistro.INACTIVO).count()], 'lideres_total': lideres.count(), 'estructuras_activas': estructuras.filter(estado=EstadoRegistro.ACTIVO).count()}, 'crecimiento': crecimiento_series}, cls=DjangoJSONEncoder),
+    }
+    return safe_render(request, 'afiliados/logistica/panorama.html', context)
+
+
+def _log_crud(request, model, form_class, template, list_name, create_name, edit_name, pk=None, extra_context=None):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+    instance = get_object_or_404(model, pk=pk) if pk else None
+    form = form_class(request.POST or None, instance=instance)
+    if request.method == 'POST' and form.is_valid():
+        obj = form.save(commit=False)
+        if not getattr(obj, 'usuario_creador_id', None):
+            obj.usuario_creador = request.user
+        obj.usuario_modificador = request.user
+        obj.save()
+        messages.success(request, 'Registro guardado correctamente.')
+        return redirect(list_name)
+    items_qs = model.objects.all().order_by('-id')
+    if template == 'reuniones':
+        items_qs = items_qs.select_related('comunidad', 'sector', 'centro_votacion')
+    context = {
+        'form': form,
+        'items': items_qs[:200],
+        'entity_label': template,
+        'create_name': create_name,
+        'edit_name': edit_name,
+        'detail_name': {
+            'coordinadores': 'afiliados:detalle_coordinador_logistica',
+            'lideres': 'afiliados:detalle_lider_logistica',
+            'estructuras': 'afiliados:detalle_estructura_logistica',
+            'responsables': 'afiliados:detalle_responsable_logistica',
+            'reuniones': 'afiliados:detalle_reunion_logistica',
+            'incidencias': 'afiliados:detalle_incidencia_logistica',
+        }.get(template),
+        'comunidad_lookup_url': reverse('afiliados:logistica_comunidad_lookup'),
+        'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_logistica'),
+    }
+    if template == 'reuniones':
+        responsables_modal = []
+        for responsable in ResponsableLogistica.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({'tipo': 'RESPONSABLE', 'tipo_label': 'Responsable', 'id': responsable.id, 'nombre': responsable.nombre_completo, 'dpi': responsable.dpi, 'comunidad': responsable.comunidad.nombre if responsable.comunidad else ''})
+        for coordinador in CoordinadorLogistica.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({'tipo': 'COORDINADOR', 'tipo_label': 'Coordinador', 'id': coordinador.id, 'nombre': coordinador.nombre_completo, 'dpi': coordinador.dpi, 'comunidad': coordinador.comunidad.nombre if coordinador.comunidad else ''})
+        for lider in LiderLogistica.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({'tipo': 'LIDER', 'tipo_label': 'Enlace logístico', 'id': lider.id, 'nombre': lider.nombre_completo, 'dpi': lider.dpi, 'comunidad': lider.comunidad.nombre if lider.comunidad else ''})
+        context['responsables_modal'] = responsables_modal
+    if template == 'estructuras':
+        coordinadores_modal = []
+        for coordinador in CoordinadorLogistica.objects.select_related('comunidad').order_by('nombre_completo'):
+            coordinadores_modal.append({'id': coordinador.id, 'nombre': coordinador.nombre_completo, 'dpi': coordinador.dpi, 'comunidad': coordinador.comunidad.nombre if coordinador.comunidad else '', 'estado': coordinador.get_estado_display()})
+        context['coordinadores_modal'] = coordinadores_modal
+        coord_id = form['coordinador_responsable'].value()
+        coord = CoordinadorLogistica.objects.filter(pk=coord_id).first() if coord_id else None
+        context['coordinador_responsable_display'] = coord.nombre_completo if coord else ''
+    if extra_context:
+        context.update(extra_context)
+    return safe_render(request, f'afiliados/logistica/crud_{template}.html', context)
+
+
+@login_required
+def lista_estructura_territorial_logistica(request):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+    comunidades = Comunidad.objects.select_related('sector').order_by('nombre')
+    sectores = Sector.objects.order_by('nombre')
+    centros = CentroVotacion.objects.order_by('nombre')
+    return safe_render(request, 'afiliados/logistica/estructura_territorial.html', {'comunidades': comunidades, 'sectores': sectores, 'centros': centros, 'total_comunidades': comunidades.count(), 'total_sectores': sectores.count(), 'total_centros': centros.count()})
+
+
+@login_required
+def lista_coordinadores_logistica(request):
+    return _log_crud(request, CoordinadorLogistica, CoordinadorLogisticaForm, 'coordinadores', 'afiliados:lista_coordinadores_logistica', 'afiliados:crear_coordinador_logistica', 'afiliados:editar_coordinador_logistica')
+
+
+@login_required
+def crear_coordinador_logistica(request):
+    return _log_crud(request, CoordinadorLogistica, CoordinadorLogisticaForm, 'coordinadores', 'afiliados:lista_coordinadores_logistica', 'afiliados:crear_coordinador_logistica', 'afiliados:editar_coordinador_logistica')
+
+
+@login_required
+def editar_coordinador_logistica(request, pk):
+    return _log_crud(request, CoordinadorLogistica, CoordinadorLogisticaForm, 'coordinadores', 'afiliados:lista_coordinadores_logistica', 'afiliados:crear_coordinador_logistica', 'afiliados:editar_coordinador_logistica', pk=pk)
+
+
+@login_required
+def detalle_coordinador_logistica(request, pk):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/logistica/detalle_generico.html', {'obj': get_object_or_404(CoordinadorLogistica, pk=pk), 'titulo': 'Coordinador logístico'})
+
+
+@login_required
+def lista_lideres_logistica(request):
+    return _log_crud(request, LiderLogistica, LiderLogisticaForm, 'lideres', 'afiliados:lista_lideres_logistica', 'afiliados:crear_lider_logistica', 'afiliados:editar_lider_logistica')
+
+
+@login_required
+def crear_lider_logistica(request):
+    return _log_crud(request, LiderLogistica, LiderLogisticaForm, 'lideres', 'afiliados:lista_lideres_logistica', 'afiliados:crear_lider_logistica', 'afiliados:editar_lider_logistica')
+
+
+@login_required
+def editar_lider_logistica(request, pk):
+    return _log_crud(request, LiderLogistica, LiderLogisticaForm, 'lideres', 'afiliados:lista_lideres_logistica', 'afiliados:crear_lider_logistica', 'afiliados:editar_lider_logistica', pk=pk)
+
+
+@login_required
+def detalle_lider_logistica(request, pk):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/logistica/detalle_generico.html', {'obj': get_object_or_404(LiderLogistica, pk=pk), 'titulo': 'Enlace logístico'})
+
+
+@login_required
+def lista_estructuras_logistica(request):
+    return _log_crud(request, EstructuraLogistica, EstructuraLogisticaForm, 'estructuras', 'afiliados:lista_estructuras_logistica', 'afiliados:crear_estructura_logistica', 'afiliados:editar_estructura_logistica')
+
+
+@login_required
+def crear_estructura_logistica(request):
+    return _log_crud(request, EstructuraLogistica, EstructuraLogisticaForm, 'estructuras', 'afiliados:lista_estructuras_logistica', 'afiliados:crear_estructura_logistica', 'afiliados:editar_estructura_logistica')
+
+
+@login_required
+def editar_estructura_logistica(request, pk):
+    return _log_crud(request, EstructuraLogistica, EstructuraLogisticaForm, 'estructuras', 'afiliados:lista_estructuras_logistica', 'afiliados:crear_estructura_logistica', 'afiliados:editar_estructura_logistica', pk=pk)
+
+
+@login_required
+def detalle_estructura_logistica(request, pk):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+    estructura = get_object_or_404(EstructuraLogistica.objects.select_related('comunidad', 'sector', 'centro_votacion', 'coordinador_responsable'), pk=pk)
+    if request.method == 'POST':
+        dpi = re.sub(r"\D", "", request.POST.get('dpi', ''))
+        verified_dpi = re.sub(r"\D", "", request.POST.get('verified_dpi', ''))
+        is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
+        if not dpi or verified_dpi != dpi:
+            msg = 'Primero debe verificar empadronamiento del DPI antes de confirmar agregado.'
+            return JsonResponse({'ok': False, 'message': msg}, status=400) if is_ajax else redirect('afiliados:detalle_estructura_logistica', pk=estructura.pk)
+        payload, status_code = _resultado_padron_local(dpi)
+        if status_code != 200 or not payload.get('ok') or not payload.get('found'):
+            msg = payload.get('error') or payload.get('message') or 'No aparece empadronado en padrón local.'
+            return JsonResponse({'ok': False, 'message': msg}, status=400) if is_ajax else redirect('afiliados:detalle_estructura_logistica', pk=estructura.pk)
+        persona = payload.get('data') or {}
+        if EstructuraIntegranteLogistica.objects.filter(estructura=estructura, dpi=dpi).exists():
+            msg = 'Este integrante ya está registrado en la estructura logística.'
+            return JsonResponse({'ok': False, 'message': msg}, status=409) if is_ajax else redirect('afiliados:detalle_estructura_logistica', pk=estructura.pk)
+        comunidad = Comunidad.objects.filter(nombre=persona.get('comunidad')).first() if persona.get('comunidad') else None
+        integrante = EstructuraIntegranteLogistica.objects.create(estructura=estructura, dpi=dpi, nombre_completo=persona.get('nombre_completo') or f"Integrante {dpi}", comunidad=comunidad, usuario_registro=request.user)
+        if is_ajax:
+            return JsonResponse({'ok': True, 'message': 'Integrante agregado correctamente a la estructura logística.', 'integrante': {'id': integrante.id, 'dpi': integrante.dpi, 'nombre_completo': integrante.nombre_completo, 'estado': integrante.estado, 'fecha_registro': timezone.localtime(integrante.fecha_registro).strftime('%d/%m/%Y %H:%M')}, 'total_integrantes': estructura.integrantes.count()})
+        messages.success(request, 'Integrante agregado correctamente a la estructura logística.')
+        return redirect('afiliados:detalle_estructura_logistica', pk=estructura.pk)
+
+    integrantes = estructura.integrantes.select_related('usuario_registro').all()
+    return safe_render(request, 'afiliados/logistica/detalle_estructura.html', {'estructura': estructura, 'integrantes': integrantes, 'total_integrantes': integrantes.count(), 'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_logistica')})
+
+
+@login_required
+@require_POST
+def eliminar_integrante_estructura_logistica(request, pk, integrante_id):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+    estructura = get_object_or_404(EstructuraLogistica, pk=pk)
+    integrante = get_object_or_404(EstructuraIntegranteLogistica, pk=integrante_id, estructura=estructura)
+    integrante.delete()
+    messages.success(request, 'Integrante eliminado correctamente de la estructura logística.')
+    return redirect('afiliados:detalle_estructura_logistica', pk=estructura.pk)
+
+
+@login_required
+def lista_responsables_logistica(request):
+    return _log_crud(request, ResponsableLogistica, ResponsableLogisticaForm, 'responsables', 'afiliados:lista_responsables_logistica', 'afiliados:crear_responsable_logistica', 'afiliados:editar_responsable_logistica')
+
+
+@login_required
+def crear_responsable_logistica(request):
+    return _log_crud(request, ResponsableLogistica, ResponsableLogisticaForm, 'responsables', 'afiliados:lista_responsables_logistica', 'afiliados:crear_responsable_logistica', 'afiliados:editar_responsable_logistica')
+
+
+@login_required
+def editar_responsable_logistica(request, pk):
+    return _log_crud(request, ResponsableLogistica, ResponsableLogisticaForm, 'responsables', 'afiliados:lista_responsables_logistica', 'afiliados:crear_responsable_logistica', 'afiliados:editar_responsable_logistica', pk=pk)
+
+
+@login_required
+def detalle_responsable_logistica(request, pk):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/logistica/detalle_generico.html', {'obj': get_object_or_404(ResponsableLogistica, pk=pk), 'titulo': 'Responsable logístico'})
+
+
+@login_required
+def lista_reuniones_logistica(request):
+    return _log_crud(request, ReunionLogistica, ReunionLogisticaForm, 'reuniones', 'afiliados:lista_reuniones_logistica', 'afiliados:crear_reunion_logistica', 'afiliados:editar_reunion_logistica')
+
+
+@login_required
+def crear_reunion_logistica(request):
+    return _log_crud(request, ReunionLogistica, ReunionLogisticaForm, 'reuniones', 'afiliados:lista_reuniones_logistica', 'afiliados:crear_reunion_logistica', 'afiliados:editar_reunion_logistica')
+
+
+@login_required
+def editar_reunion_logistica(request, pk):
+    return _log_crud(request, ReunionLogistica, ReunionLogisticaForm, 'reuniones', 'afiliados:lista_reuniones_logistica', 'afiliados:crear_reunion_logistica', 'afiliados:editar_reunion_logistica', pk=pk)
+
+
+@login_required
+def detalle_reunion_logistica(request, pk):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+    reunion = get_object_or_404(ReunionLogistica, pk=pk)
+    return safe_render(request, 'afiliados/logistica/detalle_reunion.html', {'reunion': reunion})
+
+
+@login_required
+def lista_incidencias_logistica(request):
+    return _log_crud(request, IncidenciaLogistica, IncidenciaLogisticaForm, 'incidencias', 'afiliados:lista_incidencias_logistica', 'afiliados:crear_incidencia_logistica', 'afiliados:editar_incidencia_logistica')
+
+
+@login_required
+def crear_incidencia_logistica(request):
+    return _log_crud(request, IncidenciaLogistica, IncidenciaLogisticaForm, 'incidencias', 'afiliados:lista_incidencias_logistica', 'afiliados:crear_incidencia_logistica', 'afiliados:editar_incidencia_logistica')
+
+
+@login_required
+def editar_incidencia_logistica(request, pk):
+    return _log_crud(request, IncidenciaLogistica, IncidenciaLogisticaForm, 'incidencias', 'afiliados:lista_incidencias_logistica', 'afiliados:crear_incidencia_logistica', 'afiliados:editar_incidencia_logistica', pk=pk)
+
+
+@login_required
+def detalle_incidencia_logistica(request, pk):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/logistica/detalle_generico.html', {'obj': get_object_or_404(IncidenciaLogistica, pk=pk), 'titulo': 'Incidencia logística'})
+
+
+@login_required
+def reporte_cobertura_logistica(request):
+    return panorama_municipal_logistica(request)
+
+
+@login_required
+def reporte_coordinadores_logistica(request):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/logistica/reporte_coordinadores.html', {'coordinadores': CoordinadorLogistica.objects.select_related('comunidad', 'sector', 'centro_votacion').order_by('-fecha_creacion')})
+
+
+@login_required
+def reporte_reuniones_logistica(request):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+    return safe_render(request, 'afiliados/logistica/reporte_reuniones.html', {'reuniones': ReunionLogistica.objects.select_related('comunidad', 'sector', 'centro_votacion').order_by('-fecha')})
+
+
+@login_required
+def reporte_crecimiento_mensual_logistica(request):
+    return panorama_municipal_logistica(request)
+
+
+@login_required
+@require_GET
+def logistica_comunidad_lookup(request):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+    comunidad_id = request.GET.get('comunidad_id')
+    comunidad = Comunidad.objects.select_related('sector').filter(pk=comunidad_id).first()
+    if not comunidad:
+        return JsonResponse({'ok': False, 'error': 'Comunidad no encontrada.'}, status=404)
+    centro = comunidad.sector.centros.first() if comunidad.sector else None
+    return JsonResponse({'ok': True, 'data': {'comunidad': comunidad.nombre, 'sector': comunidad.sector.nombre if comunidad.sector else None, 'centro_votacion': centro.nombre if centro else None}})
+
+
+def _logistica_extra_crud(request, model, form_class, template_name, list_url, titulo, extra=None, pk=None):
+    denied = _require_logistica(request)
+    if denied:
+        return denied
+    instance = get_object_or_404(model, pk=pk) if pk else None
+    form = form_class(request.POST or None, instance=instance)
+    if request.method == 'POST' and form.is_valid():
+        obj = form.save(commit=False)
+        if not getattr(obj, 'usuario_creador_id', None):
+            obj.usuario_creador = request.user
+        obj.usuario_modificador = request.user
+        obj.save()
+        messages.success(request, 'Registro guardado correctamente.')
+        return redirect(list_url)
+    context = {
+        'form': form,
+        'items': model.objects.all().order_by('-id')[:200],
+        'titulo': titulo,
+        'list_url': list_url,
+        'edit_url_name': extra.get('edit_url_name') if extra else None,
+        'columns': extra.get('columns', []) if extra else [],
+    }
+    return safe_render(request, template_name, context)
+
+
+@login_required
+def lista_recursos_logisticos(request):
+    return _logistica_extra_crud(request, RecursoLogistico, RecursoLogisticoForm, 'afiliados/logistica/crud_recurso_logistico.html', 'afiliados:lista_recursos_logisticos', 'Recursos logísticos', extra={'edit_url_name': 'afiliados:editar_recurso_logistico', 'columns': ['nombre', 'tipo_recurso', 'estado', 'observaciones']})
+
+
+@login_required
+def editar_recurso_logistico(request, pk):
+    return _logistica_extra_crud(request, RecursoLogistico, RecursoLogisticoForm, 'afiliados/logistica/crud_recurso_logistico.html', 'afiliados:lista_recursos_logisticos', 'Recursos logísticos', extra={'edit_url_name': 'afiliados:editar_recurso_logistico', 'columns': ['nombre', 'tipo_recurso', 'estado', 'observaciones']}, pk=pk)
+
+
+@login_required
+def lista_asignaciones_logisticas(request):
+    return _logistica_extra_crud(request, AsignacionLogistica, AsignacionLogisticaForm, 'afiliados/logistica/crud_asignacion_logistica.html', 'afiliados:lista_asignaciones_logisticas', 'Asignaciones logísticas', extra={'edit_url_name': 'afiliados:editar_asignacion_logistica', 'columns': ['recurso', 'comunidad', 'responsable', 'fecha', 'estado']})
+
+
+@login_required
+def editar_asignacion_logistica(request, pk):
+    return _logistica_extra_crud(request, AsignacionLogistica, AsignacionLogisticaForm, 'afiliados/logistica/crud_asignacion_logistica.html', 'afiliados:lista_asignaciones_logisticas', 'Asignaciones logísticas', extra={'edit_url_name': 'afiliados:editar_asignacion_logistica', 'columns': ['recurso', 'comunidad', 'responsable', 'fecha', 'estado']}, pk=pk)
+
+
+@login_required
+def lista_solicitudes_logisticas(request):
+    return _logistica_extra_crud(request, SolicitudLogistica, SolicitudLogisticaForm, 'afiliados/logistica/crud_solicitud_logistica.html', 'afiliados:lista_solicitudes_logisticas', 'Solicitudes logísticas', extra={'edit_url_name': 'afiliados:editar_solicitud_logistica', 'columns': ['titulo', 'comunidad', 'responsable', 'prioridad', 'estado']})
+
+
+@login_required
+def editar_solicitud_logistica(request, pk):
+    return _logistica_extra_crud(request, SolicitudLogistica, SolicitudLogisticaForm, 'afiliados/logistica/crud_solicitud_logistica.html', 'afiliados:lista_solicitudes_logisticas', 'Solicitudes logísticas', extra={'edit_url_name': 'afiliados:editar_solicitud_logistica', 'columns': ['titulo', 'comunidad', 'responsable', 'prioridad', 'estado']}, pk=pk)
+
+
+@login_required
+def lista_entregas_logisticas(request):
+    return _logistica_extra_crud(request, EntregaLogistica, EntregaLogisticaForm, 'afiliados/logistica/crud_entrega_logistica.html', 'afiliados:lista_entregas_logisticas', 'Control de entregas', extra={'edit_url_name': 'afiliados:editar_entrega_logistica', 'columns': ['fecha', 'comunidad', 'responsable', 'detalle', 'estado']})
+
+
+@login_required
+def editar_entrega_logistica(request, pk):
+    return _logistica_extra_crud(request, EntregaLogistica, EntregaLogisticaForm, 'afiliados/logistica/crud_entrega_logistica.html', 'afiliados:lista_entregas_logisticas', 'Control de entregas', extra={'edit_url_name': 'afiliados:editar_entrega_logistica', 'columns': ['fecha', 'comunidad', 'responsable', 'detalle', 'estado']}, pk=pk)
+
+
+@login_required
+def lista_agenda_logistica(request):
+    return _logistica_extra_crud(request, AgendaLogistica, AgendaLogisticaForm, 'afiliados/logistica/crud_agenda_logistica.html', 'afiliados:lista_agenda_logistica', 'Agenda logística', extra={'edit_url_name': 'afiliados:editar_agenda_logistica', 'columns': ['actividad', 'comunidad', 'responsables', 'fecha_programada', 'estado']})
+
+
+@login_required
+def editar_agenda_logistica(request, pk):
+    return _logistica_extra_crud(request, AgendaLogistica, AgendaLogisticaForm, 'afiliados/logistica/crud_agenda_logistica.html', 'afiliados:lista_agenda_logistica', 'Agenda logística', extra={'edit_url_name': 'afiliados:editar_agenda_logistica', 'columns': ['actividad', 'comunidad', 'responsables', 'fecha_programada', 'estado']}, pk=pk)
+
+
+def _es_usuario_comunicacion(user):
+    if not user.is_authenticated:
+        return False
+    return user.groups.filter(name__in=['Comunicacion', 'Administrador']).exists()
+
+
+def _require_comunicacion(request):
+    if not _es_usuario_comunicacion(request.user):
+        return HttpResponseForbidden("No tiene permisos para acceder a Secretaría de Comunicación y Redes.")
+    return None
+
+
+@login_required
+def dashboard_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    registros = ComunicacionIntegrante.objects.select_related('afiliado')
+    context = {
+        'total_integrantes': registros.count(),
+        'total_pendientes': registros.filter(estado=ComunicacionIntegrante.Estado.PENDIENTE).count(),
+        'total_revisados': registros.filter(estado=ComunicacionIntegrante.Estado.REVISADO).count(),
+        'total_aprobados': registros.filter(estado=ComunicacionIntegrante.Estado.APROBADO).count(),
+        'ultimos_registros': registros.order_by('-fecha_creacion')[:10],
+    }
+    return safe_render(request, 'afiliados/comunicacion/dashboard.html', context)
+
+
+@login_required
+def lista_integrantes_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    integrantes = ComunicacionIntegrante.objects.select_related('afiliado', 'usuario_registro').order_by('-fecha_creacion')
+    context = {'integrantes': integrantes, 'total_integrantes': integrantes.count(), 'total_pendientes': integrantes.filter(estado=ComunicacionIntegrante.Estado.PENDIENTE).count(), 'total_revisados': integrantes.filter(estado=ComunicacionIntegrante.Estado.REVISADO).count(), 'total_aprobados': integrantes.filter(estado=ComunicacionIntegrante.Estado.APROBADO).count()}
+    return safe_render(request, 'afiliados/comunicacion/lista.html', context)
+
+
+@login_required
+def crear_integrante_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    form = ComunicacionIntegranteForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
+        if error_dpi:
+            form.add_error('dpi', error_dpi)
+        elif not afiliado:
+            form.add_error('dpi', 'No existe un afiliado registrado con este DPI.')
+        elif ComunicacionIntegrante.objects.filter(afiliado=afiliado).exists():
+            form.add_error('dpi', 'Este afiliado ya está registrado en Secretaría de Comunicación y Redes.')
+        else:
+            integrante = form.save(commit=False)
+            integrante.afiliado = afiliado
+            integrante.usuario_registro = request.user
+            integrante.usuario_modificacion = request.user
+            integrante.save()
+            messages.success(request, 'Integrante agregado correctamente.')
+            return redirect('afiliados:lista_integrantes_comunicacion')
+    return safe_render(request, 'afiliados/comunicacion/form.html', {'form': form, 'es_edicion': False})
+
+
+@login_required
+def detalle_integrante_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    integrante = get_object_or_404(ComunicacionIntegrante.objects.select_related('afiliado', 'usuario_registro', 'usuario_modificacion'), pk=pk)
+    return safe_render(request, 'afiliados/comunicacion/detalle.html', {'integrante': integrante})
+
+
+@login_required
+def editar_integrante_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    integrante = get_object_or_404(ComunicacionIntegrante, pk=pk)
+    form = ComunicacionIntegranteForm(request.POST or None, instance=integrante)
+    form.fields['dpi'].initial = integrante.afiliado.dpi
+    if request.method == 'POST' and form.is_valid():
+        afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
+        if error_dpi:
+            form.add_error('dpi', error_dpi)
+        elif not afiliado:
+            form.add_error('dpi', 'No existe un afiliado registrado con este DPI.')
+        elif ComunicacionIntegrante.objects.filter(afiliado=afiliado).exclude(pk=integrante.pk).exists():
+            form.add_error('dpi', 'Este afiliado ya está registrado en Secretaría de Comunicación y Redes.')
+        else:
+            integrante = form.save(commit=False)
+            integrante.afiliado = afiliado
+            integrante.usuario_modificacion = request.user
+            integrante.save()
+            messages.success(request, 'Integrante actualizado correctamente.')
+            return redirect('afiliados:detalle_integrante_comunicacion', pk=integrante.pk)
+    return safe_render(request, 'afiliados/comunicacion/form.html', {'form': form, 'es_edicion': True, 'integrante': integrante})
+
+
+@login_required
+@require_GET
+def buscar_por_dpi_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    afiliado, dpi_limpio, error_dpi = _afiliado_por_dpi(request.GET.get('dpi', ''))
+    if error_dpi:
+        return JsonResponse({'ok': False, 'error': error_dpi}, status=400)
+    if not afiliado:
+        return JsonResponse({'ok': True, 'exists': False, 'message': 'No existe afiliado con ese DPI.'})
+    ya_registrado = ComunicacionIntegrante.objects.filter(afiliado=afiliado).exists()
+    return JsonResponse({'ok': True, 'exists': True, 'already_registered': ya_registrado, 'data': {'dpi': dpi_limpio, 'nombre_completo': afiliado.nombre_completo, 'telefono': afiliado.telefono, 'direccion': afiliado.direccion, 'comunidad': afiliado.comunidad.nombre if afiliado.comunidad else None, 'empadronado': afiliado.empadronado}})
+
+
+@login_required
+@require_GET
+def verificar_empadronamiento_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    payload, status_code = _resultado_padron_local(request.GET.get("dpi", ""))
+    return JsonResponse(payload, status=status_code)
+
+
+@login_required
+@require_POST
+def cambiar_estado_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    integrante = get_object_or_404(ComunicacionIntegrante, pk=pk)
+    nuevo_estado = request.POST.get('estado', '').strip().upper()
+    estados_validos = {choice[0] for choice in ComunicacionIntegrante.Estado.choices}
+    if nuevo_estado not in estados_validos:
+        messages.error(request, 'Estado inválido.')
+        return redirect('afiliados:detalle_integrante_comunicacion', pk=pk)
+    integrante.estado = nuevo_estado
+    integrante.usuario_modificacion = request.user
+    integrante.save(update_fields=['estado', 'usuario_modificacion', 'fecha_actualizacion'])
+    messages.success(request, 'Estado actualizado correctamente.')
+    return redirect('afiliados:detalle_integrante_comunicacion', pk=pk)
+
+
+@login_required
+def panorama_municipal_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    comunidad_qs = Comunidad.objects.select_related('sector')
+    sector_qs = Sector.objects.all()
+    centro_qs = CentroVotacion.objects.all()
+    coordinadores = CoordinadorComunicacion.objects.all()
+    lideres = LiderComunicacion.objects.all()
+    estructuras = EstructuraComunicacion.objects.all()
+    reuniones = ReunionComunicacion.objects.all()
+    incidencias = IncidenciaComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO)
+    responsables = ResponsableComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO)
+    comunidad_ids_cubiertas = set(CoordinadorComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)) | set(LiderComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)) | set(EstructuraComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)) | set(ResponsableComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True))
+    sector_ids_cubiertos = set(CoordinadorComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)) | set(EstructuraComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)) | set(ResponsableComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True))
+    centro_ids_cubiertos = set(CoordinadorComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)) | set(EstructuraComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)) | set(ResponsableComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True))
+    crecimiento = {'coordinadores': list(coordinadores.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')), 'lideres': list(lideres.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')), 'estructuras': list(estructuras.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')), 'reuniones': list(reuniones.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes'))}
+
+    def _serie_por_mes(key):
+        return {item['mes'].strftime('%Y-%m'): item['total'] for item in crecimiento.get(key, []) if item.get('mes')}
+    meses = sorted(set(_serie_por_mes('coordinadores').keys()) | set(_serie_por_mes('lideres').keys()) | set(_serie_por_mes('estructuras').keys()) | set(_serie_por_mes('reuniones').keys()))
+    crecimiento_series = {'labels': meses, 'coordinadores': [_serie_por_mes('coordinadores').get(m, 0) for m in meses], 'lideres': [_serie_por_mes('lideres').get(m, 0) for m in meses], 'estructuras': [_serie_por_mes('estructuras').get(m, 0) for m in meses], 'reuniones': [_serie_por_mes('reuniones').get(m, 0) for m in meses]}
+    context = {'total_comunidades': comunidad_qs.count(), 'comunidades_cubiertas': len(comunidad_ids_cubiertas), 'comunidades_no_cubiertas': max(comunidad_qs.count() - len(comunidad_ids_cubiertas), 0), 'total_sectores': sector_qs.count(), 'sectores_con_responsable': responsables.exclude(sector__isnull=True).values('sector_id').distinct().count(), 'sectores_sin_responsable': max(sector_qs.count() - responsables.exclude(sector__isnull=True).values('sector_id').distinct().count(), 0), 'total_centros': centro_qs.count(), 'centros_con_cobertura': len(centro_ids_cubiertos), 'centros_sin_cobertura': max(centro_qs.count() - len(centro_ids_cubiertos), 0), 'coordinadores_activos': coordinadores.filter(estado=EstadoRegistro.ACTIVO).count(), 'coordinadores_inactivos': coordinadores.filter(estado=EstadoRegistro.INACTIVO).count(), 'total_lideres': lideres.count(), 'estructuras_activas': estructuras.filter(estado=EstadoRegistro.ACTIVO).count(), 'reuniones_mes': reuniones.filter(fecha__month=timezone.now().month, fecha__year=timezone.now().year).count(), 'incidencias_abiertas': incidencias.count(), 'resumen_comunidad': comunidad_qs.annotate(total_sectores=Count('sector', distinct=True), reuniones_total=Count('reuniones_comunicacion', distinct=True), incidencias_abiertas=Count('incidencias_comunicacion', filter=Q(incidencias_comunicacion__estado=EstadoRegistro.ACTIVO), distinct=True)), 'resumen_sector': sector_qs.annotate(lideres_total=Count('lideres_comunicacion', distinct=True), estructuras_total=Count('estructuras_comunicacion', distinct=True), incidencias_total=Count('incidencias_comunicacion', distinct=True)), 'resumen_centro': centro_qs.annotate(incidencias_total=Count('incidencias_comunicacion', distinct=True), reuniones_total=Count('reuniones_comunicacion', distinct=True)), 'crecimiento': json.dumps(crecimiento, cls=DjangoJSONEncoder), 'charts_data': json.dumps({'cobertura': {'comunidades': [len(comunidad_ids_cubiertas), max(comunidad_qs.count() - len(comunidad_ids_cubiertas), 0)], 'sectores': [len(sector_ids_cubiertos), max(sector_qs.count() - len(sector_ids_cubiertos), 0)], 'centros': [len(centro_ids_cubiertos), max(centro_qs.count() - len(centro_ids_cubiertos), 0)]}, 'estructura': {'coordinadores': [coordinadores.filter(estado=EstadoRegistro.ACTIVO).count(), coordinadores.filter(estado=EstadoRegistro.INACTIVO).count()], 'lideres_total': lideres.count(), 'estructuras_activas': estructuras.filter(estado=EstadoRegistro.ACTIVO).count()}, 'crecimiento': crecimiento_series}, cls=DjangoJSONEncoder)}
+    return safe_render(request, 'afiliados/comunicacion/panorama.html', context)
+
+
+def _com_crud(request, model, form_class, template, list_name, create_name, edit_name, pk=None):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    instance = get_object_or_404(model, pk=pk) if pk else None
+    form = form_class(request.POST or None, instance=instance)
+    if request.method == 'POST' and form.is_valid():
+        obj = form.save(commit=False)
+        if not getattr(obj, 'usuario_creador_id', None):
+            obj.usuario_creador = request.user
+        obj.usuario_modificador = request.user
+        obj.save()
+        messages.success(request, 'Registro guardado correctamente.')
+        return redirect(list_name)
+    context = {'form': form, 'items': model.objects.all().order_by('-id')[:200], 'entity_label': template, 'create_name': create_name, 'edit_name': edit_name, 'detail_name': {'coordinadores': 'afiliados:detalle_coordinador_comunicacion', 'lideres': 'afiliados:detalle_lider_comunicacion', 'estructuras': 'afiliados:detalle_estructura_comunicacion', 'responsables': 'afiliados:detalle_responsable_comunicacion', 'reuniones': 'afiliados:detalle_reunion_comunicacion', 'incidencias': 'afiliados:detalle_incidencia_comunicacion'}.get(template), 'comunidad_lookup_url': reverse('afiliados:comunicacion_comunidad_lookup'), 'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_comunicacion')}
+    if template == 'reuniones':
+        responsables_modal = []
+        for responsable in ResponsableComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({'tipo': 'RESPONSABLE', 'tipo_label': 'Responsable', 'id': responsable.id, 'nombre': responsable.nombre_completo, 'dpi': responsable.dpi, 'comunidad': responsable.comunidad.nombre if responsable.comunidad else ''})
+        for coordinador in CoordinadorComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({'tipo': 'COORDINADOR', 'tipo_label': 'Coordinador', 'id': coordinador.id, 'nombre': coordinador.nombre_completo, 'dpi': coordinador.dpi, 'comunidad': coordinador.comunidad.nombre if coordinador.comunidad else ''})
+        for lider in LiderComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({'tipo': 'LIDER', 'tipo_label': 'Enlace de comunicación', 'id': lider.id, 'nombre': lider.nombre_completo, 'dpi': lider.dpi, 'comunidad': lider.comunidad.nombre if lider.comunidad else ''})
+        context['responsables_modal'] = responsables_modal
+    if template == 'estructuras':
+        coordinadores_modal = []
+        for coordinador in CoordinadorComunicacion.objects.select_related('comunidad').order_by('nombre_completo'):
+            coordinadores_modal.append({'id': coordinador.id, 'nombre': coordinador.nombre_completo, 'dpi': coordinador.dpi, 'comunidad': coordinador.comunidad.nombre if coordinador.comunidad else '', 'estado': coordinador.get_estado_display()})
+        context['coordinadores_modal'] = coordinadores_modal
+        coord_id = form['coordinador_responsable'].value()
+        coord = CoordinadorComunicacion.objects.filter(pk=coord_id).first() if coord_id else None
+        context['coordinador_responsable_display'] = coord.nombre_completo if coord else ''
+    return safe_render(request, f'afiliados/comunicacion/crud_{template}.html', context)
+
+
+@login_required
+def lista_estructura_territorial_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    comunidades = Comunidad.objects.select_related('sector').order_by('nombre')
+    sectores = Sector.objects.order_by('nombre')
+    centros = CentroVotacion.objects.order_by('nombre')
+    return safe_render(request, 'afiliados/comunicacion/estructura_territorial.html', {'comunidades': comunidades, 'sectores': sectores, 'centros': centros, 'total_comunidades': comunidades.count(), 'total_sectores': sectores.count(), 'total_centros': centros.count()})
+
+
+@login_required
+def lista_coordinadores_comunicacion(request): return _com_crud(request, CoordinadorComunicacion, CoordinadorComunicacionForm, 'coordinadores', 'afiliados:lista_coordinadores_comunicacion', 'afiliados:crear_coordinador_comunicacion', 'afiliados:editar_coordinador_comunicacion')
+@login_required
+def crear_coordinador_comunicacion(request): return _com_crud(request, CoordinadorComunicacion, CoordinadorComunicacionForm, 'coordinadores', 'afiliados:lista_coordinadores_comunicacion', 'afiliados:crear_coordinador_comunicacion', 'afiliados:editar_coordinador_comunicacion')
+@login_required
+def editar_coordinador_comunicacion(request, pk): return _com_crud(request, CoordinadorComunicacion, CoordinadorComunicacionForm, 'coordinadores', 'afiliados:lista_coordinadores_comunicacion', 'afiliados:crear_coordinador_comunicacion', 'afiliados:editar_coordinador_comunicacion', pk=pk)
+@login_required
+def detalle_coordinador_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/comunicacion/detalle_generico.html', {'obj': get_object_or_404(CoordinadorComunicacion, pk=pk), 'titulo': 'Coordinador de comunicación'})
+@login_required
+def lista_lideres_comunicacion(request): return _com_crud(request, LiderComunicacion, LiderComunicacionForm, 'lideres', 'afiliados:lista_lideres_comunicacion', 'afiliados:crear_lider_comunicacion', 'afiliados:editar_lider_comunicacion')
+@login_required
+def crear_lider_comunicacion(request): return _com_crud(request, LiderComunicacion, LiderComunicacionForm, 'lideres', 'afiliados:lista_lideres_comunicacion', 'afiliados:crear_lider_comunicacion', 'afiliados:editar_lider_comunicacion')
+@login_required
+def editar_lider_comunicacion(request, pk): return _com_crud(request, LiderComunicacion, LiderComunicacionForm, 'lideres', 'afiliados:lista_lideres_comunicacion', 'afiliados:crear_lider_comunicacion', 'afiliados:editar_lider_comunicacion', pk=pk)
+@login_required
+def detalle_lider_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/comunicacion/detalle_generico.html', {'obj': get_object_or_404(LiderComunicacion, pk=pk), 'titulo': 'Enlace de comunicación'})
+@login_required
+def lista_estructuras_comunicacion(request): return _com_crud(request, EstructuraComunicacion, EstructuraComunicacionForm, 'estructuras', 'afiliados:lista_estructuras_comunicacion', 'afiliados:crear_estructura_comunicacion', 'afiliados:editar_estructura_comunicacion')
+@login_required
+def crear_estructura_comunicacion(request): return _com_crud(request, EstructuraComunicacion, EstructuraComunicacionForm, 'estructuras', 'afiliados:lista_estructuras_comunicacion', 'afiliados:crear_estructura_comunicacion', 'afiliados:editar_estructura_comunicacion')
+@login_required
+def editar_estructura_comunicacion(request, pk): return _com_crud(request, EstructuraComunicacion, EstructuraComunicacionForm, 'estructuras', 'afiliados:lista_estructuras_comunicacion', 'afiliados:crear_estructura_comunicacion', 'afiliados:editar_estructura_comunicacion', pk=pk)
+
+
+@login_required
+def detalle_estructura_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    estructura = get_object_or_404(EstructuraComunicacion.objects.select_related('comunidad', 'sector', 'centro_votacion', 'coordinador_responsable'), pk=pk)
+    if request.method == 'POST':
+        dpi = re.sub(r"\D", "", request.POST.get('dpi', ''))
+        verified_dpi = re.sub(r"\D", "", request.POST.get('verified_dpi', ''))
+        if not dpi or verified_dpi != dpi:
+            messages.error(request, 'Primero debe verificar empadronamiento del DPI antes de confirmar agregado.')
+            return redirect('afiliados:detalle_estructura_comunicacion', pk=estructura.pk)
+        payload, status_code = _resultado_padron_local(dpi)
+        if status_code != 200 or not payload.get('ok') or not payload.get('found'):
+            messages.error(request, payload.get('error') or payload.get('message') or 'No aparece empadronado en padrón local.')
+            return redirect('afiliados:detalle_estructura_comunicacion', pk=estructura.pk)
+        persona = payload.get('data') or {}
+        if EstructuraIntegranteComunicacion.objects.filter(estructura=estructura, dpi=dpi).exists():
+            messages.warning(request, 'Este integrante ya está registrado en la estructura de comunicación.')
+            return redirect('afiliados:detalle_estructura_comunicacion', pk=estructura.pk)
+        comunidad = Comunidad.objects.filter(nombre=persona.get('comunidad')).first() if persona.get('comunidad') else None
+        EstructuraIntegranteComunicacion.objects.create(estructura=estructura, dpi=dpi, nombre_completo=persona.get('nombre_completo') or f"Integrante {dpi}", comunidad=comunidad, usuario_registro=request.user)
+        messages.success(request, 'Integrante agregado correctamente a la estructura de comunicación.')
+        return redirect('afiliados:detalle_estructura_comunicacion', pk=estructura.pk)
+    integrantes = estructura.integrantes.select_related('usuario_registro').all()
+    return safe_render(request, 'afiliados/comunicacion/detalle_estructura.html', {'estructura': estructura, 'integrantes': integrantes, 'total_integrantes': integrantes.count(), 'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_comunicacion')})
+
+
+@login_required
+@require_POST
+def eliminar_integrante_estructura_comunicacion(request, pk, integrante_id):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    estructura = get_object_or_404(EstructuraComunicacion, pk=pk)
+    integrante = get_object_or_404(EstructuraIntegranteComunicacion, pk=integrante_id, estructura=estructura)
+    integrante.delete()
+    messages.success(request, 'Integrante eliminado correctamente de la estructura de comunicación.')
+    return redirect('afiliados:detalle_estructura_comunicacion', pk=estructura.pk)
+
+@login_required
+def lista_responsables_comunicacion(request): return _com_crud(request, ResponsableComunicacion, ResponsableComunicacionForm, 'responsables', 'afiliados:lista_responsables_comunicacion', 'afiliados:crear_responsable_comunicacion', 'afiliados:editar_responsable_comunicacion')
+@login_required
+def crear_responsable_comunicacion(request): return _com_crud(request, ResponsableComunicacion, ResponsableComunicacionForm, 'responsables', 'afiliados:lista_responsables_comunicacion', 'afiliados:crear_responsable_comunicacion', 'afiliados:editar_responsable_comunicacion')
+@login_required
+def editar_responsable_comunicacion(request, pk): return _com_crud(request, ResponsableComunicacion, ResponsableComunicacionForm, 'responsables', 'afiliados:lista_responsables_comunicacion', 'afiliados:crear_responsable_comunicacion', 'afiliados:editar_responsable_comunicacion', pk=pk)
+@login_required
+def detalle_responsable_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/comunicacion/detalle_generico.html', {'obj': get_object_or_404(ResponsableComunicacion, pk=pk), 'titulo': 'Responsable de comunicación'})
+@login_required
+def lista_reuniones_comunicacion(request): return _com_crud(request, ReunionComunicacion, ReunionComunicacionForm, 'reuniones', 'afiliados:lista_reuniones_comunicacion', 'afiliados:crear_reunion_comunicacion', 'afiliados:editar_reunion_comunicacion')
+@login_required
+def crear_reunion_comunicacion(request): return _com_crud(request, ReunionComunicacion, ReunionComunicacionForm, 'reuniones', 'afiliados:lista_reuniones_comunicacion', 'afiliados:crear_reunion_comunicacion', 'afiliados:editar_reunion_comunicacion')
+@login_required
+def editar_reunion_comunicacion(request, pk): return _com_crud(request, ReunionComunicacion, ReunionComunicacionForm, 'reuniones', 'afiliados:lista_reuniones_comunicacion', 'afiliados:crear_reunion_comunicacion', 'afiliados:editar_reunion_comunicacion', pk=pk)
+@login_required
+def detalle_reunion_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/comunicacion/detalle_reunion.html', {'reunion': get_object_or_404(ReunionComunicacion, pk=pk)})
+@login_required
+def lista_incidencias_comunicacion(request): return _com_crud(request, IncidenciaComunicacion, IncidenciaComunicacionForm, 'incidencias', 'afiliados:lista_incidencias_comunicacion', 'afiliados:crear_incidencia_comunicacion', 'afiliados:editar_incidencia_comunicacion')
+@login_required
+def crear_incidencia_comunicacion(request): return _com_crud(request, IncidenciaComunicacion, IncidenciaComunicacionForm, 'incidencias', 'afiliados:lista_incidencias_comunicacion', 'afiliados:crear_incidencia_comunicacion', 'afiliados:editar_incidencia_comunicacion')
+@login_required
+def editar_incidencia_comunicacion(request, pk): return _com_crud(request, IncidenciaComunicacion, IncidenciaComunicacionForm, 'incidencias', 'afiliados:lista_incidencias_comunicacion', 'afiliados:crear_incidencia_comunicacion', 'afiliados:editar_incidencia_comunicacion', pk=pk)
+@login_required
+def detalle_incidencia_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/comunicacion/detalle_generico.html', {'obj': get_object_or_404(IncidenciaComunicacion, pk=pk), 'titulo': 'Incidencia de comunicación'})
+@login_required
+def reporte_cobertura_comunicacion(request): return panorama_municipal_comunicacion(request)
+@login_required
+def reporte_coordinadores_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/comunicacion/reporte_coordinadores.html', {'coordinadores': CoordinadorComunicacion.objects.select_related('comunidad', 'sector', 'centro_votacion').order_by('-fecha_creacion')})
+@login_required
+def reporte_reuniones_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/comunicacion/reporte_reuniones.html', {'reuniones': ReunionComunicacion.objects.select_related('comunidad', 'sector', 'centro_votacion').order_by('-fecha')})
+@login_required
+def reporte_crecimiento_mensual_comunicacion(request): return panorama_municipal_comunicacion(request)
+
+
+@login_required
+@require_GET
+def comunicacion_comunidad_lookup(request):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    comunidad = Comunidad.objects.select_related('sector').filter(pk=request.GET.get('comunidad_id')).first()
+    if not comunidad:
+        return JsonResponse({'ok': False, 'error': 'Comunidad no encontrada.'}, status=404)
+    centro = comunidad.sector.centros.first() if comunidad.sector else None
+    return JsonResponse({'ok': True, 'data': {'comunidad': comunidad.nombre, 'sector': comunidad.sector.nombre if comunidad.sector else None, 'centro_votacion': centro.nombre if centro else None}})
+
+
+def _com_extra_crud(request, model, form_class, template_name, list_url, pk=None):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    instance = get_object_or_404(model, pk=pk) if pk else None
+    form = form_class(request.POST or None, instance=instance)
+    if request.method == 'POST' and form.is_valid():
+        obj = form.save(commit=False)
+        if not getattr(obj, 'usuario_creador_id', None):
+            obj.usuario_creador = request.user
+        obj.usuario_modificador = request.user
+        obj.save()
+        messages.success(request, 'Registro guardado correctamente.')
+        return redirect(list_url)
+    return safe_render(request, template_name, {'form': form, 'items': model.objects.all().order_by('-id')[:200]})
+
+
+@login_required
+def lista_agenda_publicaciones(request): return _com_extra_crud(request, AgendaPublicacion, AgendaPublicacionForm, 'afiliados/comunicacion/crud_agenda_publicaciones.html', 'afiliados:lista_agenda_publicaciones')
+@login_required
+def editar_agenda_publicaciones(request, pk): return _com_extra_crud(request, AgendaPublicacion, AgendaPublicacionForm, 'afiliados/comunicacion/crud_agenda_publicaciones.html', 'afiliados:lista_agenda_publicaciones', pk=pk)
+@login_required
+def lista_solicitudes_contenido(request): return _com_extra_crud(request, SolicitudContenido, SolicitudContenidoForm, 'afiliados/comunicacion/crud_solicitudes_contenido.html', 'afiliados:lista_solicitudes_contenido')
+@login_required
+def editar_solicitudes_contenido(request, pk): return _com_extra_crud(request, SolicitudContenido, SolicitudContenidoForm, 'afiliados/comunicacion/crud_solicitudes_contenido.html', 'afiliados:lista_solicitudes_contenido', pk=pk)
+@login_required
+def lista_cobertura_actividades(request): return _com_extra_crud(request, CoberturaActividad, CoberturaActividadForm, 'afiliados/comunicacion/crud_cobertura_actividades.html', 'afiliados:lista_cobertura_actividades')
+@login_required
+def editar_cobertura_actividades(request, pk): return _com_extra_crud(request, CoberturaActividad, CoberturaActividadForm, 'afiliados/comunicacion/crud_cobertura_actividades.html', 'afiliados:lista_cobertura_actividades', pk=pk)
+@login_required
+def lista_banco_medios(request): return _com_extra_crud(request, BancoMedios, BancoMediosForm, 'afiliados/comunicacion/crud_banco_medios.html', 'afiliados:lista_banco_medios')
+@login_required
+def editar_banco_medios(request, pk): return _com_extra_crud(request, BancoMedios, BancoMediosForm, 'afiliados/comunicacion/crud_banco_medios.html', 'afiliados:lista_banco_medios', pk=pk)
+@login_required
+def lista_campanas_comunicacion(request): return _com_extra_crud(request, CampanaComunicacion, CampanaComunicacionForm, 'afiliados/comunicacion/crud_campanas_comunicacion.html', 'afiliados:lista_campanas_comunicacion')
+@login_required
+def editar_campanas_comunicacion(request, pk): return _com_extra_crud(request, CampanaComunicacion, CampanaComunicacionForm, 'afiliados/comunicacion/crud_campanas_comunicacion.html', 'afiliados:lista_campanas_comunicacion', pk=pk)
+@login_required
+def lista_monitoreo_redes(request): return _com_extra_crud(request, MonitoreoRed, MonitoreoRedForm, 'afiliados/comunicacion/crud_monitoreo_redes.html', 'afiliados:lista_monitoreo_redes')
+@login_required
+def editar_monitoreo_redes(request, pk): return _com_extra_crud(request, MonitoreoRed, MonitoreoRedForm, 'afiliados/comunicacion/crud_monitoreo_redes.html', 'afiliados:lista_monitoreo_redes', pk=pk)
