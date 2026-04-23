@@ -312,6 +312,8 @@ class OrganizacionUIWiringTests(TestCase):
         self.assertIn('data-fuente="coordinadora_mujeres"', html)
         self.assertIn("event.target.closest('.js-afiliar-desde-pendientes')", html)
         self.assertIn("const hasSwal = typeof window.Swal !== 'undefined'", html)
+        self.assertIn("modal_afiliar_desde_secretaria_form", html)
+        self.assertIn("formAfiliarPendienteModal", html)
         self.assertNotIn("Verificar Empadronamiento", html)
 
     def test_afiliar_desde_secretaria_redirige_con_prefill_reutilizando_datos(self):
@@ -364,6 +366,26 @@ class OrganizacionUIWiringTests(TestCase):
         self.assertEqual(payload["prefill"]["nombre"], "Persona Modal")
         self.assertEqual(payload["prefill"]["telefono"], "10101010")
         self.assertEqual(payload["prefill"]["comunidad_id"], str(self.comunidad.pk))
+
+    def test_modal_afiliar_desde_secretaria_form_retorna_html_precargado(self):
+        self.client.login(username="admin_user", password="12345")
+        registro_fuente = CoordinadoraMujeres.objects.create(
+            nombre_completo="Persona Modal HTML",
+            dpi="1234567890123",
+            telefono="30303030",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+
+        response = self.client.get(
+            reverse("afiliados:modal_afiliar_desde_secretaria_form"),
+            {"dpi": "1234567890123", "fuente": "coordinadora_mujeres", "fuente_id": registro_fuente.pk},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertIn("formAfiliarPendienteModal", payload["form_html"])
+        self.assertIn("Persona Modal HTML", payload["form_html"])
 
     def test_prefill_afiliacion_desde_secretaria_bloquea_si_ya_esta_afiliado(self):
         self.client.login(username="admin_user", password="12345")

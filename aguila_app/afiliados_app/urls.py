@@ -78,6 +78,8 @@ path('centros/eliminar/<int:pk>/', views.centro_eliminar, name='centro_eliminar'
     path('comisiones/eliminar/<int:pk>/', views.comision_eliminar, name='comision_eliminar'),
     path('afiliacion/pendientes-secretarias/', views.pendientes_afiliacion_secretarias, name='pendientes_afiliacion_secretarias'),
     path('afiliacion/pendientes-secretarias/prefill/', views.prefill_afiliacion_desde_secretaria, name='prefill_afiliacion_desde_secretaria'),
+    path('afiliacion/pendientes-secretarias/modal-form/', views.modal_afiliar_desde_secretaria_form, name='modal_afiliar_desde_secretaria_form'),
+    path('afiliacion/pendientes-secretarias/modal-guardar/', views.modal_afiliar_desde_secretaria_guardar, name='modal_afiliar_desde_secretaria_guardar'),
     path('afiliacion/pendientes-secretarias/afiliar/', views.afiliar_desde_secretaria, name='afiliar_desde_secretaria'),
 
 path("api/padron/", views.consultar_padron_local, name="consultar_padron_local"),

@@ -1362,6 +1362,101 @@ def prefill_afiliacion_desde_secretaria(request):
 
 
 @login_required
+def modal_afiliar_desde_secretaria_form(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para ejecutar esta acción.")
+
+    dpi = _normalizar_dpi(request.GET.get('dpi', ''))
+    fuente_clave = (request.GET.get('fuente') or '').strip()
+    fuente_id = (request.GET.get('fuente_id') or '').strip()
+
+    if len(dpi) != 13:
+        return JsonResponse({'ok': False, 'message': 'DPI inválido.'}, status=400)
+
+    afiliado_existente = _buscar_afiliado_por_dpi_normalizado(dpi)
+    if afiliado_existente:
+        return JsonResponse({
+            'ok': False,
+            'exists': True,
+            'message': f'El DPI {dpi} ya está afiliado.',
+            'detalle_url': reverse('afiliados:afiliado_detalle', args=[afiliado_existente.pk]),
+        }, status=409)
+
+    persona_fuente = _fuente_por_referencia(fuente_clave, fuente_id, dpi) if fuente_clave else None
+    if not persona_fuente:
+        return JsonResponse({
+            'ok': False,
+            'message': 'No se encontró un registro fuente válido para ese DPI y secretaría de origen.',
+        }, status=404)
+
+    prefill = _extraer_prefill_desde_fuente(persona_fuente)
+    form = AfiliadoForm(initial={
+        'dpi': dpi,
+        'nombre_completo': prefill.get('nombre', ''),
+        'telefono': prefill.get('telefono', ''),
+        'direccion': prefill.get('direccion', ''),
+        'comunidad': prefill.get('comunidad_id') or None,
+        'empadronado': True,
+    })
+    form_html = render_to_string(
+        'afiliados/partials/modal_afiliar_desde_secretaria_form.html',
+        {
+            'form': form,
+            'dpi': dpi,
+            'fuente': fuente_clave,
+            'fuente_id': fuente_id,
+        },
+        request=request,
+    )
+    return JsonResponse({'ok': True, 'form_html': form_html})
+
+
+@login_required
+def modal_afiliar_desde_secretaria_guardar(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para ejecutar esta acción.")
+
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': 'Método no permitido.'}, status=405)
+
+    dpi = _normalizar_dpi(request.POST.get('dpi', ''))
+    fuente_clave = (request.POST.get('fuente') or '').strip()
+    fuente_id = (request.POST.get('fuente_id') or '').strip()
+    persona_fuente = _fuente_por_referencia(fuente_clave, fuente_id, dpi) if fuente_clave else None
+    if not persona_fuente:
+        return JsonResponse({
+            'ok': False,
+            'message': 'No se encontró un registro fuente válido para guardar la afiliación.',
+        }, status=404)
+
+    afiliado_existente = _buscar_afiliado_por_dpi_normalizado(dpi)
+    if afiliado_existente:
+        return JsonResponse({
+            'ok': False,
+            'exists': True,
+            'message': f'El DPI {dpi} ya está afiliado.',
+            'detalle_url': reverse('afiliados:afiliado_detalle', args=[afiliado_existente.pk]),
+        }, status=409)
+
+    form = AfiliadoForm(request.POST)
+    if form.is_valid():
+        afiliado = form.save()
+        return JsonResponse({'ok': True, 'message': f"Afiliado '{afiliado.nombre_completo}' guardado con éxito."})
+
+    form_html = render_to_string(
+        'afiliados/partials/modal_afiliar_desde_secretaria_form.html',
+        {
+            'form': form,
+            'dpi': request.POST.get('dpi', ''),
+            'fuente': fuente_clave,
+            'fuente_id': fuente_id,
+        },
+        request=request,
+    )
+    return JsonResponse({'ok': False, 'message': 'Error de validación.', 'form_html': form_html}, status=400)
+
+
+@login_required
 def afiliar_desde_secretaria(request):
     if not _es_usuario_afiliacion(request.user):
         raise PermissionDenied("No tiene permisos para ejecutar esta acción.")
