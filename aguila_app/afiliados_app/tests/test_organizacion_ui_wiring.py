@@ -308,7 +308,9 @@ class OrganizacionUIWiringTests(TestCase):
 
         html = response.content.decode()
         self.assertIn("Exportar a Excel", html)
-        self.assertNotIn(">Afiliar<", html)
+        self.assertIn(">Afiliar<", html)
+        self.assertIn('id="afiliarPendienteModal"', html)
+        self.assertIn("modal_afiliar_desde_secretaria_form", html)
 
     def test_afiliar_desde_secretaria_redirige_con_prefill_reutilizando_datos(self):
         self.client.login(username="admin_user", password="12345")
