@@ -1289,6 +1289,8 @@ def pendientes_afiliacion_secretarias(request):
             'comunidad': item['comunidad'],
             'estado': item['estado'],
             'fecha_registro': item['fecha_registro'],
+            'fuente_clave': fuente_preferida['fuente_clave'],
+            'fuente_id': fuente_preferida['fuente_id'],
             'afiliar_url': (
                 f"{reverse('afiliados:afiliar_desde_secretaria')}?"
                 f"{urlencode({'dpi': item['dpi'], 'fuente': fuente_preferida['fuente_clave'], 'fuente_id': fuente_preferida['fuente_id'], 'nombre': prefill.get('nombre') or item['nombre_completo'], 'comunidad': prefill.get('comunidad') or (item['comunidad'] if item['comunidad'] != 'N/A' else ''), 'comunidad_id': prefill.get('comunidad_id', ''), 'telefono': prefill.get('telefono', ''), 'direccion': prefill.get('direccion', '')})}"
