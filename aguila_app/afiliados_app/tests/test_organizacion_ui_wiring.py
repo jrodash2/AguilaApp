@@ -307,14 +307,8 @@ class OrganizacionUIWiringTests(TestCase):
         self.assertEqual(parsed.get("comunidad_id", [None])[0], str(self.comunidad.pk))
 
         html = response.content.decode()
-        self.assertIn('id="afiliarPendienteModal"', html)
-        self.assertIn('js-afiliar-desde-pendientes', html)
-        self.assertIn('data-fuente="coordinadora_mujeres"', html)
-        self.assertIn("event.target.closest('.js-afiliar-desde-pendientes')", html)
-        self.assertIn("const hasSwal = typeof window.Swal !== 'undefined'", html)
-        self.assertIn("modal_afiliar_desde_secretaria_form", html)
-        self.assertIn("formAfiliarPendienteModal", html)
-        self.assertNotIn("Verificar Empadronamiento", html)
+        self.assertIn("Exportar a Excel", html)
+        self.assertNotIn(">Afiliar<", html)
 
     def test_afiliar_desde_secretaria_redirige_con_prefill_reutilizando_datos(self):
         self.client.login(username="admin_user", password="12345")
@@ -386,6 +380,25 @@ class OrganizacionUIWiringTests(TestCase):
         self.assertTrue(payload["ok"])
         self.assertIn("formAfiliarPendienteModal", payload["form_html"])
         self.assertIn("Persona Modal HTML", payload["form_html"])
+
+    def test_exportar_pendientes_afiliacion_secretarias_excel_descarga_archivo(self):
+        self.client.login(username="admin_user", password="12345")
+        CoordinadoraMujeres.objects.create(
+            nombre_completo="Persona Export",
+            dpi="1234567890123",
+            telefono="40404040",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+
+        response = self.client.get(reverse("afiliados:exportar_pendientes_afiliacion_secretarias_excel"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertIn("pendientes_afiliacion_secretarias.xlsx", response["Content-Disposition"])
+        self.assertGreater(len(response.content), 0)
 
     def test_prefill_afiliacion_desde_secretaria_bloquea_si_ya_esta_afiliado(self):
         self.client.login(username="admin_user", password="12345")

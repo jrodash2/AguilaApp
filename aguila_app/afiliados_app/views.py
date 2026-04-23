@@ -1210,10 +1210,7 @@ def _buscar_afiliado_por_dpi_normalizado(dpi):
 
 
 @login_required
-def pendientes_afiliacion_secretarias(request):
-    if not _es_usuario_afiliacion(request.user):
-        raise PermissionDenied("No tiene permisos para acceder a esta vista.")
-
+def _obtener_pendientes_afiliacion_secretarias():
     afiliados_dpi = {_normalizar_dpi(v) for v in Afiliado.objects.values_list('dpi', flat=True) if _normalizar_dpi(v)}
     pendientes_por_dpi = {}
 
@@ -1287,6 +1284,7 @@ def pendientes_afiliacion_secretarias(request):
             'nombre_completo': item['nombre_completo'],
             'secretarias': ", ".join(secretarias),
             'comunidad': item['comunidad'],
+            'telefono': prefill.get('telefono') or '',
             'estado': item['estado'],
             'fecha_registro': item['fecha_registro'],
             'fuente_clave': fuente_preferida['fuente_clave'],
@@ -1298,6 +1296,15 @@ def pendientes_afiliacion_secretarias(request):
         })
 
     filas.sort(key=lambda x: x['nombre_completo'].lower())
+    return filas, total_por_secretaria
+
+
+@login_required
+def pendientes_afiliacion_secretarias(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para acceder a esta vista.")
+
+    filas, total_por_secretaria = _obtener_pendientes_afiliacion_secretarias()
 
     context = {
         'pendientes': filas,
@@ -1308,6 +1315,43 @@ def pendientes_afiliacion_secretarias(request):
         'form': AfiliadoForm(),
     }
     return safe_render(request, 'afiliados/pendientes_afiliacion_secretarias.html', context)
+
+
+@login_required
+def exportar_pendientes_afiliacion_secretarias_excel(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para exportar pendientes de afiliación.")
+
+    filas, _totales = _obtener_pendientes_afiliacion_secretarias()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Pendientes afiliación"
+    headers = ["DPI", "Nombre completo", "Secretaría", "Comunidad", "Teléfono", "Estado", "Fecha registro"]
+    ws.append(headers)
+
+    for row in filas:
+        fecha = row.get('fecha_registro')
+        fecha_txt = fecha.strftime("%Y-%m-%d %H:%M:%S") if fecha else ""
+        ws.append([
+            row.get('dpi', ''),
+            row.get('nombre_completo', ''),
+            row.get('secretarias', ''),
+            row.get('comunidad', ''),
+            row.get('telefono', ''),
+            row.get('estado', ''),
+            fecha_txt,
+        ])
+
+    for col_idx, header in enumerate(headers, start=1):
+        ws.column_dimensions[get_column_letter(col_idx)].width = max(16, len(header) + 2)
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="pendientes_afiliacion_secretarias.xlsx"'
+    wb.save(response)
+    return response
 
 
 @login_required

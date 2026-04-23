@@ -77,6 +77,7 @@ path('centros/eliminar/<int:pk>/', views.centro_eliminar, name='centro_eliminar'
     path('comisiones/editar/<int:pk>/', views.comision_editar, name='comision_editar'),
     path('comisiones/eliminar/<int:pk>/', views.comision_eliminar, name='comision_eliminar'),
     path('afiliacion/pendientes-secretarias/', views.pendientes_afiliacion_secretarias, name='pendientes_afiliacion_secretarias'),
+    path('afiliacion/pendientes-secretarias/exportar-excel/', views.exportar_pendientes_afiliacion_secretarias_excel, name='exportar_pendientes_afiliacion_secretarias_excel'),
     path('afiliacion/pendientes-secretarias/prefill/', views.prefill_afiliacion_desde_secretaria, name='prefill_afiliacion_desde_secretaria'),
     path('afiliacion/pendientes-secretarias/modal-form/', views.modal_afiliar_desde_secretaria_form, name='modal_afiliar_desde_secretaria_form'),
     path('afiliacion/pendientes-secretarias/modal-guardar/', views.modal_afiliar_desde_secretaria_guardar, name='modal_afiliar_desde_secretaria_guardar'),
