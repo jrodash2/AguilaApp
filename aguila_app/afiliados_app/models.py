@@ -1193,6 +1193,333 @@ class AgendaLogistica(models.Model):
         return self.actividad
 
 
+class ComunicacionIntegrante(models.Model):
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        REVISADO = "REVISADO", "Revisado"
+        APROBADO = "APROBADO", "Aprobado"
+
+    afiliado = models.ForeignKey(Afiliado, on_delete=models.PROTECT, related_name="registros_comunicacion")
+    estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.PENDIENTE)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_registro = models.ForeignKey(User, on_delete=models.PROTECT, related_name="integrantes_comunicacion_registrados")
+    usuario_modificacion = models.ForeignKey(User, on_delete=models.PROTECT, related_name="integrantes_comunicacion_modificados", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Integrante de Comunicación y Redes"
+        verbose_name_plural = "Integrantes de Comunicación y Redes"
+        ordering = ["-fecha_creacion"]
+        constraints = [models.UniqueConstraint(fields=["afiliado"], name="uniq_comunicacion_afiliado")]
+
+    def __str__(self):
+        return f"{self.afiliado.nombre_completo} - {self.get_estado_display()}"
+
+
+class CoordinadorComunicacion(models.Model):
+    nombre_completo = models.CharField(max_length=160)
+    dpi = models.CharField(max_length=20, blank=True, null=True)
+    telefono = models.CharField(max_length=20, blank=True, null=True)
+    tipo_coordinacion = models.CharField(max_length=100, blank=True, null=True)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="coordinadores_comunicacion")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="coordinadores_comunicacion")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="coordinadores_comunicacion")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="coordinadores_com_creados")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="coordinadores_com_modificados", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        return self.nombre_completo
+
+
+class LiderComunicacion(models.Model):
+    nombre_completo = models.CharField(max_length=160)
+    dpi = models.CharField(max_length=20, blank=True, null=True)
+    telefono = models.CharField(max_length=20, blank=True, null=True)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="lideres_comunicacion")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="lideres_comunicacion")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="lideres_comunicacion")
+    coordinador = models.ForeignKey(CoordinadorComunicacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="lideres")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="lideres_com_creados")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="lideres_com_modificados", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        return self.nombre_completo
+
+
+class EstructuraComunicacion(models.Model):
+    tipo_estructura = models.CharField(max_length=80)
+    nombre = models.CharField(max_length=160)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="estructuras_comunicacion")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="estructuras_comunicacion")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="estructuras_comunicacion")
+    coordinador_responsable = models.ForeignKey(CoordinadorComunicacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="estructuras_responsables")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    cantidad_integrantes = models.PositiveIntegerField(default=0)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="estructuras_com_creadas")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="estructuras_com_modificadas", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        return self.nombre
+
+
+class ResponsableComunicacion(models.Model):
+    nombre_completo = models.CharField(max_length=160)
+    dpi = models.CharField(max_length=20, blank=True, null=True)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="responsables_comunicacion")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="responsables_comunicacion")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="responsables_comunicacion")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="responsables_com_creados")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="responsables_com_modificados", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        return self.nombre_completo
+
+
+class ReunionComunicacion(models.Model):
+    class Seguimiento(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        EN_PROCESO = "EN_PROCESO", "En proceso"
+        CUMPLIDO = "CUMPLIDO", "Cumplido"
+
+    fecha = models.DateField()
+    tipo_reunion = models.CharField(max_length=80, blank=True, null=True)
+    titulo = models.CharField(max_length=180)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="reuniones_comunicacion")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="reuniones_comunicacion")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="reuniones_comunicacion")
+    responsables = models.TextField(blank=True, null=True)
+    responsable_tipo = models.CharField(max_length=20, blank=True, null=True)
+    responsable_referencia_id = models.PositiveIntegerField(blank=True, null=True)
+    asistentes = models.PositiveIntegerField(default=0)
+    acuerdos = models.TextField(blank=True, null=True)
+    observaciones = models.TextField(blank=True, null=True)
+    estado_seguimiento = models.CharField(max_length=20, choices=Seguimiento.choices, default=Seguimiento.PENDIENTE)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="reuniones_com_creadas")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="reuniones_com_modificadas", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+
+    def __str__(self):
+        return self.titulo
+
+
+class IncidenciaComunicacion(models.Model):
+    class Prioridad(models.TextChoices):
+        BAJA = "BAJA", "Baja"
+        MEDIA = "MEDIA", "Media"
+        ALTA = "ALTA", "Alta"
+
+    tipo_incidencia = models.CharField(max_length=120)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_comunicacion")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_comunicacion")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_comunicacion")
+    descripcion = models.TextField()
+    prioridad = models.CharField(max_length=10, choices=Prioridad.choices, default=Prioridad.MEDIA)
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    responsable_asignado = models.ForeignKey(ResponsableComunicacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_asignadas")
+    seguimiento = models.TextField(blank=True, null=True)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="incidencias_com_creadas")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="incidencias_com_modificadas", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+    def __str__(self):
+        return self.tipo_incidencia
+
+
+class EstructuraIntegranteComunicacion(models.Model):
+    estructura = models.ForeignKey(EstructuraComunicacion, on_delete=models.CASCADE, related_name="integrantes")
+    dpi = models.CharField(max_length=20)
+    nombre_completo = models.CharField(max_length=180)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="integrantes_estructura_comunicacion")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    usuario_registro = models.ForeignKey(User, on_delete=models.PROTECT, related_name="integrantes_estructura_comunicacion_registrados")
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["estructura", "dpi"], name="uniq_estructura_comunicacion_integrante_dpi")]
+        ordering = ["-fecha_registro"]
+
+    def __str__(self):
+        return f"{self.nombre_completo} ({self.dpi})"
+
+
+class AgendaPublicacion(models.Model):
+    class EstadoPublicacion(models.TextChoices):
+        PLANIFICADA = "PLANIFICADA", "Planificada"
+        EN_DISENO = "EN_DISENO", "En diseño"
+        PUBLICADA = "PUBLICADA", "Publicada"
+        CANCELADA = "CANCELADA", "Cancelada"
+
+    fecha = models.DateField()
+    plataforma = models.CharField(max_length=80)
+    tipo_contenido = models.CharField(max_length=100)
+    estado = models.CharField(max_length=20, choices=EstadoPublicacion.choices, default=EstadoPublicacion.PLANIFICADA)
+    responsable = models.ForeignKey(ResponsableComunicacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="agendas_publicaciones")
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="agenda_pub_creada")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="agenda_pub_modificada", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+
+
+class SolicitudContenido(models.Model):
+    class Prioridad(models.TextChoices):
+        BAJA = "BAJA", "Baja"
+        MEDIA = "MEDIA", "Media"
+        ALTA = "ALTA", "Alta"
+        URGENTE = "URGENTE", "Urgente"
+
+    class Estado(models.TextChoices):
+        ABIERTA = "ABIERTA", "Abierta"
+        EN_PROCESO = "EN_PROCESO", "En proceso"
+        ENTREGADA = "ENTREGADA", "Entregada"
+        CANCELADA = "CANCELADA", "Cancelada"
+
+    titulo = models.CharField(max_length=180)
+    solicitante = models.CharField(max_length=160)
+    area_solicitante = models.CharField(max_length=120)
+    prioridad = models.CharField(max_length=10, choices=Prioridad.choices, default=Prioridad.MEDIA)
+    estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.ABIERTA)
+    fecha = models.DateField()
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="solicitudes_contenido_creadas")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="solicitudes_contenido_modificadas", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+
+
+class CoberturaActividad(models.Model):
+    class EstadoCobertura(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        EN_CURSO = "EN_CURSO", "En curso"
+        CUBIERTA = "CUBIERTA", "Cubierta"
+        CANCELADA = "CANCELADA", "Cancelada"
+
+    actividad = models.CharField(max_length=180)
+    fecha = models.DateField()
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="coberturas_comunicacion")
+    responsable = models.ForeignKey(ResponsableComunicacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="coberturas")
+    estado_cobertura = models.CharField(max_length=20, choices=EstadoCobertura.choices, default=EstadoCobertura.PENDIENTE)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="coberturas_com_creadas")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="coberturas_com_modificadas", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+
+
+class BancoMedios(models.Model):
+    class TipoMedio(models.TextChoices):
+        IMAGEN = "IMAGEN", "Imagen"
+        VIDEO = "VIDEO", "Video"
+        ARTE = "ARTE", "Arte"
+        COPY = "COPY", "Copy"
+        OTRO = "OTRO", "Otro"
+
+    class Estado(models.TextChoices):
+        ACTIVO = "ACTIVO", "Activo"
+        ARCHIVADO = "ARCHIVADO", "Archivado"
+        DESCARTADO = "DESCARTADO", "Descartado"
+
+    titulo = models.CharField(max_length=180)
+    tipo = models.CharField(max_length=20, choices=TipoMedio.choices, default=TipoMedio.IMAGEN)
+    estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.ACTIVO)
+    referencia = models.TextField(blank=True, null=True)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="medios_com_creados")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="medios_com_modificados", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+
+class CampanaComunicacion(models.Model):
+    class Estado(models.TextChoices):
+        PLANIFICADA = "PLANIFICADA", "Planificada"
+        ACTIVA = "ACTIVA", "Activa"
+        FINALIZADA = "FINALIZADA", "Finalizada"
+        CANCELADA = "CANCELADA", "Cancelada"
+
+    nombre = models.CharField(max_length=180)
+    objetivo = models.TextField()
+    fecha_inicio = models.DateField()
+    fecha_fin = models.DateField()
+    estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.PLANIFICADA)
+    responsable = models.ForeignKey(ResponsableComunicacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="campanas")
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="campanas_com_creadas")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="campanas_com_modificadas", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_inicio", "-id"]
+
+
+class MonitoreoRed(models.Model):
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        EN_PROCESO = "EN_PROCESO", "En proceso"
+        COMPLETADO = "COMPLETADO", "Completado"
+
+    red_social = models.CharField(max_length=80)
+    actividad = models.CharField(max_length=180)
+    estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.PENDIENTE)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="monitoreos_com_creados")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="monitoreos_com_modificados", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+
 
 class EstructuraIntegrante(models.Model):
     estructura = models.ForeignKey(EstructuraOrganizativa, on_delete=models.CASCADE, related_name="integrantes")

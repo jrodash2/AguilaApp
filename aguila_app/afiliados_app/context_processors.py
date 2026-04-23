@@ -29,6 +29,7 @@ def grupo_usuario(request):
         'es_juventud': request.user.groups.filter(name='Jovenes').exists() if is_authenticated else False,
         'es_mujeres': request.user.groups.filter(name='Mujeres').exists() if is_authenticated else False,
         'es_logistica': request.user.groups.filter(name='Logistica').exists() if is_authenticated else False,
+        'es_comunicacion': request.user.groups.filter(name='Comunicacion').exists() if is_authenticated else False,
     }
 
 

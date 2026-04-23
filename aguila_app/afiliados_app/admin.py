@@ -6,7 +6,10 @@ from .models import (
     ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial,
     LogisticaIntegrante, CoordinadorLogistica, LiderLogistica, EstructuraLogistica,
     ResponsableLogistica, ReunionLogistica, IncidenciaLogistica, RecursoLogistico,
-    AsignacionLogistica, SolicitudLogistica, EntregaLogistica, AgendaLogistica
+    AsignacionLogistica, SolicitudLogistica, EntregaLogistica, AgendaLogistica,
+    ComunicacionIntegrante, CoordinadorComunicacion, LiderComunicacion, EstructuraComunicacion,
+    ResponsableComunicacion, ReunionComunicacion, IncidenciaComunicacion, AgendaPublicacion,
+    SolicitudContenido, CoberturaActividad, BancoMedios, CampanaComunicacion, MonitoreoRed
 )
 
 # -------------------------------
@@ -109,3 +112,16 @@ admin.site.register(AsignacionLogistica)
 admin.site.register(SolicitudLogistica)
 admin.site.register(EntregaLogistica)
 admin.site.register(AgendaLogistica)
+admin.site.register(ComunicacionIntegrante)
+admin.site.register(CoordinadorComunicacion)
+admin.site.register(LiderComunicacion)
+admin.site.register(EstructuraComunicacion)
+admin.site.register(ResponsableComunicacion)
+admin.site.register(ReunionComunicacion)
+admin.site.register(IncidenciaComunicacion)
+admin.site.register(AgendaPublicacion)
+admin.site.register(SolicitudContenido)
+admin.site.register(CoberturaActividad)
+admin.site.register(BancoMedios)
+admin.site.register(CampanaComunicacion)
+admin.site.register(MonitoreoRed)

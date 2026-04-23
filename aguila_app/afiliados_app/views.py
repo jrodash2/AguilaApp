@@ -14,8 +14,8 @@ from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 import requests
 import unicodedata
-from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm, OrganizacionIntegranteForm, CoordinadorOrganizacionForm, LiderComunitarioOrganizacionForm, EstructuraOrganizativaForm, ResponsableTerritorialForm, ReunionTerritorialForm, IncidenciaTerritorialForm, JuventudIntegranteForm, CoordinadorJuventudForm, LiderJuvenilForm, EstructuraJuventudForm, ResponsableJuventudForm, ReunionJuventudForm, IncidenciaJuventudForm, MujeresIntegranteForm, CoordinadoraMujeresForm, LiderMujeresForm, EstructuraMujeresForm, ResponsableMujeresForm, ReunionMujeresForm, IncidenciaMujeresForm, LogisticaIntegranteForm, CoordinadorLogisticaForm, LiderLogisticaForm, EstructuraLogisticaForm, ResponsableLogisticaForm, ReunionLogisticaForm, IncidenciaLogisticaForm, RecursoLogisticoForm, AsignacionLogisticaForm, SolicitudLogisticaForm, EntregaLogisticaForm, AgendaLogisticaForm
-from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, EstructuraIntegrante, EstadoRegistro, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, EstructuraIntegranteJuventud, MujeresIntegrante, CoordinadoraMujeres, LiderMujeres, EstructuraMujeres, ResponsableMujeres, ReunionMujeres, IncidenciaMujeres, EstructuraIntegranteMujeres, LogisticaIntegrante, CoordinadorLogistica, LiderLogistica, EstructuraLogistica, ResponsableLogistica, ReunionLogistica, IncidenciaLogistica, EstructuraIntegranteLogistica, RecursoLogistico, AsignacionLogistica, SolicitudLogistica, EntregaLogistica, AgendaLogistica
+from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm, OrganizacionIntegranteForm, CoordinadorOrganizacionForm, LiderComunitarioOrganizacionForm, EstructuraOrganizativaForm, ResponsableTerritorialForm, ReunionTerritorialForm, IncidenciaTerritorialForm, JuventudIntegranteForm, CoordinadorJuventudForm, LiderJuvenilForm, EstructuraJuventudForm, ResponsableJuventudForm, ReunionJuventudForm, IncidenciaJuventudForm, MujeresIntegranteForm, CoordinadoraMujeresForm, LiderMujeresForm, EstructuraMujeresForm, ResponsableMujeresForm, ReunionMujeresForm, IncidenciaMujeresForm, LogisticaIntegranteForm, CoordinadorLogisticaForm, LiderLogisticaForm, EstructuraLogisticaForm, ResponsableLogisticaForm, ReunionLogisticaForm, IncidenciaLogisticaForm, RecursoLogisticoForm, AsignacionLogisticaForm, SolicitudLogisticaForm, EntregaLogisticaForm, AgendaLogisticaForm, ComunicacionIntegranteForm, CoordinadorComunicacionForm, LiderComunicacionForm, EstructuraComunicacionForm, ResponsableComunicacionForm, ReunionComunicacionForm, IncidenciaComunicacionForm, AgendaPublicacionForm, SolicitudContenidoForm, CoberturaActividadForm, BancoMediosForm, CampanaComunicacionForm, MonitoreoRedForm
+from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, EstructuraIntegrante, EstadoRegistro, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, EstructuraIntegranteJuventud, MujeresIntegrante, CoordinadoraMujeres, LiderMujeres, EstructuraMujeres, ResponsableMujeres, ReunionMujeres, IncidenciaMujeres, EstructuraIntegranteMujeres, LogisticaIntegrante, CoordinadorLogistica, LiderLogistica, EstructuraLogistica, ResponsableLogistica, ReunionLogistica, IncidenciaLogistica, EstructuraIntegranteLogistica, RecursoLogistico, AsignacionLogistica, SolicitudLogistica, EntregaLogistica, AgendaLogistica, ComunicacionIntegrante, CoordinadorComunicacion, LiderComunicacion, EstructuraComunicacion, ResponsableComunicacion, ReunionComunicacion, IncidenciaComunicacion, EstructuraIntegranteComunicacion, AgendaPublicacion, SolicitudContenido, CoberturaActividad, BancoMedios, CampanaComunicacion, MonitoreoRed
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
@@ -398,6 +398,8 @@ def signin(request):
                     return redirect('afiliados:dashboard_mujeres')
                 elif g.name == 'Logistica':
                     return redirect('afiliados:dashboard_logistica')
+                elif g.name == 'Comunicacion':
+                    return redirect('afiliados:dashboard_comunicacion')
             # Si no se encuentra el grupo adecuado, se redirige a una página por defecto
             return redirect('afiliados:dahsboard')
         else:
@@ -4537,3 +4539,393 @@ def lista_agenda_logistica(request):
 @login_required
 def editar_agenda_logistica(request, pk):
     return _logistica_extra_crud(request, AgendaLogistica, AgendaLogisticaForm, 'afiliados/logistica/crud_agenda_logistica.html', 'afiliados:lista_agenda_logistica', 'Agenda logística', extra={'edit_url_name': 'afiliados:editar_agenda_logistica', 'columns': ['actividad', 'comunidad', 'responsables', 'fecha_programada', 'estado']}, pk=pk)
+
+
+def _es_usuario_comunicacion(user):
+    if not user.is_authenticated:
+        return False
+    return user.groups.filter(name__in=['Comunicacion', 'Administrador']).exists()
+
+
+def _require_comunicacion(request):
+    if not _es_usuario_comunicacion(request.user):
+        return HttpResponseForbidden("No tiene permisos para acceder a Secretaría de Comunicación y Redes.")
+    return None
+
+
+@login_required
+def dashboard_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    registros = ComunicacionIntegrante.objects.select_related('afiliado')
+    context = {
+        'total_integrantes': registros.count(),
+        'total_pendientes': registros.filter(estado=ComunicacionIntegrante.Estado.PENDIENTE).count(),
+        'total_revisados': registros.filter(estado=ComunicacionIntegrante.Estado.REVISADO).count(),
+        'total_aprobados': registros.filter(estado=ComunicacionIntegrante.Estado.APROBADO).count(),
+        'ultimos_registros': registros.order_by('-fecha_creacion')[:10],
+    }
+    return safe_render(request, 'afiliados/comunicacion/dashboard.html', context)
+
+
+@login_required
+def lista_integrantes_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    integrantes = ComunicacionIntegrante.objects.select_related('afiliado', 'usuario_registro').order_by('-fecha_creacion')
+    context = {'integrantes': integrantes, 'total_integrantes': integrantes.count(), 'total_pendientes': integrantes.filter(estado=ComunicacionIntegrante.Estado.PENDIENTE).count(), 'total_revisados': integrantes.filter(estado=ComunicacionIntegrante.Estado.REVISADO).count(), 'total_aprobados': integrantes.filter(estado=ComunicacionIntegrante.Estado.APROBADO).count()}
+    return safe_render(request, 'afiliados/comunicacion/lista.html', context)
+
+
+@login_required
+def crear_integrante_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    form = ComunicacionIntegranteForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
+        if error_dpi:
+            form.add_error('dpi', error_dpi)
+        elif not afiliado:
+            form.add_error('dpi', 'No existe un afiliado registrado con este DPI.')
+        elif ComunicacionIntegrante.objects.filter(afiliado=afiliado).exists():
+            form.add_error('dpi', 'Este afiliado ya está registrado en Secretaría de Comunicación y Redes.')
+        else:
+            integrante = form.save(commit=False)
+            integrante.afiliado = afiliado
+            integrante.usuario_registro = request.user
+            integrante.usuario_modificacion = request.user
+            integrante.save()
+            messages.success(request, 'Integrante agregado correctamente.')
+            return redirect('afiliados:lista_integrantes_comunicacion')
+    return safe_render(request, 'afiliados/comunicacion/form.html', {'form': form, 'es_edicion': False})
+
+
+@login_required
+def detalle_integrante_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    integrante = get_object_or_404(ComunicacionIntegrante.objects.select_related('afiliado', 'usuario_registro', 'usuario_modificacion'), pk=pk)
+    return safe_render(request, 'afiliados/comunicacion/detalle.html', {'integrante': integrante})
+
+
+@login_required
+def editar_integrante_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    integrante = get_object_or_404(ComunicacionIntegrante, pk=pk)
+    form = ComunicacionIntegranteForm(request.POST or None, instance=integrante)
+    form.fields['dpi'].initial = integrante.afiliado.dpi
+    if request.method == 'POST' and form.is_valid():
+        afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
+        if error_dpi:
+            form.add_error('dpi', error_dpi)
+        elif not afiliado:
+            form.add_error('dpi', 'No existe un afiliado registrado con este DPI.')
+        elif ComunicacionIntegrante.objects.filter(afiliado=afiliado).exclude(pk=integrante.pk).exists():
+            form.add_error('dpi', 'Este afiliado ya está registrado en Secretaría de Comunicación y Redes.')
+        else:
+            integrante = form.save(commit=False)
+            integrante.afiliado = afiliado
+            integrante.usuario_modificacion = request.user
+            integrante.save()
+            messages.success(request, 'Integrante actualizado correctamente.')
+            return redirect('afiliados:detalle_integrante_comunicacion', pk=integrante.pk)
+    return safe_render(request, 'afiliados/comunicacion/form.html', {'form': form, 'es_edicion': True, 'integrante': integrante})
+
+
+@login_required
+@require_GET
+def buscar_por_dpi_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    afiliado, dpi_limpio, error_dpi = _afiliado_por_dpi(request.GET.get('dpi', ''))
+    if error_dpi:
+        return JsonResponse({'ok': False, 'error': error_dpi}, status=400)
+    if not afiliado:
+        return JsonResponse({'ok': True, 'exists': False, 'message': 'No existe afiliado con ese DPI.'})
+    ya_registrado = ComunicacionIntegrante.objects.filter(afiliado=afiliado).exists()
+    return JsonResponse({'ok': True, 'exists': True, 'already_registered': ya_registrado, 'data': {'dpi': dpi_limpio, 'nombre_completo': afiliado.nombre_completo, 'telefono': afiliado.telefono, 'direccion': afiliado.direccion, 'comunidad': afiliado.comunidad.nombre if afiliado.comunidad else None, 'empadronado': afiliado.empadronado}})
+
+
+@login_required
+@require_GET
+def verificar_empadronamiento_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    payload, status_code = _resultado_padron_local(request.GET.get("dpi", ""))
+    return JsonResponse(payload, status=status_code)
+
+
+@login_required
+@require_POST
+def cambiar_estado_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    integrante = get_object_or_404(ComunicacionIntegrante, pk=pk)
+    nuevo_estado = request.POST.get('estado', '').strip().upper()
+    estados_validos = {choice[0] for choice in ComunicacionIntegrante.Estado.choices}
+    if nuevo_estado not in estados_validos:
+        messages.error(request, 'Estado inválido.')
+        return redirect('afiliados:detalle_integrante_comunicacion', pk=pk)
+    integrante.estado = nuevo_estado
+    integrante.usuario_modificacion = request.user
+    integrante.save(update_fields=['estado', 'usuario_modificacion', 'fecha_actualizacion'])
+    messages.success(request, 'Estado actualizado correctamente.')
+    return redirect('afiliados:detalle_integrante_comunicacion', pk=pk)
+
+
+@login_required
+def panorama_municipal_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    comunidad_qs = Comunidad.objects.select_related('sector')
+    sector_qs = Sector.objects.all()
+    centro_qs = CentroVotacion.objects.all()
+    coordinadores = CoordinadorComunicacion.objects.all()
+    lideres = LiderComunicacion.objects.all()
+    estructuras = EstructuraComunicacion.objects.all()
+    reuniones = ReunionComunicacion.objects.all()
+    incidencias = IncidenciaComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO)
+    responsables = ResponsableComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO)
+    comunidad_ids_cubiertas = set(CoordinadorComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)) | set(LiderComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)) | set(EstructuraComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)) | set(ResponsableComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True))
+    sector_ids_cubiertos = set(CoordinadorComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)) | set(EstructuraComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)) | set(ResponsableComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True))
+    centro_ids_cubiertos = set(CoordinadorComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)) | set(EstructuraComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)) | set(ResponsableComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True))
+    crecimiento = {'coordinadores': list(coordinadores.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')), 'lideres': list(lideres.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')), 'estructuras': list(estructuras.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')), 'reuniones': list(reuniones.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes'))}
+
+    def _serie_por_mes(key):
+        return {item['mes'].strftime('%Y-%m'): item['total'] for item in crecimiento.get(key, []) if item.get('mes')}
+    meses = sorted(set(_serie_por_mes('coordinadores').keys()) | set(_serie_por_mes('lideres').keys()) | set(_serie_por_mes('estructuras').keys()) | set(_serie_por_mes('reuniones').keys()))
+    crecimiento_series = {'labels': meses, 'coordinadores': [_serie_por_mes('coordinadores').get(m, 0) for m in meses], 'lideres': [_serie_por_mes('lideres').get(m, 0) for m in meses], 'estructuras': [_serie_por_mes('estructuras').get(m, 0) for m in meses], 'reuniones': [_serie_por_mes('reuniones').get(m, 0) for m in meses]}
+    context = {'total_comunidades': comunidad_qs.count(), 'comunidades_cubiertas': len(comunidad_ids_cubiertas), 'comunidades_no_cubiertas': max(comunidad_qs.count() - len(comunidad_ids_cubiertas), 0), 'total_sectores': sector_qs.count(), 'sectores_con_responsable': responsables.exclude(sector__isnull=True).values('sector_id').distinct().count(), 'sectores_sin_responsable': max(sector_qs.count() - responsables.exclude(sector__isnull=True).values('sector_id').distinct().count(), 0), 'total_centros': centro_qs.count(), 'centros_con_cobertura': len(centro_ids_cubiertos), 'centros_sin_cobertura': max(centro_qs.count() - len(centro_ids_cubiertos), 0), 'coordinadores_activos': coordinadores.filter(estado=EstadoRegistro.ACTIVO).count(), 'coordinadores_inactivos': coordinadores.filter(estado=EstadoRegistro.INACTIVO).count(), 'total_lideres': lideres.count(), 'estructuras_activas': estructuras.filter(estado=EstadoRegistro.ACTIVO).count(), 'reuniones_mes': reuniones.filter(fecha__month=timezone.now().month, fecha__year=timezone.now().year).count(), 'incidencias_abiertas': incidencias.count(), 'resumen_comunidad': comunidad_qs.annotate(total_sectores=Count('sector', distinct=True), reuniones_total=Count('reuniones_comunicacion', distinct=True), incidencias_abiertas=Count('incidencias_comunicacion', filter=Q(incidencias_comunicacion__estado=EstadoRegistro.ACTIVO), distinct=True)), 'resumen_sector': sector_qs.annotate(lideres_total=Count('lideres_comunicacion', distinct=True), estructuras_total=Count('estructuras_comunicacion', distinct=True), incidencias_total=Count('incidencias_comunicacion', distinct=True)), 'resumen_centro': centro_qs.annotate(incidencias_total=Count('incidencias_comunicacion', distinct=True), reuniones_total=Count('reuniones_comunicacion', distinct=True)), 'crecimiento': json.dumps(crecimiento, cls=DjangoJSONEncoder), 'charts_data': json.dumps({'cobertura': {'comunidades': [len(comunidad_ids_cubiertas), max(comunidad_qs.count() - len(comunidad_ids_cubiertas), 0)], 'sectores': [len(sector_ids_cubiertos), max(sector_qs.count() - len(sector_ids_cubiertos), 0)], 'centros': [len(centro_ids_cubiertos), max(centro_qs.count() - len(centro_ids_cubiertos), 0)]}, 'estructura': {'coordinadores': [coordinadores.filter(estado=EstadoRegistro.ACTIVO).count(), coordinadores.filter(estado=EstadoRegistro.INACTIVO).count()], 'lideres_total': lideres.count(), 'estructuras_activas': estructuras.filter(estado=EstadoRegistro.ACTIVO).count()}, 'crecimiento': crecimiento_series}, cls=DjangoJSONEncoder)}
+    return safe_render(request, 'afiliados/comunicacion/panorama.html', context)
+
+
+def _com_crud(request, model, form_class, template, list_name, create_name, edit_name, pk=None):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    instance = get_object_or_404(model, pk=pk) if pk else None
+    form = form_class(request.POST or None, instance=instance)
+    if request.method == 'POST' and form.is_valid():
+        obj = form.save(commit=False)
+        if not getattr(obj, 'usuario_creador_id', None):
+            obj.usuario_creador = request.user
+        obj.usuario_modificador = request.user
+        obj.save()
+        messages.success(request, 'Registro guardado correctamente.')
+        return redirect(list_name)
+    context = {'form': form, 'items': model.objects.all().order_by('-id')[:200], 'entity_label': template, 'create_name': create_name, 'edit_name': edit_name, 'detail_name': {'coordinadores': 'afiliados:detalle_coordinador_comunicacion', 'lideres': 'afiliados:detalle_lider_comunicacion', 'estructuras': 'afiliados:detalle_estructura_comunicacion', 'responsables': 'afiliados:detalle_responsable_comunicacion', 'reuniones': 'afiliados:detalle_reunion_comunicacion', 'incidencias': 'afiliados:detalle_incidencia_comunicacion'}.get(template), 'comunidad_lookup_url': reverse('afiliados:comunicacion_comunidad_lookup'), 'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_comunicacion')}
+    if template == 'reuniones':
+        responsables_modal = []
+        for responsable in ResponsableComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({'tipo': 'RESPONSABLE', 'tipo_label': 'Responsable', 'id': responsable.id, 'nombre': responsable.nombre_completo, 'dpi': responsable.dpi, 'comunidad': responsable.comunidad.nombre if responsable.comunidad else ''})
+        for coordinador in CoordinadorComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({'tipo': 'COORDINADOR', 'tipo_label': 'Coordinador', 'id': coordinador.id, 'nombre': coordinador.nombre_completo, 'dpi': coordinador.dpi, 'comunidad': coordinador.comunidad.nombre if coordinador.comunidad else ''})
+        for lider in LiderComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({'tipo': 'LIDER', 'tipo_label': 'Enlace de comunicación', 'id': lider.id, 'nombre': lider.nombre_completo, 'dpi': lider.dpi, 'comunidad': lider.comunidad.nombre if lider.comunidad else ''})
+        context['responsables_modal'] = responsables_modal
+    if template == 'estructuras':
+        coordinadores_modal = []
+        for coordinador in CoordinadorComunicacion.objects.select_related('comunidad').order_by('nombre_completo'):
+            coordinadores_modal.append({'id': coordinador.id, 'nombre': coordinador.nombre_completo, 'dpi': coordinador.dpi, 'comunidad': coordinador.comunidad.nombre if coordinador.comunidad else '', 'estado': coordinador.get_estado_display()})
+        context['coordinadores_modal'] = coordinadores_modal
+        coord_id = form['coordinador_responsable'].value()
+        coord = CoordinadorComunicacion.objects.filter(pk=coord_id).first() if coord_id else None
+        context['coordinador_responsable_display'] = coord.nombre_completo if coord else ''
+    return safe_render(request, f'afiliados/comunicacion/crud_{template}.html', context)
+
+
+@login_required
+def lista_estructura_territorial_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    comunidades = Comunidad.objects.select_related('sector').order_by('nombre')
+    sectores = Sector.objects.order_by('nombre')
+    centros = CentroVotacion.objects.order_by('nombre')
+    return safe_render(request, 'afiliados/comunicacion/estructura_territorial.html', {'comunidades': comunidades, 'sectores': sectores, 'centros': centros, 'total_comunidades': comunidades.count(), 'total_sectores': sectores.count(), 'total_centros': centros.count()})
+
+
+@login_required
+def lista_coordinadores_comunicacion(request): return _com_crud(request, CoordinadorComunicacion, CoordinadorComunicacionForm, 'coordinadores', 'afiliados:lista_coordinadores_comunicacion', 'afiliados:crear_coordinador_comunicacion', 'afiliados:editar_coordinador_comunicacion')
+@login_required
+def crear_coordinador_comunicacion(request): return _com_crud(request, CoordinadorComunicacion, CoordinadorComunicacionForm, 'coordinadores', 'afiliados:lista_coordinadores_comunicacion', 'afiliados:crear_coordinador_comunicacion', 'afiliados:editar_coordinador_comunicacion')
+@login_required
+def editar_coordinador_comunicacion(request, pk): return _com_crud(request, CoordinadorComunicacion, CoordinadorComunicacionForm, 'coordinadores', 'afiliados:lista_coordinadores_comunicacion', 'afiliados:crear_coordinador_comunicacion', 'afiliados:editar_coordinador_comunicacion', pk=pk)
+@login_required
+def detalle_coordinador_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/comunicacion/detalle_generico.html', {'obj': get_object_or_404(CoordinadorComunicacion, pk=pk), 'titulo': 'Coordinador de comunicación'})
+@login_required
+def lista_lideres_comunicacion(request): return _com_crud(request, LiderComunicacion, LiderComunicacionForm, 'lideres', 'afiliados:lista_lideres_comunicacion', 'afiliados:crear_lider_comunicacion', 'afiliados:editar_lider_comunicacion')
+@login_required
+def crear_lider_comunicacion(request): return _com_crud(request, LiderComunicacion, LiderComunicacionForm, 'lideres', 'afiliados:lista_lideres_comunicacion', 'afiliados:crear_lider_comunicacion', 'afiliados:editar_lider_comunicacion')
+@login_required
+def editar_lider_comunicacion(request, pk): return _com_crud(request, LiderComunicacion, LiderComunicacionForm, 'lideres', 'afiliados:lista_lideres_comunicacion', 'afiliados:crear_lider_comunicacion', 'afiliados:editar_lider_comunicacion', pk=pk)
+@login_required
+def detalle_lider_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/comunicacion/detalle_generico.html', {'obj': get_object_or_404(LiderComunicacion, pk=pk), 'titulo': 'Enlace de comunicación'})
+@login_required
+def lista_estructuras_comunicacion(request): return _com_crud(request, EstructuraComunicacion, EstructuraComunicacionForm, 'estructuras', 'afiliados:lista_estructuras_comunicacion', 'afiliados:crear_estructura_comunicacion', 'afiliados:editar_estructura_comunicacion')
+@login_required
+def crear_estructura_comunicacion(request): return _com_crud(request, EstructuraComunicacion, EstructuraComunicacionForm, 'estructuras', 'afiliados:lista_estructuras_comunicacion', 'afiliados:crear_estructura_comunicacion', 'afiliados:editar_estructura_comunicacion')
+@login_required
+def editar_estructura_comunicacion(request, pk): return _com_crud(request, EstructuraComunicacion, EstructuraComunicacionForm, 'estructuras', 'afiliados:lista_estructuras_comunicacion', 'afiliados:crear_estructura_comunicacion', 'afiliados:editar_estructura_comunicacion', pk=pk)
+
+
+@login_required
+def detalle_estructura_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    estructura = get_object_or_404(EstructuraComunicacion.objects.select_related('comunidad', 'sector', 'centro_votacion', 'coordinador_responsable'), pk=pk)
+    if request.method == 'POST':
+        dpi = re.sub(r"\D", "", request.POST.get('dpi', ''))
+        verified_dpi = re.sub(r"\D", "", request.POST.get('verified_dpi', ''))
+        if not dpi or verified_dpi != dpi:
+            messages.error(request, 'Primero debe verificar empadronamiento del DPI antes de confirmar agregado.')
+            return redirect('afiliados:detalle_estructura_comunicacion', pk=estructura.pk)
+        payload, status_code = _resultado_padron_local(dpi)
+        if status_code != 200 or not payload.get('ok') or not payload.get('found'):
+            messages.error(request, payload.get('error') or payload.get('message') or 'No aparece empadronado en padrón local.')
+            return redirect('afiliados:detalle_estructura_comunicacion', pk=estructura.pk)
+        persona = payload.get('data') or {}
+        if EstructuraIntegranteComunicacion.objects.filter(estructura=estructura, dpi=dpi).exists():
+            messages.warning(request, 'Este integrante ya está registrado en la estructura de comunicación.')
+            return redirect('afiliados:detalle_estructura_comunicacion', pk=estructura.pk)
+        comunidad = Comunidad.objects.filter(nombre=persona.get('comunidad')).first() if persona.get('comunidad') else None
+        EstructuraIntegranteComunicacion.objects.create(estructura=estructura, dpi=dpi, nombre_completo=persona.get('nombre_completo') or f"Integrante {dpi}", comunidad=comunidad, usuario_registro=request.user)
+        messages.success(request, 'Integrante agregado correctamente a la estructura de comunicación.')
+        return redirect('afiliados:detalle_estructura_comunicacion', pk=estructura.pk)
+    integrantes = estructura.integrantes.select_related('usuario_registro').all()
+    return safe_render(request, 'afiliados/comunicacion/detalle_estructura.html', {'estructura': estructura, 'integrantes': integrantes, 'total_integrantes': integrantes.count(), 'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_comunicacion')})
+
+
+@login_required
+@require_POST
+def eliminar_integrante_estructura_comunicacion(request, pk, integrante_id):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    estructura = get_object_or_404(EstructuraComunicacion, pk=pk)
+    integrante = get_object_or_404(EstructuraIntegranteComunicacion, pk=integrante_id, estructura=estructura)
+    integrante.delete()
+    messages.success(request, 'Integrante eliminado correctamente de la estructura de comunicación.')
+    return redirect('afiliados:detalle_estructura_comunicacion', pk=estructura.pk)
+
+@login_required
+def lista_responsables_comunicacion(request): return _com_crud(request, ResponsableComunicacion, ResponsableComunicacionForm, 'responsables', 'afiliados:lista_responsables_comunicacion', 'afiliados:crear_responsable_comunicacion', 'afiliados:editar_responsable_comunicacion')
+@login_required
+def crear_responsable_comunicacion(request): return _com_crud(request, ResponsableComunicacion, ResponsableComunicacionForm, 'responsables', 'afiliados:lista_responsables_comunicacion', 'afiliados:crear_responsable_comunicacion', 'afiliados:editar_responsable_comunicacion')
+@login_required
+def editar_responsable_comunicacion(request, pk): return _com_crud(request, ResponsableComunicacion, ResponsableComunicacionForm, 'responsables', 'afiliados:lista_responsables_comunicacion', 'afiliados:crear_responsable_comunicacion', 'afiliados:editar_responsable_comunicacion', pk=pk)
+@login_required
+def detalle_responsable_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/comunicacion/detalle_generico.html', {'obj': get_object_or_404(ResponsableComunicacion, pk=pk), 'titulo': 'Responsable de comunicación'})
+@login_required
+def lista_reuniones_comunicacion(request): return _com_crud(request, ReunionComunicacion, ReunionComunicacionForm, 'reuniones', 'afiliados:lista_reuniones_comunicacion', 'afiliados:crear_reunion_comunicacion', 'afiliados:editar_reunion_comunicacion')
+@login_required
+def crear_reunion_comunicacion(request): return _com_crud(request, ReunionComunicacion, ReunionComunicacionForm, 'reuniones', 'afiliados:lista_reuniones_comunicacion', 'afiliados:crear_reunion_comunicacion', 'afiliados:editar_reunion_comunicacion')
+@login_required
+def editar_reunion_comunicacion(request, pk): return _com_crud(request, ReunionComunicacion, ReunionComunicacionForm, 'reuniones', 'afiliados:lista_reuniones_comunicacion', 'afiliados:crear_reunion_comunicacion', 'afiliados:editar_reunion_comunicacion', pk=pk)
+@login_required
+def detalle_reunion_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/comunicacion/detalle_reunion.html', {'reunion': get_object_or_404(ReunionComunicacion, pk=pk)})
+@login_required
+def lista_incidencias_comunicacion(request): return _com_crud(request, IncidenciaComunicacion, IncidenciaComunicacionForm, 'incidencias', 'afiliados:lista_incidencias_comunicacion', 'afiliados:crear_incidencia_comunicacion', 'afiliados:editar_incidencia_comunicacion')
+@login_required
+def crear_incidencia_comunicacion(request): return _com_crud(request, IncidenciaComunicacion, IncidenciaComunicacionForm, 'incidencias', 'afiliados:lista_incidencias_comunicacion', 'afiliados:crear_incidencia_comunicacion', 'afiliados:editar_incidencia_comunicacion')
+@login_required
+def editar_incidencia_comunicacion(request, pk): return _com_crud(request, IncidenciaComunicacion, IncidenciaComunicacionForm, 'incidencias', 'afiliados:lista_incidencias_comunicacion', 'afiliados:crear_incidencia_comunicacion', 'afiliados:editar_incidencia_comunicacion', pk=pk)
+@login_required
+def detalle_incidencia_comunicacion(request, pk):
+    denied = _require_comunicacion(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/comunicacion/detalle_generico.html', {'obj': get_object_or_404(IncidenciaComunicacion, pk=pk), 'titulo': 'Incidencia de comunicación'})
+@login_required
+def reporte_cobertura_comunicacion(request): return panorama_municipal_comunicacion(request)
+@login_required
+def reporte_coordinadores_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/comunicacion/reporte_coordinadores.html', {'coordinadores': CoordinadorComunicacion.objects.select_related('comunidad', 'sector', 'centro_votacion').order_by('-fecha_creacion')})
+@login_required
+def reporte_reuniones_comunicacion(request):
+    denied = _require_comunicacion(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/comunicacion/reporte_reuniones.html', {'reuniones': ReunionComunicacion.objects.select_related('comunidad', 'sector', 'centro_votacion').order_by('-fecha')})
+@login_required
+def reporte_crecimiento_mensual_comunicacion(request): return panorama_municipal_comunicacion(request)
+
+
+@login_required
+@require_GET
+def comunicacion_comunidad_lookup(request):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    comunidad = Comunidad.objects.select_related('sector').filter(pk=request.GET.get('comunidad_id')).first()
+    if not comunidad:
+        return JsonResponse({'ok': False, 'error': 'Comunidad no encontrada.'}, status=404)
+    centro = comunidad.sector.centros.first() if comunidad.sector else None
+    return JsonResponse({'ok': True, 'data': {'comunidad': comunidad.nombre, 'sector': comunidad.sector.nombre if comunidad.sector else None, 'centro_votacion': centro.nombre if centro else None}})
+
+
+def _com_extra_crud(request, model, form_class, template_name, list_url, pk=None):
+    denied = _require_comunicacion(request)
+    if denied:
+        return denied
+    instance = get_object_or_404(model, pk=pk) if pk else None
+    form = form_class(request.POST or None, instance=instance)
+    if request.method == 'POST' and form.is_valid():
+        obj = form.save(commit=False)
+        if not getattr(obj, 'usuario_creador_id', None):
+            obj.usuario_creador = request.user
+        obj.usuario_modificador = request.user
+        obj.save()
+        messages.success(request, 'Registro guardado correctamente.')
+        return redirect(list_url)
+    return safe_render(request, template_name, {'form': form, 'items': model.objects.all().order_by('-id')[:200]})
+
+
+@login_required
+def lista_agenda_publicaciones(request): return _com_extra_crud(request, AgendaPublicacion, AgendaPublicacionForm, 'afiliados/comunicacion/crud_agenda_publicaciones.html', 'afiliados:lista_agenda_publicaciones')
+@login_required
+def editar_agenda_publicaciones(request, pk): return _com_extra_crud(request, AgendaPublicacion, AgendaPublicacionForm, 'afiliados/comunicacion/crud_agenda_publicaciones.html', 'afiliados:lista_agenda_publicaciones', pk=pk)
+@login_required
+def lista_solicitudes_contenido(request): return _com_extra_crud(request, SolicitudContenido, SolicitudContenidoForm, 'afiliados/comunicacion/crud_solicitudes_contenido.html', 'afiliados:lista_solicitudes_contenido')
+@login_required
+def editar_solicitudes_contenido(request, pk): return _com_extra_crud(request, SolicitudContenido, SolicitudContenidoForm, 'afiliados/comunicacion/crud_solicitudes_contenido.html', 'afiliados:lista_solicitudes_contenido', pk=pk)
+@login_required
+def lista_cobertura_actividades(request): return _com_extra_crud(request, CoberturaActividad, CoberturaActividadForm, 'afiliados/comunicacion/crud_cobertura_actividades.html', 'afiliados:lista_cobertura_actividades')
+@login_required
+def editar_cobertura_actividades(request, pk): return _com_extra_crud(request, CoberturaActividad, CoberturaActividadForm, 'afiliados/comunicacion/crud_cobertura_actividades.html', 'afiliados:lista_cobertura_actividades', pk=pk)
+@login_required
+def lista_banco_medios(request): return _com_extra_crud(request, BancoMedios, BancoMediosForm, 'afiliados/comunicacion/crud_banco_medios.html', 'afiliados:lista_banco_medios')
+@login_required
+def editar_banco_medios(request, pk): return _com_extra_crud(request, BancoMedios, BancoMediosForm, 'afiliados/comunicacion/crud_banco_medios.html', 'afiliados:lista_banco_medios', pk=pk)
+@login_required
+def lista_campanas_comunicacion(request): return _com_extra_crud(request, CampanaComunicacion, CampanaComunicacionForm, 'afiliados/comunicacion/crud_campanas_comunicacion.html', 'afiliados:lista_campanas_comunicacion')
+@login_required
+def editar_campanas_comunicacion(request, pk): return _com_extra_crud(request, CampanaComunicacion, CampanaComunicacionForm, 'afiliados/comunicacion/crud_campanas_comunicacion.html', 'afiliados:lista_campanas_comunicacion', pk=pk)
+@login_required
+def lista_monitoreo_redes(request): return _com_extra_crud(request, MonitoreoRed, MonitoreoRedForm, 'afiliados/comunicacion/crud_monitoreo_redes.html', 'afiliados:lista_monitoreo_redes')
+@login_required
+def editar_monitoreo_redes(request, pk): return _com_extra_crud(request, MonitoreoRed, MonitoreoRedForm, 'afiliados/comunicacion/crud_monitoreo_redes.html', 'afiliados:lista_monitoreo_redes', pk=pk)

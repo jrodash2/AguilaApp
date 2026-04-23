@@ -15,6 +15,7 @@ from afiliados_app.form import (
 from afiliados_app.models import Comunidad, CoordinadorJuventud, CoordinadorOrganizacion, EstructuraJuventud, EstructuraOrganizativa, Sector
 from afiliados_app.models import Afiliado, CoordinadoraMujeres
 from afiliados_app.models import CoordinadorLogistica, RecursoLogistico
+from afiliados_app.models import CoordinadorComunicacion, AgendaPublicacion
 
 
 @override_settings(
@@ -26,6 +27,7 @@ class OrganizacionUIWiringTests(TestCase):
         self.jovenes_group = Group.objects.create(name="Jovenes")
         self.admin_group = Group.objects.create(name="Administrador")
         self.logistica_group = Group.objects.create(name="Logistica")
+        self.comunicacion_group = Group.objects.create(name="Comunicacion")
         self.user = User.objects.create_user(username="org_user", password="12345")
         self.user.groups.add(self.group)
         self.admin_user = User.objects.create_user(username="admin_user", password="12345")
@@ -34,6 +36,8 @@ class OrganizacionUIWiringTests(TestCase):
         self.joven_user.groups.add(self.jovenes_group)
         self.logistica_user = User.objects.create_user(username="logistica_user", password="12345")
         self.logistica_user.groups.add(self.logistica_group)
+        self.comunicacion_user = User.objects.create_user(username="com_user", password="12345")
+        self.comunicacion_user.groups.add(self.comunicacion_group)
 
         self.creator = User.objects.create_user(username="creator", password="12345")
 
@@ -274,6 +278,67 @@ class OrganizacionUIWiringTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertTrue(RecursoLogistico.objects.filter(nombre="Carpa móvil").exists())
+
+    def test_login_redirects_comunicacion_to_dashboard_comunicacion(self):
+        response = self.client.post(
+            reverse("afiliados:signin"),
+            {"username": "com_user", "password": "12345"},
+            follow=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("afiliados:dashboard_comunicacion"))
+
+    def test_dashboard_comunicacion_access_and_sidebar(self):
+        self.client.login(username="com_user", password="12345")
+        response = self.client.get(reverse("afiliados:dashboard_comunicacion"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Comunicación y Redes", response.content.decode())
+
+    def test_comunicacion_crear_estructura_guarda_coordinador(self):
+        self.client.login(username="com_user", password="12345")
+        coordinador = CoordinadorComunicacion.objects.create(
+            nombre_completo="COORD COM TEST",
+            comunidad=self.comunidad,
+            usuario_creador=self.comunicacion_user,
+        )
+        response = self.client.post(
+            reverse("afiliados:crear_estructura_comunicacion"),
+            {
+                "tipo_estructura": "Equipo de redes",
+                "nombre": "Estructura COM 1",
+                "comunidad": str(self.comunidad.pk),
+                "estado": "ACTIVO",
+                "coordinador_responsable": str(coordinador.pk),
+                "observaciones": "test",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Registro guardado correctamente")
+
+    def test_comunicacion_agenda_publicaciones_create(self):
+        self.client.login(username="com_user", password="12345")
+        responsable = self.comunicacion_user
+        from afiliados_app.models import ResponsableComunicacion
+        responsable_obj = ResponsableComunicacion.objects.create(
+            nombre_completo="Resp COM",
+            comunidad=self.comunidad,
+            usuario_creador=responsable,
+        )
+        response = self.client.post(
+            reverse("afiliados:lista_agenda_publicaciones"),
+            {
+                "fecha": "2026-01-20",
+                "plataforma": "Facebook",
+                "tipo_contenido": "Arte",
+                "estado": "PLANIFICADA",
+                "responsable": str(responsable_obj.pk),
+                "observaciones": "Post institucional",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(AgendaPublicacion.objects.filter(plataforma="Facebook").exists())
 
     def test_juventud_estructura_template_has_expected_modal_and_fields(self):
         self.client.login(username="joven_user", password="12345")
