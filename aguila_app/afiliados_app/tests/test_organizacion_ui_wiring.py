@@ -311,6 +311,7 @@ class OrganizacionUIWiringTests(TestCase):
         self.assertIn('js-afiliar-desde-pendientes', html)
         self.assertIn('data-fuente="coordinadora_mujeres"', html)
         self.assertIn("event.target.closest('.js-afiliar-desde-pendientes')", html)
+        self.assertIn("const hasSwal = typeof window.Swal !== 'undefined'", html)
         self.assertNotIn("Verificar Empadronamiento", html)
 
     def test_afiliar_desde_secretaria_redirige_con_prefill_reutilizando_datos(self):
