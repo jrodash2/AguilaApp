@@ -15,7 +15,7 @@ from afiliados_app.form import (
 from afiliados_app.models import Comunidad, CoordinadorJuventud, CoordinadorOrganizacion, EstructuraJuventud, EstructuraOrganizativa, Sector
 from afiliados_app.models import Afiliado, CoordinadoraMujeres
 from afiliados_app.models import CoordinadorLogistica, RecursoLogistico
-from afiliados_app.models import CoordinadorComunicacion, AgendaPublicacion
+from afiliados_app.models import CoordinadorComunicacion, AgendaPublicacion, CoordinadorPlanHormiga, VisitaPlanHormiga
 
 
 @override_settings(
@@ -28,6 +28,7 @@ class OrganizacionUIWiringTests(TestCase):
         self.admin_group = Group.objects.create(name="Administrador")
         self.logistica_group = Group.objects.create(name="Logistica")
         self.comunicacion_group = Group.objects.create(name="Comunicacion")
+        self.plan_hormiga_group = Group.objects.create(name="PlanHormiga")
         self.user = User.objects.create_user(username="org_user", password="12345")
         self.user.groups.add(self.group)
         self.admin_user = User.objects.create_user(username="admin_user", password="12345")
@@ -38,6 +39,8 @@ class OrganizacionUIWiringTests(TestCase):
         self.logistica_user.groups.add(self.logistica_group)
         self.comunicacion_user = User.objects.create_user(username="com_user", password="12345")
         self.comunicacion_user.groups.add(self.comunicacion_group)
+        self.plan_hormiga_user = User.objects.create_user(username="plan_user", password="12345")
+        self.plan_hormiga_user.groups.add(self.plan_hormiga_group)
 
         self.creator = User.objects.create_user(username="creator", password="12345")
 
@@ -642,3 +645,30 @@ class OrganizacionUIWiringTests(TestCase):
         self.assertEqual(response.context["prefill_dpi"], "1234567890123")
         self.assertEqual(response.context["form"].initial.get("nombre_completo"), "Precargada")
         self.assertEqual(response.context["form"].initial.get("telefono"), "33334444")
+
+
+    def test_login_redirects_plan_hormiga_to_dashboard(self):
+        response = self.client.post(reverse("afiliados:signin"), {"username": "plan_user", "password": "12345"}, follow=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("afiliados:dashboard_plan_hormiga"))
+
+    def test_dashboard_plan_hormiga_access_and_sidebar(self):
+        self.client.login(username="plan_user", password="12345")
+        response = self.client.get(reverse("afiliados:dashboard_plan_hormiga"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Plan Hormiga", response.content.decode())
+
+    def test_plan_hormiga_crear_estructura_guarda_coordinador(self):
+        self.client.login(username="plan_user", password="12345")
+        coordinador = CoordinadorPlanHormiga.objects.create(nombre_completo="COORD PH", comunidad=self.comunidad, usuario_creador=self.plan_hormiga_user)
+        response = self.client.post(reverse("afiliados:crear_estructura_plan_hormiga"), {"tipo_estructura": "Célula", "nombre": "Estructura PH", "comunidad": str(self.comunidad.pk), "estado": "ACTIVO", "coordinador_responsable": str(coordinador.pk), "observaciones": "ok"}, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Registro guardado correctamente")
+
+    def test_plan_hormiga_visitas_create(self):
+        self.client.login(username="plan_user", password="12345")
+        from afiliados_app.models import ResponsableZonaPlanHormiga
+        responsable = ResponsableZonaPlanHormiga.objects.create(nombre_completo="Resp PH", comunidad=self.comunidad, usuario_creador=self.plan_hormiga_user)
+        response = self.client.post(reverse("afiliados:lista_visitas_plan_hormiga"), {"fecha": "2026-01-20", "comunidad": str(self.comunidad.pk), "sector": str(self.sector.pk), "responsable": str(responsable.pk), "tipo_visita": "RECORRIDO", "observaciones": "test", "estado": "ACTIVO"}, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(VisitaPlanHormiga.objects.filter(tipo_visita="RECORRIDO").exists())

@@ -9,7 +9,7 @@ from .models import (
     AsignacionLogistica, SolicitudLogistica, EntregaLogistica, AgendaLogistica,
     ComunicacionIntegrante, CoordinadorComunicacion, LiderComunicacion, EstructuraComunicacion,
     ResponsableComunicacion, ReunionComunicacion, IncidenciaComunicacion, AgendaPublicacion,
-    SolicitudContenido, CoberturaActividad, BancoMedios, CampanaComunicacion, MonitoreoRed
+    SolicitudContenido, CoberturaActividad, BancoMedios, CampanaComunicacion, MonitoreoRed, PlanHormigaIntegrante, CoordinadorPlanHormiga, EnlaceTerritorialPlanHormiga, EstructuraPlanHormiga, ResponsableZonaPlanHormiga, ReunionPlanHormiga, IncidenciaPlanHormiga, VisitaPlanHormiga, SeguimientoContactoPlanHormiga, CompromisoTerritorialPlanHormiga, PuntoVisitadoPlanHormiga, ActivacionTerritorialPlanHormiga, CoberturaVisitaPlanHormiga
 )
 
 # -------------------------------
@@ -125,3 +125,17 @@ admin.site.register(CoberturaActividad)
 admin.site.register(BancoMedios)
 admin.site.register(CampanaComunicacion)
 admin.site.register(MonitoreoRed)
+
+admin.site.register(PlanHormigaIntegrante)
+admin.site.register(CoordinadorPlanHormiga)
+admin.site.register(EnlaceTerritorialPlanHormiga)
+admin.site.register(EstructuraPlanHormiga)
+admin.site.register(ResponsableZonaPlanHormiga)
+admin.site.register(ReunionPlanHormiga)
+admin.site.register(IncidenciaPlanHormiga)
+admin.site.register(VisitaPlanHormiga)
+admin.site.register(SeguimientoContactoPlanHormiga)
+admin.site.register(CompromisoTerritorialPlanHormiga)
+admin.site.register(PuntoVisitadoPlanHormiga)
+admin.site.register(ActivacionTerritorialPlanHormiga)
+admin.site.register(CoberturaVisitaPlanHormiga)

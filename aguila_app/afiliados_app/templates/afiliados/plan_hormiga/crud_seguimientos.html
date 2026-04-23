@@ -1,0 +1,6 @@
+{% extends "afiliados/base.html" %}
+{% block contenido %}
+<div class="container-fluid"><div class="card"><div class="card-header"><h4>Seguimiento de contactos</h4></div><div class="card-body">
+<form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary" type="submit">Guardar</button></form>
+<hr><div class="table-responsive"><table class="table"><thead><tr>{% for field in form.visible_fields %}<th>{{ field.label }}</th>{% endfor %}<th></th></tr></thead><tbody>{% for item in items %}<tr>{% for field in form.visible_fields %}<td>{{ item|default_if_none:"" }}</td>{% endfor %}<td><a class="btn btn-sm btn-outline-primary" href="{{ item.pk }}/editar/">Editar</a></td></tr>{% empty %}<tr><td colspan="99">Sin registros.</td></tr>{% endfor %}</tbody></table></div></div></div></div>
+{% endblock %}

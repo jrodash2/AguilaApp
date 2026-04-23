@@ -1,0 +1,8 @@
+{% extends 'afiliados/base.html' %}
+{% block title %}Solicitudes plan hormigas{% endblock %}
+{% block content %}
+<div class="page-body"><div class="container-fluid"><div class="page-title"><h4>Solicitudes plan hormigas</h4></div>
+<div class="card"><div class="card-body"><form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary">Guardar</button></form></div></div>
+<div class="card"><div class="card-body table-responsive"><table class="display datatable"><thead><tr><th>Título</th><th>Comunidad</th><th>Responsable</th><th>Prioridad</th><th>Estado</th><th></th></tr></thead><tbody>{% for item in items %}<tr><td>{{ item.titulo }}</td><td>{{ item.comunidad|default:'-' }}</td><td>{{ item.responsable|default:'-' }}</td><td>{{ item.get_prioridad_display }}</td><td>{{ item.get_estado_display }}</td><td><a class="btn btn-sm btn-outline-primary" href="{% url 'afiliados:editar_solicitud_plan_hormiga' item.pk %}">Editar</a></td></tr>{% endfor %}</tbody></table></div></div>
+</div></div>
+{% endblock %}

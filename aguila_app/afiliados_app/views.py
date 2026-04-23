@@ -14,8 +14,8 @@ from django.views.decorators.csrf import csrf_exempt
 import pandas as pd
 import requests
 import unicodedata
-from .form import  AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, UserCreateForm,  InstitucionForm, OrganizacionIntegranteForm, CoordinadorOrganizacionForm, LiderComunitarioOrganizacionForm, EstructuraOrganizativaForm, ResponsableTerritorialForm, ReunionTerritorialForm, IncidenciaTerritorialForm, JuventudIntegranteForm, CoordinadorJuventudForm, LiderJuvenilForm, EstructuraJuventudForm, ResponsableJuventudForm, ReunionJuventudForm, IncidenciaJuventudForm, MujeresIntegranteForm, CoordinadoraMujeresForm, LiderMujeresForm, EstructuraMujeresForm, ResponsableMujeresForm, ReunionMujeresForm, IncidenciaMujeresForm, LogisticaIntegranteForm, CoordinadorLogisticaForm, LiderLogisticaForm, EstructuraLogisticaForm, ResponsableLogisticaForm, ReunionLogisticaForm, IncidenciaLogisticaForm, RecursoLogisticoForm, AsignacionLogisticaForm, SolicitudLogisticaForm, EntregaLogisticaForm, AgendaLogisticaForm, ComunicacionIntegranteForm, CoordinadorComunicacionForm, LiderComunicacionForm, EstructuraComunicacionForm, ResponsableComunicacionForm, ReunionComunicacionForm, IncidenciaComunicacionForm, AgendaPublicacionForm, SolicitudContenidoForm, CoberturaActividadForm, BancoMediosForm, CampanaComunicacionForm, MonitoreoRedForm
-from .models import   Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil,  Institucion, Sector, PadronElectoral, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, EstructuraIntegrante, EstadoRegistro, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, EstructuraIntegranteJuventud, MujeresIntegrante, CoordinadoraMujeres, LiderMujeres, EstructuraMujeres, ResponsableMujeres, ReunionMujeres, IncidenciaMujeres, EstructuraIntegranteMujeres, LogisticaIntegrante, CoordinadorLogistica, LiderLogistica, EstructuraLogistica, ResponsableLogistica, ReunionLogistica, IncidenciaLogistica, EstructuraIntegranteLogistica, RecursoLogistico, AsignacionLogistica, SolicitudLogistica, EntregaLogistica, AgendaLogistica, ComunicacionIntegrante, CoordinadorComunicacion, LiderComunicacion, EstructuraComunicacion, ResponsableComunicacion, ReunionComunicacion, IncidenciaComunicacion, EstructuraIntegranteComunicacion, AgendaPublicacion, SolicitudContenido, CoberturaActividad, BancoMedios, CampanaComunicacion, MonitoreoRed
+from .form import AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, InstitucionForm, OrganizacionIntegranteForm, CoordinadorOrganizacionForm, LiderComunitarioOrganizacionForm, EstructuraOrganizativaForm, ResponsableTerritorialForm, ReunionTerritorialForm, IncidenciaTerritorialForm, JuventudIntegranteForm, CoordinadorJuventudForm, LiderJuvenilForm, EstructuraJuventudForm, ResponsableJuventudForm, ReunionJuventudForm, IncidenciaJuventudForm, MujeresIntegranteForm, CoordinadoraMujeresForm, LiderMujeresForm, EstructuraMujeresForm, ResponsableMujeresForm, ReunionMujeresForm, IncidenciaMujeresForm, LogisticaIntegranteForm, CoordinadorLogisticaForm, LiderLogisticaForm, EstructuraLogisticaForm, ResponsableLogisticaForm, ReunionLogisticaForm, IncidenciaLogisticaForm, RecursoLogisticoForm, AsignacionLogisticaForm, SolicitudLogisticaForm, EntregaLogisticaForm, AgendaLogisticaForm, ComunicacionIntegranteForm, CoordinadorComunicacionForm, LiderComunicacionForm, EstructuraComunicacionForm, ResponsableComunicacionForm, ReunionComunicacionForm, IncidenciaComunicacionForm, AgendaPublicacionForm, SolicitudContenidoForm, CoberturaActividadForm, BancoMediosForm, CampanaComunicacionForm, MonitoreoRedForm, PlanHormigaIntegranteForm, CoordinadorPlanHormigaForm, EnlaceTerritorialPlanHormigaForm, EstructuraPlanHormigaForm, ResponsableZonaPlanHormigaForm, ReunionPlanHormigaForm, IncidenciaPlanHormigaForm, VisitaPlanHormigaForm, SeguimientoContactoPlanHormigaForm, CompromisoTerritorialPlanHormigaForm, PuntoVisitadoPlanHormigaForm, ActivacionTerritorialPlanHormigaForm, CoberturaVisitaPlanHormigaForm
+from .models import Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil, Institucion, Sector, PadronElectoral, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, EstructuraIntegrante, EstadoRegistro, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, EstructuraIntegranteJuventud, MujeresIntegrante, CoordinadoraMujeres, LiderMujeres, EstructuraMujeres, ResponsableMujeres, ReunionMujeres, IncidenciaMujeres, EstructuraIntegranteMujeres, LogisticaIntegrante, CoordinadorLogistica, LiderLogistica, EstructuraLogistica, ResponsableLogistica, ReunionLogistica, IncidenciaLogistica, EstructuraIntegranteLogistica, RecursoLogistico, AsignacionLogistica, SolicitudLogistica, EntregaLogistica, AgendaLogistica, ComunicacionIntegrante, CoordinadorComunicacion, LiderComunicacion, EstructuraComunicacion, ResponsableComunicacion, ReunionComunicacion, IncidenciaComunicacion, EstructuraIntegranteComunicacion, AgendaPublicacion, SolicitudContenido, CoberturaActividad, BancoMedios, CampanaComunicacion, MonitoreoRed, PlanHormigaIntegrante, CoordinadorPlanHormiga, EnlaceTerritorialPlanHormiga, EstructuraPlanHormiga, ResponsableZonaPlanHormiga, ReunionPlanHormiga, IncidenciaPlanHormiga, EstructuraIntegrantePlanHormiga, VisitaPlanHormiga, SeguimientoContactoPlanHormiga, CompromisoTerritorialPlanHormiga, PuntoVisitadoPlanHormiga, ActivacionTerritorialPlanHormiga, CoberturaVisitaPlanHormiga
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
@@ -400,6 +400,8 @@ def signin(request):
                     return redirect('afiliados:dashboard_logistica')
                 elif g.name == 'Comunicacion':
                     return redirect('afiliados:dashboard_comunicacion')
+                elif g.name == 'PlanHormiga':
+                    return redirect('afiliados:dashboard_plan_hormiga')
             # Si no se encuentra el grupo adecuado, se redirige a una página por defecto
             return redirect('afiliados:dahsboard')
         else:
@@ -4929,3 +4931,329 @@ def editar_campanas_comunicacion(request, pk): return _com_extra_crud(request, C
 def lista_monitoreo_redes(request): return _com_extra_crud(request, MonitoreoRed, MonitoreoRedForm, 'afiliados/comunicacion/crud_monitoreo_redes.html', 'afiliados:lista_monitoreo_redes')
 @login_required
 def editar_monitoreo_redes(request, pk): return _com_extra_crud(request, MonitoreoRed, MonitoreoRedForm, 'afiliados/comunicacion/crud_monitoreo_redes.html', 'afiliados:lista_monitoreo_redes', pk=pk)
+
+
+
+def _es_usuario_plan_hormiga(user):
+    if not user.is_authenticated:
+        return False
+    return user.groups.filter(name__in=['PlanHormiga', 'Administrador']).exists()
+
+
+def _require_plan_hormiga(request):
+    if not _es_usuario_plan_hormiga(request.user):
+        return HttpResponseForbidden("No tiene permisos para acceder a Secretaría de Plan Hormiga.")
+    return None
+
+
+@login_required
+def dashboard_plan_hormiga(request):
+    denied = _require_plan_hormiga(request)
+    if denied:
+        return denied
+    registros = PlanHormigaIntegrante.objects.select_related('afiliado')
+    context = {
+        'total_integrantes': registros.count(),
+        'total_pendientes': registros.filter(estado=PlanHormigaIntegrante.Estado.PENDIENTE).count(),
+        'total_revisados': registros.filter(estado=PlanHormigaIntegrante.Estado.REVISADO).count(),
+        'total_aprobados': registros.filter(estado=PlanHormigaIntegrante.Estado.APROBADO).count(),
+        'ultimos_registros': registros.order_by('-fecha_creacion')[:10],
+    }
+    return safe_render(request, 'afiliados/plan_hormiga/dashboard.html', context)
+
+
+@login_required
+def lista_integrantes_plan_hormiga(request):
+    denied = _require_plan_hormiga(request)
+    if denied:
+        return denied
+    integrantes = PlanHormigaIntegrante.objects.select_related('afiliado', 'usuario_registro').order_by('-fecha_creacion')
+    context = {'integrantes': integrantes, 'total_integrantes': integrantes.count(), 'total_pendientes': integrantes.filter(estado=PlanHormigaIntegrante.Estado.PENDIENTE).count(), 'total_revisados': integrantes.filter(estado=PlanHormigaIntegrante.Estado.REVISADO).count(), 'total_aprobados': integrantes.filter(estado=PlanHormigaIntegrante.Estado.APROBADO).count()}
+    return safe_render(request, 'afiliados/plan_hormiga/lista.html', context)
+
+
+@login_required
+def crear_integrante_plan_hormiga(request):
+    denied = _require_plan_hormiga(request)
+    if denied:
+        return denied
+    form = PlanHormigaIntegranteForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
+        if error_dpi:
+            form.add_error('dpi', error_dpi)
+        elif not afiliado:
+            form.add_error('dpi', 'No existe un afiliado registrado con este DPI.')
+        elif PlanHormigaIntegrante.objects.filter(afiliado=afiliado).exists():
+            form.add_error('dpi', 'Este afiliado ya está registrado en Secretaría de Plan Hormiga.')
+        else:
+            integrante = form.save(commit=False)
+            integrante.afiliado = afiliado
+            integrante.usuario_registro = request.user
+            integrante.usuario_modificacion = request.user
+            integrante.save()
+            messages.success(request, 'Integrante agregado correctamente.')
+            return redirect('afiliados:lista_integrantes_plan_hormiga')
+    return safe_render(request, 'afiliados/plan_hormiga/form.html', {'form': form, 'es_edicion': False})
+
+
+@login_required
+def detalle_integrante_plan_hormiga(request, pk):
+    denied = _require_plan_hormiga(request)
+    if denied:
+        return denied
+    integrante = get_object_or_404(PlanHormigaIntegrante.objects.select_related('afiliado', 'usuario_registro', 'usuario_modificacion'), pk=pk)
+    return safe_render(request, 'afiliados/plan_hormiga/detalle.html', {'integrante': integrante})
+
+
+@login_required
+def editar_integrante_plan_hormiga(request, pk):
+    denied = _require_plan_hormiga(request)
+    if denied:
+        return denied
+    integrante = get_object_or_404(PlanHormigaIntegrante, pk=pk)
+    form = PlanHormigaIntegranteForm(request.POST or None, instance=integrante)
+    form.fields['dpi'].initial = integrante.afiliado.dpi
+    if request.method == 'POST' and form.is_valid():
+        afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
+        if error_dpi:
+            form.add_error('dpi', error_dpi)
+        elif not afiliado:
+            form.add_error('dpi', 'No existe un afiliado registrado con este DPI.')
+        elif PlanHormigaIntegrante.objects.filter(afiliado=afiliado).exclude(pk=integrante.pk).exists():
+            form.add_error('dpi', 'Este afiliado ya está registrado en Secretaría de Plan Hormiga.')
+        else:
+            integrante = form.save(commit=False)
+            integrante.afiliado = afiliado
+            integrante.usuario_modificacion = request.user
+            integrante.save()
+            messages.success(request, 'Integrante actualizado correctamente.')
+            return redirect('afiliados:detalle_integrante_plan_hormiga', pk=integrante.pk)
+    return safe_render(request, 'afiliados/plan_hormiga/form.html', {'form': form, 'es_edicion': True, 'integrante': integrante})
+
+@login_required
+@require_GET
+def buscar_por_dpi_plan_hormiga(request):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    afiliado, dpi_limpio, error_dpi = _afiliado_por_dpi(request.GET.get('dpi', ''))
+    if error_dpi: return JsonResponse({'ok': False, 'error': error_dpi}, status=400)
+    if not afiliado: return JsonResponse({'ok': True, 'exists': False, 'message': 'No existe afiliado con ese DPI.'})
+    ya_registrado = PlanHormigaIntegrante.objects.filter(afiliado=afiliado).exists()
+    return JsonResponse({'ok': True, 'exists': True, 'already_registered': ya_registrado, 'data': {'dpi': dpi_limpio, 'nombre_completo': afiliado.nombre_completo, 'telefono': afiliado.telefono, 'direccion': afiliado.direccion, 'comunidad': afiliado.comunidad.nombre if afiliado.comunidad else None, 'empadronado': afiliado.empadronado}})
+
+@login_required
+@require_POST
+def cambiar_estado_plan_hormiga(request, pk):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    integrante = get_object_or_404(PlanHormigaIntegrante, pk=pk)
+    nuevo_estado = request.POST.get('estado', '').upper().strip()
+    estados_validos = {choice[0] for choice in PlanHormigaIntegrante.Estado.choices}
+    if nuevo_estado not in estados_validos:
+        messages.error(request, 'Estado inválido.')
+        return redirect('afiliados:detalle_integrante_plan_hormiga', pk=pk)
+    integrante.estado = nuevo_estado
+    integrante.usuario_modificacion = request.user
+    integrante.save(update_fields=['estado', 'usuario_modificacion', 'fecha_actualizacion'])
+    messages.success(request, 'Estado actualizado correctamente.')
+    return redirect('afiliados:detalle_integrante_plan_hormiga', pk=pk)
+
+@login_required
+@require_GET
+def verificar_empadronamiento_plan_hormiga(request):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    dpi = re.sub(r"\D", "", request.GET.get('dpi', ''))
+    payload, status_code = _resultado_padron_local(dpi)
+    return JsonResponse(payload, status=status_code)
+
+@login_required
+def panorama_municipal_plan_hormiga(request):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/plan_hormiga/panorama.html', {'coordinadores': CoordinadorPlanHormiga.objects.count(), 'enlaces': EnlaceTerritorialPlanHormiga.objects.count(), 'estructuras': EstructuraPlanHormiga.objects.count(), 'reuniones': ReunionPlanHormiga.objects.count(), 'incidencias': IncidenciaPlanHormiga.objects.count()})
+
+
+def _plan_hormiga_crud(request, model, form_class, template, list_name, create_name, edit_name, pk=None):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    instance = get_object_or_404(model, pk=pk) if pk else None
+    form = form_class(request.POST or None, instance=instance)
+    if request.method == 'POST' and form.is_valid():
+        obj = form.save(commit=False)
+        if hasattr(obj, 'usuario_creador_id') and not getattr(obj, 'usuario_creador_id', None):
+            obj.usuario_creador = request.user
+        if hasattr(obj, 'usuario_modificador_id'):
+            obj.usuario_modificador = request.user
+        obj.save()
+        messages.success(request, 'Registro guardado correctamente.')
+        return redirect(list_name)
+    context = {'form': form, 'items': model.objects.all().order_by('-id')[:200], 'entity_label': template, 'create_name': create_name, 'edit_name': edit_name, 'detail_name': {'coordinadores': 'afiliados:detalle_coordinador_plan_hormiga', 'enlaces': 'afiliados:detalle_enlace_plan_hormiga', 'estructuras': 'afiliados:detalle_estructura_plan_hormiga', 'responsables': 'afiliados:detalle_responsable_plan_hormiga', 'reuniones': 'afiliados:detalle_reunion_plan_hormiga', 'incidencias': 'afiliados:detalle_incidencia_plan_hormiga'}.get(template), 'comunidad_lookup_url': reverse('afiliados:plan_hormiga_comunidad_lookup'), 'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_plan_hormiga')}
+    if template == 'reuniones':
+        responsables_modal = []
+        for responsable in ResponsableZonaPlanHormiga.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({'tipo': 'RESPONSABLE', 'tipo_label': 'Responsable de zona', 'id': responsable.id, 'nombre': responsable.nombre_completo, 'dpi': responsable.dpi, 'comunidad': responsable.comunidad.nombre if responsable.comunidad else ''})
+        for coordinador in CoordinadorPlanHormiga.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({'tipo': 'COORDINADOR', 'tipo_label': 'Coordinador', 'id': coordinador.id, 'nombre': coordinador.nombre_completo, 'dpi': coordinador.dpi, 'comunidad': coordinador.comunidad.nombre if coordinador.comunidad else ''})
+        for enlace in EnlaceTerritorialPlanHormiga.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
+            responsables_modal.append({'tipo': 'ENLACE', 'tipo_label': 'Enlace territorial', 'id': enlace.id, 'nombre': enlace.nombre_completo, 'dpi': enlace.dpi, 'comunidad': enlace.comunidad.nombre if enlace.comunidad else ''})
+        context['responsables_modal'] = responsables_modal
+    if template == 'estructuras':
+        coordinadores_modal = []
+        for coordinador in CoordinadorPlanHormiga.objects.select_related('comunidad').order_by('nombre_completo'):
+            coordinadores_modal.append({'id': coordinador.id, 'nombre': coordinador.nombre_completo, 'dpi': coordinador.dpi, 'comunidad': coordinador.comunidad.nombre if coordinador.comunidad else '', 'estado': coordinador.get_estado_display()})
+        context['coordinadores_modal'] = coordinadores_modal
+    return safe_render(request, f'afiliados/plan_hormiga/crud_{template}.html', context)
+
+@login_required
+def lista_estructura_territorial_plan_hormiga(request):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    comunidades = Comunidad.objects.select_related('sector').order_by('nombre')
+    sectores = Sector.objects.order_by('nombre')
+    centros = CentroVotacion.objects.order_by('nombre')
+    return safe_render(request, 'afiliados/plan_hormiga/estructura_territorial.html', {'comunidades': comunidades, 'sectores': sectores, 'centros': centros, 'total_comunidades': comunidades.count(), 'total_sectores': sectores.count(), 'total_centros': centros.count()})
+
+@login_required
+def lista_coordinadores_plan_hormiga(request): return _plan_hormiga_crud(request, CoordinadorPlanHormiga, CoordinadorPlanHormigaForm, 'coordinadores', 'afiliados:lista_coordinadores_plan_hormiga', 'afiliados:crear_coordinador_plan_hormiga', 'afiliados:editar_coordinador_plan_hormiga')
+@login_required
+def crear_coordinador_plan_hormiga(request): return _plan_hormiga_crud(request, CoordinadorPlanHormiga, CoordinadorPlanHormigaForm, 'coordinadores', 'afiliados:lista_coordinadores_plan_hormiga', 'afiliados:crear_coordinador_plan_hormiga', 'afiliados:editar_coordinador_plan_hormiga')
+@login_required
+def editar_coordinador_plan_hormiga(request, pk): return _plan_hormiga_crud(request, CoordinadorPlanHormiga, CoordinadorPlanHormigaForm, 'coordinadores', 'afiliados:lista_coordinadores_plan_hormiga', 'afiliados:crear_coordinador_plan_hormiga', 'afiliados:editar_coordinador_plan_hormiga', pk=pk)
+@login_required
+def detalle_coordinador_plan_hormiga(request, pk):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/plan_hormiga/detalle_generico.html', {'obj': get_object_or_404(CoordinadorPlanHormiga, pk=pk), 'titulo': 'Coordinador de Plan Hormiga'})
+@login_required
+def lista_enlaces_plan_hormiga(request): return _plan_hormiga_crud(request, EnlaceTerritorialPlanHormiga, EnlaceTerritorialPlanHormigaForm, 'enlaces', 'afiliados:lista_enlaces_plan_hormiga', 'afiliados:crear_enlace_plan_hormiga', 'afiliados:editar_enlace_plan_hormiga')
+@login_required
+def crear_enlace_plan_hormiga(request): return _plan_hormiga_crud(request, EnlaceTerritorialPlanHormiga, EnlaceTerritorialPlanHormigaForm, 'enlaces', 'afiliados:lista_enlaces_plan_hormiga', 'afiliados:crear_enlace_plan_hormiga', 'afiliados:editar_enlace_plan_hormiga')
+@login_required
+def editar_enlace_plan_hormiga(request, pk): return _plan_hormiga_crud(request, EnlaceTerritorialPlanHormiga, EnlaceTerritorialPlanHormigaForm, 'enlaces', 'afiliados:lista_enlaces_plan_hormiga', 'afiliados:crear_enlace_plan_hormiga', 'afiliados:editar_enlace_plan_hormiga', pk=pk)
+@login_required
+def detalle_enlace_plan_hormiga(request, pk):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/plan_hormiga/detalle_generico.html', {'obj': get_object_or_404(EnlaceTerritorialPlanHormiga, pk=pk), 'titulo': 'Enlace territorial'})
+@login_required
+def lista_estructuras_plan_hormiga(request): return _plan_hormiga_crud(request, EstructuraPlanHormiga, EstructuraPlanHormigaForm, 'estructuras', 'afiliados:lista_estructuras_plan_hormiga', 'afiliados:crear_estructura_plan_hormiga', 'afiliados:editar_estructura_plan_hormiga')
+@login_required
+def crear_estructura_plan_hormiga(request): return _plan_hormiga_crud(request, EstructuraPlanHormiga, EstructuraPlanHormigaForm, 'estructuras', 'afiliados:lista_estructuras_plan_hormiga', 'afiliados:crear_estructura_plan_hormiga', 'afiliados:editar_estructura_plan_hormiga')
+@login_required
+def editar_estructura_plan_hormiga(request, pk): return _plan_hormiga_crud(request, EstructuraPlanHormiga, EstructuraPlanHormigaForm, 'estructuras', 'afiliados:lista_estructuras_plan_hormiga', 'afiliados:crear_estructura_plan_hormiga', 'afiliados:editar_estructura_plan_hormiga', pk=pk)
+@login_required
+def detalle_estructura_plan_hormiga(request, pk):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    estructura = get_object_or_404(EstructuraPlanHormiga.objects.select_related('comunidad', 'sector', 'centro_votacion', 'coordinador_responsable'), pk=pk)
+    integrantes = estructura.integrantes.select_related('usuario_registro').all()
+    return safe_render(request, 'afiliados/plan_hormiga/detalle_estructura.html', {'estructura': estructura, 'integrantes': integrantes, 'total_integrantes': integrantes.count(), 'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_plan_hormiga')})
+@login_required
+@require_POST
+def eliminar_integrante_estructura_plan_hormiga(request, pk, integrante_id):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    estructura = get_object_or_404(EstructuraPlanHormiga, pk=pk)
+    integrante = get_object_or_404(EstructuraIntegrantePlanHormiga, pk=integrante_id, estructura=estructura)
+    integrante.delete()
+    messages.success(request, 'Integrante eliminado correctamente de la estructura de Plan Hormiga.')
+    return redirect('afiliados:detalle_estructura_plan_hormiga', pk=estructura.pk)
+@login_required
+def lista_responsables_plan_hormiga(request): return _plan_hormiga_crud(request, ResponsableZonaPlanHormiga, ResponsableZonaPlanHormigaForm, 'responsables', 'afiliados:lista_responsables_plan_hormiga', 'afiliados:crear_responsable_plan_hormiga', 'afiliados:editar_responsable_plan_hormiga')
+@login_required
+def crear_responsable_plan_hormiga(request): return _plan_hormiga_crud(request, ResponsableZonaPlanHormiga, ResponsableZonaPlanHormigaForm, 'responsables', 'afiliados:lista_responsables_plan_hormiga', 'afiliados:crear_responsable_plan_hormiga', 'afiliados:editar_responsable_plan_hormiga')
+@login_required
+def editar_responsable_plan_hormiga(request, pk): return _plan_hormiga_crud(request, ResponsableZonaPlanHormiga, ResponsableZonaPlanHormigaForm, 'responsables', 'afiliados:lista_responsables_plan_hormiga', 'afiliados:crear_responsable_plan_hormiga', 'afiliados:editar_responsable_plan_hormiga', pk=pk)
+@login_required
+def detalle_responsable_plan_hormiga(request, pk):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/plan_hormiga/detalle_generico.html', {'obj': get_object_or_404(ResponsableZonaPlanHormiga, pk=pk), 'titulo': 'Responsable de zona'})
+@login_required
+def lista_reuniones_plan_hormiga(request): return _plan_hormiga_crud(request, ReunionPlanHormiga, ReunionPlanHormigaForm, 'reuniones', 'afiliados:lista_reuniones_plan_hormiga', 'afiliados:crear_reunion_plan_hormiga', 'afiliados:editar_reunion_plan_hormiga')
+@login_required
+def crear_reunion_plan_hormiga(request): return _plan_hormiga_crud(request, ReunionPlanHormiga, ReunionPlanHormigaForm, 'reuniones', 'afiliados:lista_reuniones_plan_hormiga', 'afiliados:crear_reunion_plan_hormiga', 'afiliados:editar_reunion_plan_hormiga')
+@login_required
+def editar_reunion_plan_hormiga(request, pk): return _plan_hormiga_crud(request, ReunionPlanHormiga, ReunionPlanHormigaForm, 'reuniones', 'afiliados:lista_reuniones_plan_hormiga', 'afiliados:crear_reunion_plan_hormiga', 'afiliados:editar_reunion_plan_hormiga', pk=pk)
+@login_required
+def detalle_reunion_plan_hormiga(request, pk):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/plan_hormiga/detalle_reunion.html', {'reunion': get_object_or_404(ReunionPlanHormiga, pk=pk)})
+@login_required
+def lista_incidencias_plan_hormiga(request): return _plan_hormiga_crud(request, IncidenciaPlanHormiga, IncidenciaPlanHormigaForm, 'incidencias', 'afiliados:lista_incidencias_plan_hormiga', 'afiliados:crear_incidencia_plan_hormiga', 'afiliados:editar_incidencia_plan_hormiga')
+@login_required
+def crear_incidencia_plan_hormiga(request): return _plan_hormiga_crud(request, IncidenciaPlanHormiga, IncidenciaPlanHormigaForm, 'incidencias', 'afiliados:lista_incidencias_plan_hormiga', 'afiliados:crear_incidencia_plan_hormiga', 'afiliados:editar_incidencia_plan_hormiga')
+@login_required
+def editar_incidencia_plan_hormiga(request, pk): return _plan_hormiga_crud(request, IncidenciaPlanHormiga, IncidenciaPlanHormigaForm, 'incidencias', 'afiliados:lista_incidencias_plan_hormiga', 'afiliados:crear_incidencia_plan_hormiga', 'afiliados:editar_incidencia_plan_hormiga', pk=pk)
+@login_required
+def detalle_incidencia_plan_hormiga(request, pk):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/plan_hormiga/detalle_generico.html', {'obj': get_object_or_404(IncidenciaPlanHormiga, pk=pk), 'titulo': 'Incidencia territorial'})
+@login_required
+def reporte_cobertura_plan_hormiga(request): return panorama_municipal_plan_hormiga(request)
+@login_required
+def reporte_coordinadores_plan_hormiga(request):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/plan_hormiga/reporte_coordinadores.html', {'coordinadores': CoordinadorPlanHormiga.objects.select_related('comunidad', 'sector', 'centro_votacion').order_by('-fecha_creacion')})
+@login_required
+def reporte_reuniones_plan_hormiga(request):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    return safe_render(request, 'afiliados/plan_hormiga/reporte_reuniones.html', {'reuniones': ReunionPlanHormiga.objects.select_related('comunidad', 'sector', 'centro_votacion').order_by('-fecha')})
+@login_required
+def reporte_crecimiento_mensual_plan_hormiga(request): return panorama_municipal_plan_hormiga(request)
+
+@login_required
+@require_GET
+def plan_hormiga_comunidad_lookup(request):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    comunidad = Comunidad.objects.select_related('sector').filter(pk=request.GET.get('comunidad_id')).first()
+    if not comunidad: return JsonResponse({'ok': False, 'error': 'Comunidad no encontrada.'}, status=404)
+    centro = comunidad.sector.centros.first() if comunidad.sector else None
+    return JsonResponse({'ok': True, 'data': {'comunidad': comunidad.nombre, 'sector': comunidad.sector.nombre if comunidad.sector else None, 'centro_votacion': centro.nombre if centro else None}})
+
+
+def _plan_hormiga_extra_crud(request, model, form_class, template_name, list_url, pk=None):
+    denied = _require_plan_hormiga(request)
+    if denied: return denied
+    instance = get_object_or_404(model, pk=pk) if pk else None
+    form = form_class(request.POST or None, instance=instance)
+    if request.method == 'POST' and form.is_valid():
+        obj = form.save(commit=False)
+        if not getattr(obj, 'usuario_creador_id', None): obj.usuario_creador = request.user
+        obj.usuario_modificador = request.user
+        obj.save()
+        messages.success(request, 'Registro guardado correctamente.')
+        return redirect(list_url)
+    return safe_render(request, template_name, {'form': form, 'items': model.objects.all().order_by('-id')[:200]})
+
+@login_required
+def lista_visitas_plan_hormiga(request): return _plan_hormiga_extra_crud(request, VisitaPlanHormiga, VisitaPlanHormigaForm, 'afiliados/plan_hormiga/crud_visitas.html', 'afiliados:lista_visitas_plan_hormiga')
+@login_required
+def editar_visitas_plan_hormiga(request, pk): return _plan_hormiga_extra_crud(request, VisitaPlanHormiga, VisitaPlanHormigaForm, 'afiliados/plan_hormiga/crud_visitas.html', 'afiliados:lista_visitas_plan_hormiga', pk=pk)
+@login_required
+def lista_seguimientos_plan_hormiga(request): return _plan_hormiga_extra_crud(request, SeguimientoContactoPlanHormiga, SeguimientoContactoPlanHormigaForm, 'afiliados/plan_hormiga/crud_seguimientos.html', 'afiliados:lista_seguimientos_plan_hormiga')
+@login_required
+def editar_seguimientos_plan_hormiga(request, pk): return _plan_hormiga_extra_crud(request, SeguimientoContactoPlanHormiga, SeguimientoContactoPlanHormigaForm, 'afiliados/plan_hormiga/crud_seguimientos.html', 'afiliados:lista_seguimientos_plan_hormiga', pk=pk)
+@login_required
+def lista_compromisos_plan_hormiga(request): return _plan_hormiga_extra_crud(request, CompromisoTerritorialPlanHormiga, CompromisoTerritorialPlanHormigaForm, 'afiliados/plan_hormiga/crud_compromisos.html', 'afiliados:lista_compromisos_plan_hormiga')
+@login_required
+def editar_compromisos_plan_hormiga(request, pk): return _plan_hormiga_extra_crud(request, CompromisoTerritorialPlanHormiga, CompromisoTerritorialPlanHormigaForm, 'afiliados/plan_hormiga/crud_compromisos.html', 'afiliados:lista_compromisos_plan_hormiga', pk=pk)
+@login_required
+def lista_puntos_visitados_plan_hormiga(request): return _plan_hormiga_extra_crud(request, PuntoVisitadoPlanHormiga, PuntoVisitadoPlanHormigaForm, 'afiliados/plan_hormiga/crud_puntos_visitados.html', 'afiliados:lista_puntos_visitados_plan_hormiga')
+@login_required
+def editar_puntos_visitados_plan_hormiga(request, pk): return _plan_hormiga_extra_crud(request, PuntoVisitadoPlanHormiga, PuntoVisitadoPlanHormigaForm, 'afiliados/plan_hormiga/crud_puntos_visitados.html', 'afiliados:lista_puntos_visitados_plan_hormiga', pk=pk)
+@login_required
+def lista_activaciones_plan_hormiga(request): return _plan_hormiga_extra_crud(request, ActivacionTerritorialPlanHormiga, ActivacionTerritorialPlanHormigaForm, 'afiliados/plan_hormiga/crud_activaciones.html', 'afiliados:lista_activaciones_plan_hormiga')
+@login_required
+def editar_activaciones_plan_hormiga(request, pk): return _plan_hormiga_extra_crud(request, ActivacionTerritorialPlanHormiga, ActivacionTerritorialPlanHormigaForm, 'afiliados/plan_hormiga/crud_activaciones.html', 'afiliados:lista_activaciones_plan_hormiga', pk=pk)
+@login_required
+def lista_coberturas_visitas_plan_hormiga(request): return _plan_hormiga_extra_crud(request, CoberturaVisitaPlanHormiga, CoberturaVisitaPlanHormigaForm, 'afiliados/plan_hormiga/crud_cobertura_visitas.html', 'afiliados:lista_coberturas_visitas_plan_hormiga')
+@login_required
+def editar_coberturas_visitas_plan_hormiga(request, pk): return _plan_hormiga_extra_crud(request, CoberturaVisitaPlanHormiga, CoberturaVisitaPlanHormigaForm, 'afiliados/plan_hormiga/crud_cobertura_visitas.html', 'afiliados:lista_coberturas_visitas_plan_hormiga', pk=pk)

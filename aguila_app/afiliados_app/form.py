@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 import re
 
 
-from .models import  Perfil,  Institucion, Afiliado, Comunidad, CentroVotacion, Comision, Sector, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, MujeresIntegrante, CoordinadoraMujeres, LiderMujeres, EstructuraMujeres, ResponsableMujeres, ReunionMujeres, IncidenciaMujeres, LogisticaIntegrante, CoordinadorLogistica, LiderLogistica, EstructuraLogistica, ResponsableLogistica, ReunionLogistica, IncidenciaLogistica, RecursoLogistico, AsignacionLogistica, SolicitudLogistica, EntregaLogistica, AgendaLogistica, ComunicacionIntegrante, CoordinadorComunicacion, LiderComunicacion, EstructuraComunicacion, ResponsableComunicacion, ReunionComunicacion, IncidenciaComunicacion, AgendaPublicacion, SolicitudContenido, CoberturaActividad, BancoMedios, CampanaComunicacion, MonitoreoRed
+from .models import  Perfil,  Institucion, Afiliado, Comunidad, CentroVotacion, Comision, Sector, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, MujeresIntegrante, CoordinadoraMujeres, LiderMujeres, EstructuraMujeres, ResponsableMujeres, ReunionMujeres, IncidenciaMujeres, LogisticaIntegrante, CoordinadorLogistica, LiderLogistica, EstructuraLogistica, ResponsableLogistica, ReunionLogistica, IncidenciaLogistica, RecursoLogistico, AsignacionLogistica, SolicitudLogistica, EntregaLogistica, AgendaLogistica, ComunicacionIntegrante, CoordinadorComunicacion, LiderComunicacion, EstructuraComunicacion, ResponsableComunicacion, ReunionComunicacion, IncidenciaComunicacion, AgendaPublicacion, SolicitudContenido, CoberturaActividad, BancoMedios, CampanaComunicacion, MonitoreoRed, PlanHormigaIntegrante, CoordinadorPlanHormiga, EnlaceTerritorialPlanHormiga, EstructuraPlanHormiga, ResponsableZonaPlanHormiga, ReunionPlanHormiga, IncidenciaPlanHormiga, VisitaPlanHormiga, SeguimientoContactoPlanHormiga, CompromisoTerritorialPlanHormiga, PuntoVisitadoPlanHormiga, ActivacionTerritorialPlanHormiga, CoberturaVisitaPlanHormiga
 
 from django.db.models import Sum, F, Value
 from django.db.models.functions import Coalesce
@@ -1367,3 +1367,97 @@ class MonitoreoRedForm(forms.ModelForm):
         model = MonitoreoRed
         exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
         widgets = {'red_social': forms.TextInput(attrs={'class': 'form-control'}), 'actividad': forms.TextInput(attrs={'class': 'form-control'}), 'estado': forms.Select(attrs={'class': 'form-select'}), 'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2})}
+
+
+class PlanHormigaIntegranteForm(forms.ModelForm):
+    dpi = forms.CharField(max_length=20, required=True, widget=forms.TextInput(attrs={'class': 'form-control'}), label='DPI')
+
+    class Meta:
+        model = PlanHormigaIntegrante
+        fields = ['estado', 'observaciones']
+        widgets = {'estado': forms.Select(attrs={'class': 'form-control'}), 'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 3})}
+
+
+class CoordinadorPlanHormigaForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = CoordinadorPlanHormiga
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {f: forms.TextInput(attrs={'class': 'form-control'}) for f in ['nombre_completo', 'dpi', 'telefono', 'tipo_coordinacion']}
+        widgets.update({'comunidad': forms.Select(attrs={'class': 'form-select'}), 'estado': forms.Select(attrs={'class': 'form-select'}), 'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2})})
+
+
+class EnlaceTerritorialPlanHormigaForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = EnlaceTerritorialPlanHormiga
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}), 'dpi': forms.TextInput(attrs={'class': 'form-control'}), 'telefono': forms.TextInput(attrs={'class': 'form-control'}), 'coordinador': forms.Select(attrs={'class': 'form-select'}), 'comunidad': forms.Select(attrs={'class': 'form-select'}), 'estado': forms.Select(attrs={'class': 'form-select'}), 'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2})}
+
+
+class EstructuraPlanHormigaForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = EstructuraPlanHormiga
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion', 'cantidad_integrantes']
+        widgets = {'tipo_estructura': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej.: Célula territorial, equipo de movilización'}), 'nombre': forms.TextInput(attrs={'class': 'form-control'}), 'coordinador_responsable': forms.HiddenInput(), 'comunidad': forms.Select(attrs={'class': 'form-select'}), 'estado': forms.Select(attrs={'class': 'form-select'}), 'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2})}
+
+
+class ResponsableZonaPlanHormigaForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = ResponsableZonaPlanHormiga
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}), 'dpi': forms.TextInput(attrs={'class': 'form-control'}), 'comunidad': forms.Select(attrs={'class': 'form-select'}), 'estado': forms.Select(attrs={'class': 'form-select'}), 'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2})}
+
+
+class ReunionPlanHormigaForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = ReunionPlanHormiga
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {'fecha': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'), 'tipo_reunion': forms.TextInput(attrs={'class': 'form-control'}), 'titulo': forms.TextInput(attrs={'class': 'form-control'}), 'comunidad': forms.Select(attrs={'class': 'form-select'}), 'responsables': forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly', 'placeholder': 'Selecciona desde el modal'}), 'responsable_tipo': forms.HiddenInput(), 'responsable_referencia_id': forms.HiddenInput(), 'asistentes': forms.NumberInput(attrs={'class': 'form-control'}), 'acuerdos': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}), 'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}), 'estado_seguimiento': forms.Select(attrs={'class': 'form-select'})}
+
+
+class IncidenciaPlanHormigaForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = IncidenciaPlanHormiga
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {'tipo_incidencia': forms.TextInput(attrs={'class': 'form-control'}), 'comunidad': forms.Select(attrs={'class': 'form-select'}), 'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}), 'prioridad': forms.Select(attrs={'class': 'form-select'}), 'estado': forms.Select(attrs={'class': 'form-select'}), 'responsable_asignado': forms.Select(attrs={'class': 'form-select'}), 'seguimiento': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}), 'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2})}
+
+
+class VisitaPlanHormigaForm(forms.ModelForm):
+    class Meta:
+        model = VisitaPlanHormiga
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {'fecha': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}), 'comunidad': forms.Select(attrs={'class': 'form-select'}), 'sector': forms.Select(attrs={'class': 'form-select'}), 'responsable': forms.Select(attrs={'class': 'form-select'}), 'tipo_visita': forms.Select(attrs={'class': 'form-select'}), 'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}), 'estado': forms.Select(attrs={'class': 'form-select'})}
+
+
+class SeguimientoContactoPlanHormigaForm(forms.ModelForm):
+    class Meta:
+        model = SeguimientoContactoPlanHormiga
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {'persona_contactada': forms.TextInput(attrs={'class': 'form-control'}), 'dpi': forms.TextInput(attrs={'class': 'form-control'}), 'comunidad': forms.Select(attrs={'class': 'form-select'}), 'telefono': forms.TextInput(attrs={'class': 'form-control'}), 'estado_seguimiento': forms.Select(attrs={'class': 'form-select'}), 'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}), 'fecha_ultimo_contacto': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})}
+
+
+class CompromisoTerritorialPlanHormigaForm(forms.ModelForm):
+    class Meta:
+        model = CompromisoTerritorialPlanHormiga
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {'actividad': forms.TextInput(attrs={'class': 'form-control'}), 'responsable': forms.Select(attrs={'class': 'form-select'}), 'comunidad': forms.Select(attrs={'class': 'form-select'}), 'fecha_compromiso': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}), 'estado': forms.Select(attrs={'class': 'form-select'}), 'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2})}
+
+
+class PuntoVisitadoPlanHormigaForm(forms.ModelForm):
+    class Meta:
+        model = PuntoVisitadoPlanHormiga
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {'comunidad': forms.Select(attrs={'class': 'form-select'}), 'sector': forms.Select(attrs={'class': 'form-select'}), 'responsable': forms.Select(attrs={'class': 'form-select'}), 'cantidad_visitada': forms.NumberInput(attrs={'class': 'form-control'}), 'fecha': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}), 'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2})}
+
+
+class ActivacionTerritorialPlanHormigaForm(forms.ModelForm):
+    class Meta:
+        model = ActivacionTerritorialPlanHormiga
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {'comunidad': forms.Select(attrs={'class': 'form-select'}), 'responsable': forms.Select(attrs={'class': 'form-select'}), 'tipo_accion': forms.TextInput(attrs={'class': 'form-control'}), 'fecha': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}), 'resultado': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}), 'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2})}
+
+
+class CoberturaVisitaPlanHormigaForm(forms.ModelForm):
+    class Meta:
+        model = CoberturaVisitaPlanHormiga
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {'comunidades_atendidas': forms.NumberInput(attrs={'class': 'form-control'}), 'comunidades_pendientes': forms.NumberInput(attrs={'class': 'form-control'}), 'sectores_visitados': forms.NumberInput(attrs={'class': 'form-control'}), 'sectores_pendientes': forms.NumberInput(attrs={'class': 'form-control'}), 'fecha_corte': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}), 'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2})}

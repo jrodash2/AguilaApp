@@ -1521,6 +1521,284 @@ class MonitoreoRed(models.Model):
 
 
 
+class PlanHormigaIntegrante(models.Model):
+    class Estado(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        REVISADO = "REVISADO", "Revisado"
+        APROBADO = "APROBADO", "Aprobado"
+
+    afiliado = models.ForeignKey(Afiliado, on_delete=models.PROTECT, related_name="registros_plan_hormiga")
+    estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.PENDIENTE)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_registro = models.ForeignKey(User, on_delete=models.PROTECT, related_name="integrantes_plan_hormiga_registrados")
+    usuario_modificacion = models.ForeignKey(User, on_delete=models.PROTECT, related_name="integrantes_plan_hormiga_modificados", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Integrante de Plan Hormiga"
+        verbose_name_plural = "Integrantes de Plan Hormiga"
+        ordering = ["-fecha_creacion"]
+        constraints = [models.UniqueConstraint(fields=["afiliado"], name="uniq_plan_hormiga_afiliado")]
+
+    def __str__(self):
+        return f"{self.afiliado.nombre_completo} - {self.get_estado_display()}"
+
+
+class CoordinadorPlanHormiga(models.Model):
+    nombre_completo = models.CharField(max_length=160)
+    dpi = models.CharField(max_length=20, blank=True, null=True)
+    telefono = models.CharField(max_length=20, blank=True, null=True)
+    tipo_coordinacion = models.CharField(max_length=100, blank=True, null=True)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="coordinadores_plan_hormiga")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="coordinadores_plan_hormiga")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="coordinadores_plan_hormiga")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="coordinadores_plan_hormiga_creados")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="coordinadores_plan_hormiga_modificados", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+
+class EnlaceTerritorialPlanHormiga(models.Model):
+    nombre_completo = models.CharField(max_length=160)
+    dpi = models.CharField(max_length=20, blank=True, null=True)
+    telefono = models.CharField(max_length=20, blank=True, null=True)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="enlaces_plan_hormiga")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="enlaces_plan_hormiga")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="enlaces_plan_hormiga")
+    coordinador = models.ForeignKey(CoordinadorPlanHormiga, on_delete=models.SET_NULL, null=True, blank=True, related_name="enlaces")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="enlaces_plan_hormiga_creados")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="enlaces_plan_hormiga_modificados", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+
+class EstructuraPlanHormiga(models.Model):
+    tipo_estructura = models.CharField(max_length=80)
+    nombre = models.CharField(max_length=160)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="estructuras_plan_hormiga")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="estructuras_plan_hormiga")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="estructuras_plan_hormiga")
+    coordinador_responsable = models.ForeignKey(CoordinadorPlanHormiga, on_delete=models.SET_NULL, null=True, blank=True, related_name="estructuras_responsables")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    cantidad_integrantes = models.PositiveIntegerField(default=0)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="estructuras_plan_hormiga_creadas")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="estructuras_plan_hormiga_modificadas", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+
+class ResponsableZonaPlanHormiga(models.Model):
+    nombre_completo = models.CharField(max_length=160)
+    dpi = models.CharField(max_length=20, blank=True, null=True)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="responsables_plan_hormiga")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="responsables_plan_hormiga")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="responsables_plan_hormiga")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="responsables_plan_hormiga_creados")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="responsables_plan_hormiga_modificados", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+
+class ReunionPlanHormiga(models.Model):
+    class Seguimiento(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        EN_PROCESO = "EN_PROCESO", "En proceso"
+        CUMPLIDO = "CUMPLIDO", "Cumplido"
+
+    fecha = models.DateField()
+    tipo_reunion = models.CharField(max_length=80, blank=True, null=True)
+    titulo = models.CharField(max_length=180)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="reuniones_plan_hormiga")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="reuniones_plan_hormiga")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="reuniones_plan_hormiga")
+    responsables = models.TextField(blank=True, null=True)
+    responsable_tipo = models.CharField(max_length=20, blank=True, null=True)
+    responsable_referencia_id = models.PositiveIntegerField(blank=True, null=True)
+    asistentes = models.PositiveIntegerField(default=0)
+    acuerdos = models.TextField(blank=True, null=True)
+    observaciones = models.TextField(blank=True, null=True)
+    estado_seguimiento = models.CharField(max_length=20, choices=Seguimiento.choices, default=Seguimiento.PENDIENTE)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="reuniones_plan_hormiga_creadas")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="reuniones_plan_hormiga_modificadas", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+
+
+class IncidenciaPlanHormiga(models.Model):
+    class Prioridad(models.TextChoices):
+        BAJA = "BAJA", "Baja"
+        MEDIA = "MEDIA", "Media"
+        ALTA = "ALTA", "Alta"
+
+    tipo_incidencia = models.CharField(max_length=120)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_plan_hormiga")
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_plan_hormiga")
+    centro_votacion = models.ForeignKey(CentroVotacion, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_plan_hormiga")
+    descripcion = models.TextField()
+    prioridad = models.CharField(max_length=10, choices=Prioridad.choices, default=Prioridad.MEDIA)
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    responsable_asignado = models.ForeignKey(ResponsableZonaPlanHormiga, on_delete=models.SET_NULL, null=True, blank=True, related_name="incidencias_asignadas")
+    seguimiento = models.TextField(blank=True, null=True)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="incidencias_plan_hormiga_creadas")
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name="incidencias_plan_hormiga_modificadas", null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_creacion"]
+
+
+class EstructuraIntegrantePlanHormiga(models.Model):
+    estructura = models.ForeignKey(EstructuraPlanHormiga, on_delete=models.CASCADE, related_name="integrantes")
+    dpi = models.CharField(max_length=20)
+    nombre_completo = models.CharField(max_length=180)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name="integrantes_estructura_plan_hormiga")
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    usuario_registro = models.ForeignKey(User, on_delete=models.PROTECT, related_name="integrantes_estructura_plan_hormiga_registrados")
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["estructura", "dpi"], name="uniq_estructura_plan_hormiga_integrante_dpi")]
+        ordering = ["-fecha_registro"]
+
+
+class VisitaPlanHormiga(models.Model):
+    class TipoVisita(models.TextChoices):
+        CASA_CASA = "CASA_CASA", "Casa a casa"
+        RECORRIDO = "RECORRIDO", "Recorrido"
+        REUNION = "REUNION", "Reunión"
+
+    fecha = models.DateField()
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name='visitas_plan_hormiga')
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name='visitas_plan_hormiga')
+    responsable = models.ForeignKey(ResponsableZonaPlanHormiga, on_delete=models.SET_NULL, null=True, blank=True, related_name='visitas')
+    tipo_visita = models.CharField(max_length=20, choices=TipoVisita.choices, default=TipoVisita.RECORRIDO)
+    observaciones = models.TextField(blank=True, null=True)
+    estado = models.CharField(max_length=15, choices=EstadoRegistro.choices, default=EstadoRegistro.ACTIVO)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name='visitas_plan_hormiga_creadas')
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name='visitas_plan_hormiga_modificadas', null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+
+
+class SeguimientoContactoPlanHormiga(models.Model):
+    class EstadoSeguimiento(models.TextChoices):
+        NUEVO = "NUEVO", "Nuevo"
+        EN_PROCESO = "EN_PROCESO", "En proceso"
+        CERRADO = "CERRADO", "Cerrado"
+
+    persona_contactada = models.CharField(max_length=160)
+    dpi = models.CharField(max_length=20, blank=True, null=True)
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name='seguimientos_plan_hormiga')
+    telefono = models.CharField(max_length=20, blank=True, null=True)
+    estado_seguimiento = models.CharField(max_length=20, choices=EstadoSeguimiento.choices, default=EstadoSeguimiento.NUEVO)
+    observaciones = models.TextField(blank=True, null=True)
+    fecha_ultimo_contacto = models.DateField(null=True, blank=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name='seguimientos_plan_hormiga_creados')
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name='seguimientos_plan_hormiga_modificados', null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_actualizacion"]
+
+
+class CompromisoTerritorialPlanHormiga(models.Model):
+    class EstadoCompromiso(models.TextChoices):
+        PENDIENTE = "PENDIENTE", "Pendiente"
+        EN_CURSO = "EN_CURSO", "En curso"
+        CUMPLIDO = "CUMPLIDO", "Cumplido"
+
+    actividad = models.CharField(max_length=180)
+    responsable = models.ForeignKey(ResponsableZonaPlanHormiga, on_delete=models.SET_NULL, null=True, blank=True, related_name='compromisos')
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name='compromisos_plan_hormiga')
+    fecha_compromiso = models.DateField()
+    estado = models.CharField(max_length=20, choices=EstadoCompromiso.choices, default=EstadoCompromiso.PENDIENTE)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name='compromisos_plan_hormiga_creados')
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name='compromisos_plan_hormiga_modificados', null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_compromiso", "-id"]
+
+
+class PuntoVisitadoPlanHormiga(models.Model):
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name='puntos_visitados_plan_hormiga')
+    sector = models.ForeignKey(Sector, on_delete=models.SET_NULL, null=True, blank=True, related_name='puntos_visitados_plan_hormiga')
+    responsable = models.ForeignKey(ResponsableZonaPlanHormiga, on_delete=models.SET_NULL, null=True, blank=True, related_name='puntos_visitados')
+    cantidad_visitada = models.PositiveIntegerField(default=0)
+    fecha = models.DateField()
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name='puntos_visitados_plan_hormiga_creados')
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name='puntos_visitados_plan_hormiga_modificados', null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+
+
+class ActivacionTerritorialPlanHormiga(models.Model):
+    comunidad = models.ForeignKey(Comunidad, on_delete=models.SET_NULL, null=True, blank=True, related_name='activaciones_plan_hormiga')
+    responsable = models.ForeignKey(ResponsableZonaPlanHormiga, on_delete=models.SET_NULL, null=True, blank=True, related_name='activaciones')
+    tipo_accion = models.CharField(max_length=150)
+    fecha = models.DateField()
+    resultado = models.TextField(blank=True, null=True)
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name='activaciones_plan_hormiga_creadas')
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name='activaciones_plan_hormiga_modificadas', null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha", "-id"]
+
+
+class CoberturaVisitaPlanHormiga(models.Model):
+    comunidades_atendidas = models.PositiveIntegerField(default=0)
+    comunidades_pendientes = models.PositiveIntegerField(default=0)
+    sectores_visitados = models.PositiveIntegerField(default=0)
+    sectores_pendientes = models.PositiveIntegerField(default=0)
+    fecha_corte = models.DateField()
+    observaciones = models.TextField(blank=True, null=True)
+    usuario_creador = models.ForeignKey(User, on_delete=models.PROTECT, related_name='coberturas_plan_hormiga_creadas')
+    usuario_modificador = models.ForeignKey(User, on_delete=models.PROTECT, related_name='coberturas_plan_hormiga_modificadas', null=True, blank=True)
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-fecha_corte", "-id"]
+
+
 class EstructuraIntegrante(models.Model):
     estructura = models.ForeignKey(EstructuraOrganizativa, on_delete=models.CASCADE, related_name="integrantes")
     dpi = models.CharField(max_length=20)
