@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth.models import User, Group
 from django.forms import CheckboxInput, DateInput, inlineformset_factory, modelformset_factory
 from django.core.exceptions import ValidationError
+import re
 
 
 from .models import  Perfil,  Institucion, Afiliado, Comunidad, CentroVotacion, Comision, Sector, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, MujeresIntegrante, CoordinadoraMujeres, LiderMujeres, EstructuraMujeres, ResponsableMujeres, ReunionMujeres, IncidenciaMujeres
@@ -265,6 +266,23 @@ class AfiliadoForm(forms.ModelForm):
             cleaned_data['cargo_en_comision'] = ''
 
         return cleaned_data
+
+    def clean_dpi(self):
+        dpi_raw = self.cleaned_data.get('dpi', '')
+        dpi = re.sub(r'\D', '', dpi_raw or '')
+        if len(dpi) != 13:
+            raise ValidationError('Ingrese un DPI válido de 13 dígitos.')
+
+        duplicado = None
+        for afiliado in Afiliado.objects.only('id', 'dpi'):
+            if re.sub(r'\D', '', afiliado.dpi or '') == dpi:
+                duplicado = afiliado
+                break
+
+        if duplicado and (not self.instance or duplicado.pk != self.instance.pk):
+            raise ValidationError('Ya existe un afiliado registrado con este DPI.')
+
+        return dpi
 
     def clean_comunidad(self):
         comunidad = self.cleaned_data.get('comunidad')

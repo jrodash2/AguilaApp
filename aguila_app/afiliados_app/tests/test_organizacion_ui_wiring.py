@@ -4,6 +4,7 @@ from django.urls import reverse
 from urllib.parse import parse_qs, urlparse
 
 from afiliados_app.form import (
+    AfiliadoForm,
     CoordinadorOrganizacionForm,
     EstructuraOrganizativaForm,
     IncidenciaTerritorialForm,
@@ -305,6 +306,14 @@ class OrganizacionUIWiringTests(TestCase):
         self.assertEqual(parsed.get("telefono", [None])[0], "55551234")
         self.assertEqual(parsed.get("comunidad_id", [None])[0], str(self.comunidad.pk))
 
+        html = response.content.decode()
+        self.assertIn('id="afiliarPendienteModal"', html)
+        self.assertIn('js-afiliar-desde-pendientes', html)
+        self.assertIn('data-fuente="coordinadora_mujeres"', html)
+        self.assertIn("event.target.closest('.js-afiliar-desde-pendientes')", html)
+        self.assertIn("const hasSwal = typeof window.Swal !== 'undefined'", html)
+        self.assertNotIn("Verificar Empadronamiento", html)
+
     def test_afiliar_desde_secretaria_redirige_con_prefill_reutilizando_datos(self):
         self.client.login(username="admin_user", password="12345")
         registro_fuente = CoordinadoraMujeres.objects.create(
@@ -321,12 +330,65 @@ class OrganizacionUIWiringTests(TestCase):
             follow=False,
         )
         self.assertEqual(response.status_code, 302)
-        parsed = parse_qs(urlparse(response.url).query)
         self.assertEqual(urlparse(response.url).path, reverse("afiliados:afiliado_lista"))
-        self.assertEqual(parsed.get("prefill_dpi", [None])[0], "1234567890123")
-        self.assertEqual(parsed.get("prefill_nombre", [None])[0], "Persona Source")
-        self.assertEqual(parsed.get("prefill_telefono", [None])[0], "45678901")
-        self.assertEqual(parsed.get("prefill_comunidad_id", [None])[0], str(self.comunidad.pk))
+        parsed = parse_qs(urlparse(response.url).query)
+        self.assertIn("prefill_token", parsed)
+
+        token = parsed["prefill_token"][0]
+        session_key = f"afiliacion_prefill:{token}"
+        payload = self.client.session.get(session_key)
+        self.assertIsNotNone(payload)
+        self.assertEqual(payload.get("dpi"), "1234567890123")
+        self.assertEqual(payload.get("nombre"), "Persona Source")
+        self.assertEqual(payload.get("telefono"), "45678901")
+        self.assertEqual(payload.get("comunidad_id"), str(self.comunidad.pk))
+
+    def test_prefill_afiliacion_desde_secretaria_retorna_datos_para_modal(self):
+        self.client.login(username="admin_user", password="12345")
+        registro_fuente = CoordinadoraMujeres.objects.create(
+            nombre_completo="Persona Modal",
+            dpi="1234567890123",
+            telefono="10101010",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+
+        response = self.client.get(
+            reverse("afiliados:prefill_afiliacion_desde_secretaria"),
+            {"dpi": "1234567890123", "fuente": "coordinadora_mujeres", "fuente_id": registro_fuente.pk},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["prefill"]["dpi"], "1234567890123")
+        self.assertEqual(payload["prefill"]["nombre"], "Persona Modal")
+        self.assertEqual(payload["prefill"]["telefono"], "10101010")
+        self.assertEqual(payload["prefill"]["comunidad_id"], str(self.comunidad.pk))
+
+    def test_prefill_afiliacion_desde_secretaria_bloquea_si_ya_esta_afiliado(self):
+        self.client.login(username="admin_user", password="12345")
+        afiliado = Afiliado.objects.create(
+            nombre_completo="Ya Afiliado",
+            dpi="1234 56789 0123",
+            fecha_nacimiento="1990-01-01",
+            direccion="Zona 3",
+        )
+        registro_fuente = CoordinadoraMujeres.objects.create(
+            nombre_completo="Ya Afiliado",
+            dpi="1234567890123",
+            telefono="20202020",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+
+        response = self.client.get(
+            reverse("afiliados:prefill_afiliacion_desde_secretaria"),
+            {"dpi": "1234567890123", "fuente": "coordinadora_mujeres", "fuente_id": registro_fuente.pk},
+        )
+        self.assertEqual(response.status_code, 409)
+        payload = response.json()
+        self.assertTrue(payload["exists"])
+        self.assertEqual(payload["detalle_url"], reverse("afiliados:afiliado_detalle", args=[afiliado.pk]))
 
     def test_afiliar_desde_secretaria_no_duplica_afiliado_existente(self):
         self.client.login(username="admin_user", password="12345")
@@ -370,3 +432,44 @@ class OrganizacionUIWiringTests(TestCase):
         self.assertEqual(response.request["PATH_INFO"], reverse("afiliados:pendientes_afiliacion_secretarias"))
         mensajes = "\n".join(str(m) for m in response.context["messages"])
         self.assertIn("No se encontró un registro fuente válido", mensajes)
+
+    def test_afiliado_form_normaliza_dpi_y_evita_duplicado_por_formato(self):
+        afiliado = Afiliado.objects.create(
+            nombre_completo="Registro existente",
+            dpi="1234 56789 0123",
+            fecha_nacimiento="1990-01-01",
+            direccion="Zona 1",
+        )
+        form = AfiliadoForm(
+            data={
+                "nombre_completo": "Intento duplicado",
+                "dpi": "1234567890123",
+                "fecha_nacimiento": "1999-01-01",
+                "telefono": "55550000",
+                "direccion": "Zona 2",
+            }
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("dpi", form.errors)
+        self.assertIn("Ya existe un afiliado registrado con este DPI.", form.errors["dpi"])
+
+        afiliado.delete()
+
+    def test_afiliado_lista_aplica_prefill_desde_session_token(self):
+        self.client.login(username="admin_user", password="12345")
+        session = self.client.session
+        session["afiliacion_prefill:token123"] = {
+            "dpi": "1234567890123",
+            "nombre": "Precargada",
+            "telefono": "33334444",
+            "direccion": "Zona 9",
+            "comunidad_id": str(self.comunidad.pk),
+        }
+        session.save()
+
+        response = self.client.get(reverse("afiliados:afiliado_lista"), {"prefill_token": "token123"})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["abrir_modal_prefill"])
+        self.assertEqual(response.context["prefill_dpi"], "1234567890123")
+        self.assertEqual(response.context["form"].initial.get("nombre_completo"), "Precargada")
+        self.assertEqual(response.context["form"].initial.get("telefono"), "33334444")
