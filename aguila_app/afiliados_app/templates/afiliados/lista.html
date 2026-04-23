@@ -262,15 +262,28 @@ $(document).ready(function() {
         // $('.form-control[multiple]').select2(); // Descomentar si usas Select2
     });
 
-    // Prefill desde la vista de pendientes por secretaría
+    // Prefill desde la vista de pendientes por secretaría (fuente validada en servidor)
+    const serverPrefill = {
+        abrirModal: {% if abrir_modal_prefill %}true{% else %}false{% endif %},
+        dpi: "{{ prefill_dpi|default:''|escapejs }}",
+        nombre: "{{ prefill_data.nombre|default:''|escapejs }}",
+        comunidad: "{{ prefill_data.comunidad|default:''|escapejs }}",
+        comunidadId: "{{ prefill_data.comunidad_id|default:''|escapejs }}",
+        telefono: "{{ prefill_data.telefono|default:''|escapejs }}",
+        direccion: "{{ prefill_data.direccion|default:''|escapejs }}",
+    };
+
+    // Compatibilidad hacia atrás por querystring legado
     const params = new URLSearchParams(window.location.search);
-    if (params.get('abrir_modal') === '1') {
-        const dpi = params.get('prefill_dpi') || '';
-        const nombre = params.get('prefill_nombre') || '';
-        const comunidad = params.get('prefill_comunidad') || '';
-        const comunidadId = params.get('prefill_comunidad_id') || '';
-        const telefono = params.get('prefill_telefono') || '';
-        const direccion = params.get('prefill_direccion') || '';
+    const legacyAbrirModal = params.get('abrir_modal') === '1';
+
+    if (serverPrefill.abrirModal || legacyAbrirModal) {
+        const dpi = serverPrefill.dpi || params.get('prefill_dpi') || '';
+        const nombre = serverPrefill.nombre || params.get('prefill_nombre') || '';
+        const comunidad = serverPrefill.comunidad || params.get('prefill_comunidad') || '';
+        const comunidadId = serverPrefill.comunidadId || params.get('prefill_comunidad_id') || '';
+        const telefono = serverPrefill.telefono || params.get('prefill_telefono') || '';
+        const direccion = serverPrefill.direccion || params.get('prefill_direccion') || '';
 
         $('#dpi_afiliado').val(dpi);
         $('input[name="nombre_completo"]').val(nombre);
