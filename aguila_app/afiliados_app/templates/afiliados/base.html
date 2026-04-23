@@ -291,6 +291,83 @@
                                     <li><a href="{% url 'afiliados:reporte_coordinadores_mujeres' %}">Reportes</a></li>
                                 </ul>
                             </li>
+
+                            <li class="sidebar-list {% if '/afiliados/logistica/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link sidebar-title link-nav" href="javascript:void(0)">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-board' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-board' %}"></use></svg>
+                                    <span>Logística</span>
+                                </a>
+                                <ul class="sidebar-submenu">
+                                    <li><a href="{% url 'afiliados:panorama_municipal_logistica' %}">Dashboard Logística</a></li>
+                                    <li><a href="{% url 'afiliados:lista_estructura_territorial_logistica' %}">Estructura territorial</a></li>
+                                    <li><a href="{% url 'afiliados:lista_integrantes_logistica' %}">Integrantes</a></li>
+                                    <li><a href="{% url 'afiliados:lista_coordinadores_logistica' %}">Coordinadores</a></li>
+                                    <li><a href="{% url 'afiliados:lista_lideres_logistica' %}">Enlaces</a></li>
+                                    <li><a href="{% url 'afiliados:lista_responsables_logistica' %}">Responsables</a></li>
+                                    <li><a href="{% url 'afiliados:lista_estructuras_logistica' %}">Estructuras</a></li>
+                                    <li><a href="{% url 'afiliados:lista_reuniones_logistica' %}">Reuniones</a></li>
+                                    <li><a href="{% url 'afiliados:lista_incidencias_logistica' %}">Incidencias</a></li>
+                                    <li><a href="{% url 'afiliados:reporte_cobertura_logistica' %}">Cobertura</a></li>
+                                    <li><a href="{% url 'afiliados:reporte_coordinadores_logistica' %}">Reportes</a></li>
+                                    <li><a href="{% url 'afiliados:lista_recursos_logisticos' %}">Recursos logísticos</a></li>
+                                    <li><a href="{% url 'afiliados:lista_asignaciones_logisticas' %}">Asignaciones</a></li>
+                                    <li><a href="{% url 'afiliados:lista_solicitudes_logisticas' %}">Solicitudes</a></li>
+                                    <li><a href="{% url 'afiliados:lista_entregas_logisticas' %}">Control de entregas</a></li>
+                                    <li><a href="{% url 'afiliados:lista_agenda_logistica' %}">Agenda logística</a></li>
+                                </ul>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link sidebar-title link-nav" href="javascript:void(0)">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-board' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-board' %}"></use></svg>
+                                    <span>Comunicación y Redes</span>
+                                </a>
+                                <ul class="sidebar-submenu">
+                                    <li><a href="{% url 'afiliados:panorama_municipal_comunicacion' %}">Dashboard Comunicación</a></li>
+                                    <li><a href="{% url 'afiliados:lista_estructura_territorial_comunicacion' %}">Estructura territorial</a></li>
+                                    <li><a href="{% url 'afiliados:lista_integrantes_comunicacion' %}">Integrantes</a></li>
+                                    <li><a href="{% url 'afiliados:lista_coordinadores_comunicacion' %}">Coordinadores</a></li>
+                                    <li><a href="{% url 'afiliados:lista_lideres_comunicacion' %}">Enlaces</a></li>
+                                    <li><a href="{% url 'afiliados:lista_responsables_comunicacion' %}">Responsables</a></li>
+                                    <li><a href="{% url 'afiliados:lista_estructuras_comunicacion' %}">Estructuras</a></li>
+                                    <li><a href="{% url 'afiliados:lista_reuniones_comunicacion' %}">Reuniones</a></li>
+                                    <li><a href="{% url 'afiliados:lista_incidencias_comunicacion' %}">Incidencias</a></li>
+                                    <li><a href="{% url 'afiliados:reporte_cobertura_comunicacion' %}">Cobertura</a></li>
+                                    <li><a href="{% url 'afiliados:reporte_coordinadores_comunicacion' %}">Reportes</a></li>
+                                    <li><a href="{% url 'afiliados:lista_agenda_publicaciones' %}">Agenda de publicaciones</a></li>
+                                    <li><a href="{% url 'afiliados:lista_solicitudes_contenido' %}">Solicitudes de contenido</a></li>
+                                    <li><a href="{% url 'afiliados:lista_cobertura_actividades' %}">Cobertura de actividades</a></li>
+                                    <li><a href="{% url 'afiliados:lista_banco_medios' %}">Banco de medios</a></li>
+                                    <li><a href="{% url 'afiliados:lista_campanas_comunicacion' %}">Campañas</a></li>
+                                    <li><a href="{% url 'afiliados:lista_monitoreo_redes' %}">Monitoreo</a></li>
+                                </ul>
+                            </li>
+
+                            <li class="sidebar-list {% if '/afiliados/plan-hormiga/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link sidebar-title link-nav" href="javascript:void(0)">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-board' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-board' %}"></use></svg>
+                                    <span>Plan Hormiga</span>
+                                </a>
+                                <ul class="sidebar-submenu">
+                                    <li><a href="{% url 'afiliados:panorama_municipal_plan_hormiga' %}">Dashboard Plan Hormiga</a></li>
+                                    <li><a href="{% url 'afiliados:lista_estructura_territorial_plan_hormiga' %}">Estructura territorial</a></li>
+                                    <li><a href="{% url 'afiliados:lista_integrantes_plan_hormiga' %}">Integrantes</a></li>
+                                    <li><a href="{% url 'afiliados:lista_coordinadores_plan_hormiga' %}">Coordinadores</a></li>
+                                    <li><a href="{% url 'afiliados:lista_enlaces_plan_hormiga' %}">Enlaces territoriales</a></li>
+                                    <li><a href="{% url 'afiliados:lista_responsables_plan_hormiga' %}">Responsables de zona</a></li>
+                                    <li><a href="{% url 'afiliados:lista_estructuras_plan_hormiga' %}">Estructuras</a></li>
+                                    <li><a href="{% url 'afiliados:lista_reuniones_plan_hormiga' %}">Reuniones</a></li>
+                                    <li><a href="{% url 'afiliados:lista_incidencias_plan_hormiga' %}">Incidencias</a></li>
+                                    <li><a href="{% url 'afiliados:lista_visitas_plan_hormiga' %}">Visitas / recorridos</a></li>
+                                    <li><a href="{% url 'afiliados:lista_seguimientos_plan_hormiga' %}">Seguimiento de contactos</a></li>
+                                    <li><a href="{% url 'afiliados:lista_compromisos_plan_hormiga' %}">Compromisos</a></li>
+                                    <li><a href="{% url 'afiliados:lista_puntos_visitados_plan_hormiga' %}">Casas visitadas</a></li>
+                                    <li><a href="{% url 'afiliados:lista_activaciones_plan_hormiga' %}">Activación territorial</a></li>
+                                    <li><a href="{% url 'afiliados:lista_coberturas_visitas_plan_hormiga' %}">Cobertura de visitas</a></li>
+                                </ul>
+                            </li>
                         {% elif es_organizacion %}
                             <li class="sidebar-list {% if '/afiliados/organizacion/panorama/' in request.path %}active{% endif %}">
                                 <a class="sidebar-link" href="{% url 'afiliados:panorama_municipal_organizacion' %}">
@@ -405,6 +482,102 @@
                             <li class="sidebar-list {% if '/afiliados/mujeres/reportes/' in request.path %}active{% endif %}">
                                 <a class="sidebar-link" href="{% url 'afiliados:reporte_cobertura_mujeres' %}"><span>Reportes</span></a>
                             </li>
+                        {% elif es_logistica %}
+                            <li class="sidebar-list {% if '/afiliados/logistica/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:dashboard_logistica' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-board' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-board' %}"></use></svg>
+                                    <span>Logística</span>
+                                </a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/logistica/panorama/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:panorama_municipal_logistica' %}"><span>Dashboard Logística</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/logistica/estructura-territorial/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_estructura_territorial_logistica' %}"><span>Estructura territorial</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/logistica/integrantes/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_integrantes_logistica' %}"><span>Integrantes</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/logistica/coordinadores/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_coordinadores_logistica' %}"><span>Coordinadores</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/logistica/lideres/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_lideres_logistica' %}"><span>Enlaces</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/logistica/responsables/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_responsables_logistica' %}"><span>Responsables</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/logistica/estructuras/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_estructuras_logistica' %}"><span>Estructuras</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/logistica/reuniones/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_reuniones_logistica' %}"><span>Reuniones</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/logistica/incidencias/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_incidencias_logistica' %}"><span>Incidencias</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/logistica/recursos/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_recursos_logisticos' %}"><span>Recursos logísticos</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/logistica/asignaciones/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_asignaciones_logisticas' %}"><span>Asignaciones</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/logistica/solicitudes/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_solicitudes_logisticas' %}"><span>Solicitudes</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/logistica/entregas/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_entregas_logisticas' %}"><span>Control de entregas</span></a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/logistica/agenda/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:lista_agenda_logistica' %}"><span>Agenda logística</span></a>
+                            </li>
+                        {% elif es_comunicacion %}
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:dashboard_comunicacion' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-board' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-board' %}"></use></svg>
+                                    <span>Comunicación y Redes</span>
+                                </a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/panorama/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:panorama_municipal_comunicacion' %}"><span>Dashboard Comunicación</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/estructura-territorial/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_estructura_territorial_comunicacion' %}"><span>Estructura territorial</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/integrantes/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_integrantes_comunicacion' %}"><span>Integrantes</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/coordinadores/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_coordinadores_comunicacion' %}"><span>Coordinadores</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/lideres/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_lideres_comunicacion' %}"><span>Enlaces</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/responsables/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_responsables_comunicacion' %}"><span>Responsables</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/estructuras/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_estructuras_comunicacion' %}"><span>Estructuras</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/reuniones/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_reuniones_comunicacion' %}"><span>Reuniones</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/incidencias/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_incidencias_comunicacion' %}"><span>Incidencias</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/agenda-publicaciones/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_agenda_publicaciones' %}"><span>Agenda de publicaciones</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/solicitudes-contenido/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_solicitudes_contenido' %}"><span>Solicitudes de contenido</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/cobertura-actividades/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_cobertura_actividades' %}"><span>Cobertura de actividades</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/banco-medios/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_banco_medios' %}"><span>Banco de medios</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/campanas/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_campanas_comunicacion' %}"><span>Campañas</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/comunicacion/monitoreo-redes/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_monitoreo_redes' %}"><span>Monitoreo</span></a></li>
+
+                        {% elif es_plan_hormiga %}
+                            <li class="sidebar-list {% if '/afiliados/plan-hormiga/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:dashboard_plan_hormiga' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-board' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-board' %}"></use></svg>
+                                    <span>Plan Hormiga</span>
+                                </a>
+                            </li>
+                            <li class="sidebar-list {% if '/afiliados/plan-hormiga/panorama/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:panorama_municipal_plan_hormiga' %}"><span>Dashboard Plan Hormiga</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/plan-hormiga/integrantes/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_integrantes_plan_hormiga' %}"><span>Integrantes</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/plan-hormiga/coordinadores/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_coordinadores_plan_hormiga' %}"><span>Coordinadores</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/plan-hormiga/enlaces/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_enlaces_plan_hormiga' %}"><span>Enlaces territoriales</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/plan-hormiga/responsables/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_responsables_plan_hormiga' %}"><span>Responsables de zona</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/plan-hormiga/estructuras/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_estructuras_plan_hormiga' %}"><span>Estructuras</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/plan-hormiga/reuniones/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_reuniones_plan_hormiga' %}"><span>Reuniones</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/plan-hormiga/incidencias/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_incidencias_plan_hormiga' %}"><span>Incidencias</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/plan-hormiga/visitas/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_visitas_plan_hormiga' %}"><span>Visitas / recorridos</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/plan-hormiga/seguimientos/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_seguimientos_plan_hormiga' %}"><span>Seguimiento contactos</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/plan-hormiga/compromisos/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_compromisos_plan_hormiga' %}"><span>Compromisos</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/plan-hormiga/puntos-visitados/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_puntos_visitados_plan_hormiga' %}"><span>Puntos visitados</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/plan-hormiga/activaciones/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_activaciones_plan_hormiga' %}"><span>Activación territorial</span></a></li>
+                            <li class="sidebar-list {% if '/afiliados/plan-hormiga/cobertura-visitas/' in request.path %}active{% endif %}"><a class="sidebar-link" href="{% url 'afiliados:lista_coberturas_visitas_plan_hormiga' %}"><span>Cobertura de visitas</span></a></li>
                         {% endif %}
 
                         {% if not es_administrador %}
