@@ -1,0 +1,189 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block content %}
+<div class="page-body"><div class="container-fluid">
+  <h4>{{ entity_label|title }}</h4>
+  {% if descripcion_vista %}<p class="text-muted">{{ descripcion_vista }}</p>{% endif %}
+  {% if entity_label == 'estructuras' %}
+  <div class="alert alert-info">Ejemplos de estructura: Comité comunitario, Equipo sectorial, Célula logistica, Comisión local, Red de líderes, Estructura de centro de votación.</div>
+  {% endif %}
+  <div class="card"><div class="card-body">
+    <form method="post">{% csrf_token %}
+      {% for hidden in form.hidden_fields %}
+        {% if hidden.name != 'coordinador_responsable' %}{{ hidden }}{% endif %}
+      {% endfor %}
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <label class="form-label" for="coordinador_responsable_display">Coordinador responsable</label>
+          {{ form.coordinador_responsable.as_hidden }}
+          <div class="input-group">
+            <input
+              type="text"
+              class="form-control"
+              id="coordinador_responsable_display"
+              readonly
+              value="{{ coordinador_responsable_display|default:'' }}"
+              placeholder="Selecciona desde el modal"
+            >
+            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCoordinadores">Agregar coordinador</button>
+          </div>
+          <small class="text-muted d-block mt-1">Selecciona un coordinador desde el modal para asignarlo como responsable de la estructura.</small>
+          {% for error in form.coordinador_responsable.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+        {% for field in form.visible_fields %}
+        {% if field.name != 'coordinador_responsable' %}
+        <div class="col-12 col-md-6">
+          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {% if field.name == 'dpi' %}
+          <div class="input-group">
+            {{ field }}
+            <button type="button" id="btnVerificarEmpadronamiento" class="btn btn-outline-info" data-url="{{ empadronamiento_url }}" data-dpi-input="{{ form.dpi.id_for_label }}" data-output-id="resultado_tse">Verificar empadronamiento</button>
+          </div>
+          {% else %}
+          {{ field }}
+          {% endif %}
+          {% if field.help_text %}<small class="text-muted d-block mt-1">{{ field.help_text }}</small>{% endif %}
+          {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      <div id="resultado_tse" class="mt-3"></div>
+      <div id="territorio_derivado" class="alert alert-light border mt-3 mb-0 small text-muted" role="status"></div>
+      <div class="mt-3 d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Guardar</button>
+      </div>
+    </form>
+  </div></div>
+  <div class="card"><div class="card-body table-responsive">
+    <table class="display datatable"><thead><tr><th>ID</th><th>Registro</th><th>Acciones</th></tr></thead><tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ item.id }}</td>
+        <td>{{ item }}</td>
+        <td>
+          <div class="d-flex gap-2"> 
+            {% if detail_name %}
+            <a href="{% url detail_name item.id %}" class="btn btn-outline-primary btn-sm">Detalle</a>
+            {% endif %}
+            <a href="{% url edit_name item.id %}" class="btn btn-primary btn-sm">Editar</a>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody></table>
+  </div></div>
+</div></div>
+
+<div class="modal fade" id="modalCoordinadores" tabindex="-1" aria-labelledby="modalCoordinadoresLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalCoordinadoresLabel">Seleccionar coordinador</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body">
+        <div class="table-responsive">
+          <table class="display datatable w-100" id="tablaCoordinadoresModal">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>DPI</th>
+                <th>Comunidad</th>
+                <th>Estado</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in coordinadores_modal %}
+              <tr>
+                <td>{{ c.nombre }}</td>
+                <td>{{ c.dpi|default:'—' }}</td>
+                <td>{{ c.comunidad|default:'—' }}</td>
+                <td>{{ c.estado|default:'—' }}</td>
+                <td>
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-primary js-select-coordinador"
+                    data-coord-id="{{ c.id }}"
+                    data-coord-nombre="{{ c.nombre }}"
+                  >Agregar coordinador</button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/verificar_empadronamiento.js' %}?v=3"></script>
+<script>
+$(function(){
+  const comunidad = $('#id_comunidad');
+  const campoCoordinadorVisible = $('#coordinador_responsable_display');
+  const campoCoordinadorId = $('#id_coordinador_responsable');
+  const modalEl = document.getElementById('modalCoordinadores');
+  const modalCoordinadores = modalEl ? bootstrap.Modal.getOrCreateInstance(modalEl) : null;
+
+  function cargarTerritorio() {
+    if (!comunidad.length) return;
+    const id = comunidad.val();
+    if (!id) {
+      $('#territorio_derivado').html('Selecciona una comunidad para ver el sector y centro de votación derivados.');
+      return;
+    }
+    $.get('{{ comunidad_lookup_url }}', { comunidad_id: id }).done(function(res){
+      if (!res.ok) return;
+      const d = res.data || {};
+      $('#territorio_derivado').html('Sector: <strong>' + (d.sector || 'N/A') + '</strong> &nbsp;|&nbsp; Centro: <strong>' + (d.centro_votacion || 'N/A') + '</strong>');
+    });
+  }
+
+  const tablaCoordinadores = window.initDataTable
+    ? window.initDataTable('#tablaCoordinadoresModal', { order: [[0, 'asc']] })
+    : null;
+
+  if (modalEl) {
+    modalEl.addEventListener('shown.bs.modal', function () {
+      if (tablaCoordinadores && tablaCoordinadores.columns) {
+        tablaCoordinadores.columns.adjust().draw(false);
+      }
+    });
+  }
+
+  function aplicarCoordinadorSeleccionado(id, nombre) {
+    if (!campoCoordinadorId.length || !campoCoordinadorVisible.length) return false;
+    if (!id) return false;
+    campoCoordinadorId.val(String(id)).trigger('input').trigger('change');
+    campoCoordinadorVisible.val((nombre || '').trim()).trigger('input').trigger('change');
+    return true;
+  }
+
+  $(document).on('click', '#tablaCoordinadoresModal .js-select-coordinador', function(e){
+    e.preventDefault();
+    const boton = this;
+    const fila = boton.closest('tr');
+    const id = boton.getAttribute('data-coord-id') || '';
+    const nombre = boton.getAttribute('data-coord-nombre') || (fila && fila.cells && fila.cells[0] ? fila.cells[0].innerText.trim() : '');
+    const aplicado = aplicarCoordinadorSeleccionado(id, nombre);
+    if (!aplicado) return;
+    if (modalCoordinadores) modalCoordinadores.hide();
+  });
+
+  if (campoCoordinadorId.length && campoCoordinadorId.val() && !campoCoordinadorVisible.val()) {
+    const selector = `#tablaCoordinadoresModal .js-select-coordinador[data-coord-id="${campoCoordinadorId.val()}"]`;
+    const btn = document.querySelector(selector);
+    if (btn) campoCoordinadorVisible.val(btn.getAttribute('data-coord-nombre') || '');
+  }
+
+  comunidad.on('change', cargarTerritorio);
+  cargarTerritorio();
+});
+</script>
+{% endblock %}

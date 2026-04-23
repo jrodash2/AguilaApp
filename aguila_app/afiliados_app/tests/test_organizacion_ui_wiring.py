@@ -4,6 +4,7 @@ from django.urls import reverse
 from urllib.parse import parse_qs, urlparse
 
 from afiliados_app.form import (
+    AfiliadoForm,
     CoordinadorOrganizacionForm,
     EstructuraOrganizativaForm,
     IncidenciaTerritorialForm,
@@ -13,6 +14,8 @@ from afiliados_app.form import (
 )
 from afiliados_app.models import Comunidad, CoordinadorJuventud, CoordinadorOrganizacion, EstructuraJuventud, EstructuraOrganizativa, Sector
 from afiliados_app.models import Afiliado, CoordinadoraMujeres
+from afiliados_app.models import CoordinadorLogistica, RecursoLogistico
+from afiliados_app.models import CoordinadorComunicacion, AgendaPublicacion, CoordinadorPlanHormiga, VisitaPlanHormiga
 
 
 @override_settings(
@@ -23,12 +26,21 @@ class OrganizacionUIWiringTests(TestCase):
         self.group = Group.objects.create(name="Organizacion")
         self.jovenes_group = Group.objects.create(name="Jovenes")
         self.admin_group = Group.objects.create(name="Administrador")
+        self.logistica_group = Group.objects.create(name="Logistica")
+        self.comunicacion_group = Group.objects.create(name="Comunicacion")
+        self.plan_hormiga_group = Group.objects.create(name="PlanHormiga")
         self.user = User.objects.create_user(username="org_user", password="12345")
         self.user.groups.add(self.group)
         self.admin_user = User.objects.create_user(username="admin_user", password="12345")
         self.admin_user.groups.add(self.admin_group)
         self.joven_user = User.objects.create_user(username="joven_user", password="12345")
         self.joven_user.groups.add(self.jovenes_group)
+        self.logistica_user = User.objects.create_user(username="logistica_user", password="12345")
+        self.logistica_user.groups.add(self.logistica_group)
+        self.comunicacion_user = User.objects.create_user(username="com_user", password="12345")
+        self.comunicacion_user.groups.add(self.comunicacion_group)
+        self.plan_hormiga_user = User.objects.create_user(username="plan_user", password="12345")
+        self.plan_hormiga_user.groups.add(self.plan_hormiga_group)
 
         self.creator = User.objects.create_user(username="creator", password="12345")
 
@@ -207,6 +219,130 @@ class OrganizacionUIWiringTests(TestCase):
         response = self.client.get(reverse("afiliados:dashboard_juventud"))
         self.assertEqual(response.status_code, 200)
 
+    def test_login_redirects_logistica_to_dashboard_logistica(self):
+        response = self.client.post(
+            reverse("afiliados:signin"),
+            {"username": "logistica_user", "password": "12345"},
+            follow=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("afiliados:dashboard_logistica"))
+
+    def test_dashboard_logistica_access_and_sidebar(self):
+        self.client.login(username="logistica_user", password="12345")
+        response = self.client.get(reverse("afiliados:dashboard_logistica"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Logística", response.content.decode())
+
+    def test_logistica_estructura_template_has_expected_modal_and_fields(self):
+        self.client.login(username="logistica_user", password="12345")
+        response = self.client.get(reverse("afiliados:crear_estructura_logistica"))
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode()
+        self.assertIn('id="modalCoordinadores"', html)
+        self.assertIn('id="tablaCoordinadoresModal"', html)
+        self.assertIn('id="coordinador_responsable_display"', html)
+        self.assertIn('id="id_coordinador_responsable"', html)
+
+    def test_logistica_crear_estructura_guarda_coordinador(self):
+        self.client.login(username="logistica_user", password="12345")
+        coordinador = CoordinadorLogistica.objects.create(
+            nombre_completo="COORD LOG TEST",
+            comunidad=self.comunidad,
+            usuario_creador=self.logistica_user,
+        )
+        response = self.client.post(
+            reverse("afiliados:crear_estructura_logistica"),
+            {
+                "tipo_estructura": "Brigada logística",
+                "nombre": "Estructura LOG 1",
+                "comunidad": str(self.comunidad.pk),
+                "estado": "ACTIVO",
+                "coordinador_responsable": str(coordinador.pk),
+                "observaciones": "test",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Registro guardado correctamente")
+
+    def test_logistica_recursos_view_allows_create(self):
+        self.client.login(username="logistica_user", password="12345")
+        response = self.client.post(
+            reverse("afiliados:lista_recursos_logisticos"),
+            {
+                "nombre": "Carpa móvil",
+                "tipo_recurso": "Infraestructura",
+                "descripcion": "Carpa para jornadas",
+                "estado": "DISPONIBLE",
+                "observaciones": "Sin novedades",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(RecursoLogistico.objects.filter(nombre="Carpa móvil").exists())
+
+    def test_login_redirects_comunicacion_to_dashboard_comunicacion(self):
+        response = self.client.post(
+            reverse("afiliados:signin"),
+            {"username": "com_user", "password": "12345"},
+            follow=False,
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("afiliados:dashboard_comunicacion"))
+
+    def test_dashboard_comunicacion_access_and_sidebar(self):
+        self.client.login(username="com_user", password="12345")
+        response = self.client.get(reverse("afiliados:dashboard_comunicacion"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Comunicación y Redes", response.content.decode())
+
+    def test_comunicacion_crear_estructura_guarda_coordinador(self):
+        self.client.login(username="com_user", password="12345")
+        coordinador = CoordinadorComunicacion.objects.create(
+            nombre_completo="COORD COM TEST",
+            comunidad=self.comunidad,
+            usuario_creador=self.comunicacion_user,
+        )
+        response = self.client.post(
+            reverse("afiliados:crear_estructura_comunicacion"),
+            {
+                "tipo_estructura": "Equipo de redes",
+                "nombre": "Estructura COM 1",
+                "comunidad": str(self.comunidad.pk),
+                "estado": "ACTIVO",
+                "coordinador_responsable": str(coordinador.pk),
+                "observaciones": "test",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Registro guardado correctamente")
+
+    def test_comunicacion_agenda_publicaciones_create(self):
+        self.client.login(username="com_user", password="12345")
+        responsable = self.comunicacion_user
+        from afiliados_app.models import ResponsableComunicacion
+        responsable_obj = ResponsableComunicacion.objects.create(
+            nombre_completo="Resp COM",
+            comunidad=self.comunidad,
+            usuario_creador=responsable,
+        )
+        response = self.client.post(
+            reverse("afiliados:lista_agenda_publicaciones"),
+            {
+                "fecha": "2026-01-20",
+                "plataforma": "Facebook",
+                "tipo_contenido": "Arte",
+                "estado": "PLANIFICADA",
+                "responsable": str(responsable_obj.pk),
+                "observaciones": "Post institucional",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(AgendaPublicacion.objects.filter(plataforma="Facebook").exists())
+
     def test_juventud_estructura_template_has_expected_modal_and_fields(self):
         self.client.login(username="joven_user", password="12345")
         response = self.client.get(reverse("afiliados:crear_estructura_juventud"))
@@ -305,6 +441,12 @@ class OrganizacionUIWiringTests(TestCase):
         self.assertEqual(parsed.get("telefono", [None])[0], "55551234")
         self.assertEqual(parsed.get("comunidad_id", [None])[0], str(self.comunidad.pk))
 
+        html = response.content.decode()
+        self.assertIn("Exportar a Excel", html)
+        self.assertIn(">Afiliar<", html)
+        self.assertIn('id="afiliarPendienteModal"', html)
+        self.assertIn("modal_afiliar_desde_secretaria_form", html)
+
     def test_afiliar_desde_secretaria_redirige_con_prefill_reutilizando_datos(self):
         self.client.login(username="admin_user", password="12345")
         registro_fuente = CoordinadoraMujeres.objects.create(
@@ -321,12 +463,104 @@ class OrganizacionUIWiringTests(TestCase):
             follow=False,
         )
         self.assertEqual(response.status_code, 302)
-        parsed = parse_qs(urlparse(response.url).query)
         self.assertEqual(urlparse(response.url).path, reverse("afiliados:afiliado_lista"))
-        self.assertEqual(parsed.get("prefill_dpi", [None])[0], "1234567890123")
-        self.assertEqual(parsed.get("prefill_nombre", [None])[0], "Persona Source")
-        self.assertEqual(parsed.get("prefill_telefono", [None])[0], "45678901")
-        self.assertEqual(parsed.get("prefill_comunidad_id", [None])[0], str(self.comunidad.pk))
+        parsed = parse_qs(urlparse(response.url).query)
+        self.assertIn("prefill_token", parsed)
+
+        token = parsed["prefill_token"][0]
+        session_key = f"afiliacion_prefill:{token}"
+        payload = self.client.session.get(session_key)
+        self.assertIsNotNone(payload)
+        self.assertEqual(payload.get("dpi"), "1234567890123")
+        self.assertEqual(payload.get("nombre"), "Persona Source")
+        self.assertEqual(payload.get("telefono"), "45678901")
+        self.assertEqual(payload.get("comunidad_id"), str(self.comunidad.pk))
+
+    def test_prefill_afiliacion_desde_secretaria_retorna_datos_para_modal(self):
+        self.client.login(username="admin_user", password="12345")
+        registro_fuente = CoordinadoraMujeres.objects.create(
+            nombre_completo="Persona Modal",
+            dpi="1234567890123",
+            telefono="10101010",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+
+        response = self.client.get(
+            reverse("afiliados:prefill_afiliacion_desde_secretaria"),
+            {"dpi": "1234567890123", "fuente": "coordinadora_mujeres", "fuente_id": registro_fuente.pk},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["prefill"]["dpi"], "1234567890123")
+        self.assertEqual(payload["prefill"]["nombre"], "Persona Modal")
+        self.assertEqual(payload["prefill"]["telefono"], "10101010")
+        self.assertEqual(payload["prefill"]["comunidad_id"], str(self.comunidad.pk))
+
+    def test_modal_afiliar_desde_secretaria_form_retorna_html_precargado(self):
+        self.client.login(username="admin_user", password="12345")
+        registro_fuente = CoordinadoraMujeres.objects.create(
+            nombre_completo="Persona Modal HTML",
+            dpi="1234567890123",
+            telefono="30303030",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+
+        response = self.client.get(
+            reverse("afiliados:modal_afiliar_desde_secretaria_form"),
+            {"dpi": "1234567890123", "fuente": "coordinadora_mujeres", "fuente_id": registro_fuente.pk},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertIn("formAfiliarPendienteModal", payload["form_html"])
+        self.assertIn("Persona Modal HTML", payload["form_html"])
+
+    def test_exportar_pendientes_afiliacion_secretarias_excel_descarga_archivo(self):
+        self.client.login(username="admin_user", password="12345")
+        CoordinadoraMujeres.objects.create(
+            nombre_completo="Persona Export",
+            dpi="1234567890123",
+            telefono="40404040",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+
+        response = self.client.get(reverse("afiliados:exportar_pendientes_afiliacion_secretarias_excel"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertIn("pendientes_afiliacion_secretarias.xlsx", response["Content-Disposition"])
+        self.assertGreater(len(response.content), 0)
+
+    def test_prefill_afiliacion_desde_secretaria_bloquea_si_ya_esta_afiliado(self):
+        self.client.login(username="admin_user", password="12345")
+        afiliado = Afiliado.objects.create(
+            nombre_completo="Ya Afiliado",
+            dpi="1234 56789 0123",
+            fecha_nacimiento="1990-01-01",
+            direccion="Zona 3",
+        )
+        registro_fuente = CoordinadoraMujeres.objects.create(
+            nombre_completo="Ya Afiliado",
+            dpi="1234567890123",
+            telefono="20202020",
+            comunidad=self.comunidad,
+            usuario_creador=self.creator,
+        )
+
+        response = self.client.get(
+            reverse("afiliados:prefill_afiliacion_desde_secretaria"),
+            {"dpi": "1234567890123", "fuente": "coordinadora_mujeres", "fuente_id": registro_fuente.pk},
+        )
+        self.assertEqual(response.status_code, 409)
+        payload = response.json()
+        self.assertTrue(payload["exists"])
+        self.assertEqual(payload["detalle_url"], reverse("afiliados:afiliado_detalle", args=[afiliado.pk]))
 
     def test_afiliar_desde_secretaria_no_duplica_afiliado_existente(self):
         self.client.login(username="admin_user", password="12345")
@@ -370,3 +604,109 @@ class OrganizacionUIWiringTests(TestCase):
         self.assertEqual(response.request["PATH_INFO"], reverse("afiliados:pendientes_afiliacion_secretarias"))
         mensajes = "\n".join(str(m) for m in response.context["messages"])
         self.assertIn("No se encontró un registro fuente válido", mensajes)
+
+    def test_afiliado_form_normaliza_dpi_y_evita_duplicado_por_formato(self):
+        afiliado = Afiliado.objects.create(
+            nombre_completo="Registro existente",
+            dpi="1234 56789 0123",
+            fecha_nacimiento="1990-01-01",
+            direccion="Zona 1",
+        )
+        form = AfiliadoForm(
+            data={
+                "nombre_completo": "Intento duplicado",
+                "dpi": "1234567890123",
+                "fecha_nacimiento": "1999-01-01",
+                "telefono": "55550000",
+                "direccion": "Zona 2",
+            }
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("dpi", form.errors)
+        self.assertIn("Ya existe un afiliado registrado con este DPI.", form.errors["dpi"])
+
+        afiliado.delete()
+
+    def test_afiliado_lista_aplica_prefill_desde_session_token(self):
+        self.client.login(username="admin_user", password="12345")
+        session = self.client.session
+        session["afiliacion_prefill:token123"] = {
+            "dpi": "1234567890123",
+            "nombre": "Precargada",
+            "telefono": "33334444",
+            "direccion": "Zona 9",
+            "comunidad_id": str(self.comunidad.pk),
+        }
+        session.save()
+
+        response = self.client.get(reverse("afiliados:afiliado_lista"), {"prefill_token": "token123"})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.context["abrir_modal_prefill"])
+        self.assertEqual(response.context["prefill_dpi"], "1234567890123")
+        self.assertEqual(response.context["form"].initial.get("nombre_completo"), "Precargada")
+        self.assertEqual(response.context["form"].initial.get("telefono"), "33334444")
+
+
+    def test_login_redirects_plan_hormiga_to_dashboard(self):
+        response = self.client.post(reverse("afiliados:signin"), {"username": "plan_user", "password": "12345"}, follow=False)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("afiliados:dashboard_plan_hormiga"))
+
+    def test_dashboard_plan_hormiga_access_and_sidebar(self):
+        self.client.login(username="plan_user", password="12345")
+        response = self.client.get(reverse("afiliados:dashboard_plan_hormiga"))
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Plan Hormiga", response.content.decode())
+
+    def test_plan_hormiga_crear_estructura_guarda_coordinador(self):
+        self.client.login(username="plan_user", password="12345")
+        coordinador = CoordinadorPlanHormiga.objects.create(nombre_completo="COORD PH", comunidad=self.comunidad, usuario_creador=self.plan_hormiga_user)
+        response = self.client.post(reverse("afiliados:crear_estructura_plan_hormiga"), {"tipo_estructura": "Célula", "nombre": "Estructura PH", "comunidad": str(self.comunidad.pk), "estado": "ACTIVO", "coordinador_responsable": str(coordinador.pk), "observaciones": "ok"}, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Registro guardado correctamente")
+
+    def test_plan_hormiga_visitas_create(self):
+        self.client.login(username="plan_user", password="12345")
+        from afiliados_app.models import ResponsableZonaPlanHormiga
+        responsable = ResponsableZonaPlanHormiga.objects.create(nombre_completo="Resp PH", comunidad=self.comunidad, usuario_creador=self.plan_hormiga_user)
+        response = self.client.post(reverse("afiliados:lista_visitas_plan_hormiga"), {"fecha": "2026-01-20", "comunidad": str(self.comunidad.pk), "sector": str(self.sector.pk), "responsable": str(responsable.pk), "tipo_visita": "RECORRIDO", "observaciones": "test", "estado": "ACTIVO"}, follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(VisitaPlanHormiga.objects.filter(tipo_visita="RECORRIDO").exists())
+
+
+    def test_plan_hormiga_vistas_extra_renderizan_contenido_real(self):
+        self.client.login(username="plan_user", password="12345")
+        checks = [
+            ("afiliados:lista_visitas_plan_hormiga", "Visitas / Recorridos"),
+            ("afiliados:lista_seguimientos_plan_hormiga", "Seguimiento de contactos"),
+            ("afiliados:lista_compromisos_plan_hormiga", "Compromisos territoriales"),
+            ("afiliados:lista_puntos_visitados_plan_hormiga", "Casas / Puntos visitados"),
+            ("afiliados:lista_activaciones_plan_hormiga", "Activación territorial"),
+            ("afiliados:lista_coberturas_visitas_plan_hormiga", "Cobertura de visitas"),
+        ]
+        for url_name, expected in checks:
+            response = self.client.get(reverse(url_name))
+            self.assertEqual(response.status_code, 200)
+            html = response.content.decode()
+            self.assertIn(expected, html)
+            self.assertIn('datatable', html)
+
+    def test_plan_hormiga_cobertura_visitas_resume_metricas(self):
+        self.client.login(username="plan_user", password="12345")
+        response = self.client.post(
+            reverse("afiliados:lista_coberturas_visitas_plan_hormiga"),
+            {
+                "comunidades_atendidas": 5,
+                "comunidades_pendientes": 2,
+                "sectores_visitados": 4,
+                "sectores_pendientes": 1,
+                "fecha_corte": "2026-02-01",
+                "observaciones": "Primer corte",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "5")
+        self.assertContains(response, "2")
+        self.assertContains(response, "4")
+        self.assertContains(response, "1")

@@ -1,0 +1,8 @@
+{% extends 'afiliados/base.html' %}
+{% block title %}Asignaciones logísticas{% endblock %}
+{% block content %}
+<div class="page-body"><div class="container-fluid"><div class="page-title"><h4>Asignaciones logísticas</h4></div>
+<div class="card"><div class="card-body"><form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary">Guardar</button></form></div></div>
+<div class="card"><div class="card-body table-responsive"><table class="display datatable"><thead><tr><th>Recurso</th><th>Comunidad</th><th>Responsable</th><th>Fecha</th><th>Estado</th><th></th></tr></thead><tbody>{% for item in items %}<tr><td>{{ item.recurso }}</td><td>{{ item.comunidad|default:'-' }}</td><td>{{ item.responsable|default:'-' }}</td><td>{{ item.fecha }}</td><td>{{ item.get_estado_display }}</td><td><a class="btn btn-sm btn-outline-primary" href="{% url 'afiliados:editar_asignacion_logistica' item.pk %}">Editar</a></td></tr>{% endfor %}</tbody></table></div></div>
+</div></div>
+{% endblock %}
