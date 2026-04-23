@@ -1312,6 +1312,7 @@ def pendientes_afiliacion_secretarias(request):
         'total_organizacion': total_por_secretaria.get('Organización', 0),
         'total_juventud': total_por_secretaria.get('Juventud', 0),
         'total_mujeres': total_por_secretaria.get('Mujeres', 0),
+        'form': AfiliadoForm(),
     }
     return safe_render(request, 'afiliados/pendientes_afiliacion_secretarias.html', context)
 
