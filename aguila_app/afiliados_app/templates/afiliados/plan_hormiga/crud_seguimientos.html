@@ -1,6 +1,12 @@
-{% extends "afiliados/base.html" %}
-{% block contenido %}
-<div class="container-fluid"><div class="card"><div class="card-header"><h4>Seguimiento de contactos</h4></div><div class="card-body">
-<form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary" type="submit">Guardar</button></form>
-<hr><div class="table-responsive"><table class="table"><thead><tr>{% for field in form.visible_fields %}<th>{{ field.label }}</th>{% endfor %}<th></th></tr></thead><tbody>{% for item in items %}<tr>{% for field in form.visible_fields %}<td>{{ item|default_if_none:"" }}</td>{% endfor %}<td><a class="btn btn-sm btn-outline-primary" href="{{ item.pk }}/editar/">Editar</a></td></tr>{% empty %}<tr><td colspan="99">Sin registros.</td></tr>{% endfor %}</tbody></table></div></div></div></div>
+{% extends 'afiliados/base.html' %}
+{% block title %}Seguimiento de contactos{% endblock %}
+{% block content %}
+<div class="page-body"><div class="container-fluid">
+  <div class="page-title"><h4>Seguimiento de contactos</h4><p class="text-muted mb-0">Registro y actualización de estatus de personas contactadas.</p></div>
+  <div class="card"><div class="card-body"><form method="post" class="row g-3">{% csrf_token %}
+    {% for field in form.visible_fields %}<div class="col-12 col-md-6"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}
+    <div class="col-12"><button class="btn btn-primary" type="submit">Guardar seguimiento</button></div>
+  </form></div></div>
+  <div class="card"><div class="card-body table-responsive"><table class="display datatable table"><thead><tr><th>Persona</th><th>DPI</th><th>Teléfono</th><th>Comunidad</th><th>Estado</th><th>Último contacto</th><th>Observaciones</th><th></th></tr></thead><tbody>{% for item in items %}<tr><td>{{ item.persona_contactada }}</td><td>{{ item.dpi|default:'-' }}</td><td>{{ item.telefono|default:'-' }}</td><td>{{ item.comunidad|default:'-' }}</td><td>{{ item.get_estado_seguimiento_display }}</td><td>{{ item.fecha_ultimo_contacto|default:'-' }}</td><td>{{ item.observaciones|default:'-' }}</td><td><a class="btn btn-sm btn-outline-primary" href="{% url 'afiliados:editar_seguimientos_plan_hormiga' item.pk %}">Editar</a></td></tr>{% endfor %}</tbody></table></div></div>
+</div></div>
 {% endblock %}

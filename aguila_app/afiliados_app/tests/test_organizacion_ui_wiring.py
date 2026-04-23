@@ -672,3 +672,41 @@ class OrganizacionUIWiringTests(TestCase):
         response = self.client.post(reverse("afiliados:lista_visitas_plan_hormiga"), {"fecha": "2026-01-20", "comunidad": str(self.comunidad.pk), "sector": str(self.sector.pk), "responsable": str(responsable.pk), "tipo_visita": "RECORRIDO", "observaciones": "test", "estado": "ACTIVO"}, follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertTrue(VisitaPlanHormiga.objects.filter(tipo_visita="RECORRIDO").exists())
+
+
+    def test_plan_hormiga_vistas_extra_renderizan_contenido_real(self):
+        self.client.login(username="plan_user", password="12345")
+        checks = [
+            ("afiliados:lista_visitas_plan_hormiga", "Visitas / Recorridos"),
+            ("afiliados:lista_seguimientos_plan_hormiga", "Seguimiento de contactos"),
+            ("afiliados:lista_compromisos_plan_hormiga", "Compromisos territoriales"),
+            ("afiliados:lista_puntos_visitados_plan_hormiga", "Casas / Puntos visitados"),
+            ("afiliados:lista_activaciones_plan_hormiga", "Activación territorial"),
+            ("afiliados:lista_coberturas_visitas_plan_hormiga", "Cobertura de visitas"),
+        ]
+        for url_name, expected in checks:
+            response = self.client.get(reverse(url_name))
+            self.assertEqual(response.status_code, 200)
+            html = response.content.decode()
+            self.assertIn(expected, html)
+            self.assertIn('datatable', html)
+
+    def test_plan_hormiga_cobertura_visitas_resume_metricas(self):
+        self.client.login(username="plan_user", password="12345")
+        response = self.client.post(
+            reverse("afiliados:lista_coberturas_visitas_plan_hormiga"),
+            {
+                "comunidades_atendidas": 5,
+                "comunidades_pendientes": 2,
+                "sectores_visitados": 4,
+                "sectores_pendientes": 1,
+                "fecha_corte": "2026-02-01",
+                "observaciones": "Primer corte",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "5")
+        self.assertContains(response, "2")
+        self.assertContains(response, "4")
+        self.assertContains(response, "1")

@@ -1,6 +1,12 @@
-{% extends "afiliados/base.html" %}
-{% block contenido %}
-<div class="container-fluid"><div class="card"><div class="card-header"><h4>Activación territorial</h4></div><div class="card-body">
-<form method="post">{% csrf_token %}{{ form.as_p }}<button class="btn btn-primary" type="submit">Guardar</button></form>
-<hr><div class="table-responsive"><table class="table"><thead><tr>{% for field in form.visible_fields %}<th>{{ field.label }}</th>{% endfor %}<th></th></tr></thead><tbody>{% for item in items %}<tr>{% for field in form.visible_fields %}<td>{{ item|default_if_none:"" }}</td>{% endfor %}<td><a class="btn btn-sm btn-outline-primary" href="{{ item.pk }}/editar/">Editar</a></td></tr>{% empty %}<tr><td colspan="99">Sin registros.</td></tr>{% endfor %}</tbody></table></div></div></div></div>
+{% extends 'afiliados/base.html' %}
+{% block title %}Activación territorial{% endblock %}
+{% block content %}
+<div class="page-body"><div class="container-fluid">
+  <div class="page-title"><h4>Activación territorial</h4><p class="text-muted mb-0">Registro de acciones de movilización y resultado territorial.</p></div>
+  <div class="card"><div class="card-body"><form method="post" class="row g-3">{% csrf_token %}
+    {% for field in form.visible_fields %}<div class="col-12 col-md-6"><label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}
+    <div class="col-12"><button class="btn btn-primary" type="submit">Guardar activación</button></div>
+  </form></div></div>
+  <div class="card"><div class="card-body table-responsive"><table class="display datatable table"><thead><tr><th>Fecha</th><th>Comunidad</th><th>Responsable</th><th>Tipo de acción</th><th>Resultado</th><th>Observaciones</th><th></th></tr></thead><tbody>{% for item in items %}<tr><td>{{ item.fecha }}</td><td>{{ item.comunidad|default:'-' }}</td><td>{{ item.responsable|default:'-' }}</td><td>{{ item.tipo_accion }}</td><td>{{ item.resultado|default:'-' }}</td><td>{{ item.observaciones|default:'-' }}</td><td><a class="btn btn-sm btn-outline-primary" href="{% url 'afiliados:editar_activaciones_plan_hormiga' item.pk %}">Editar</a></td></tr>{% endfor %}</tbody></table></div></div>
+</div></div>
 {% endblock %}

@@ -5254,6 +5254,51 @@ def lista_activaciones_plan_hormiga(request): return _plan_hormiga_extra_crud(re
 @login_required
 def editar_activaciones_plan_hormiga(request, pk): return _plan_hormiga_extra_crud(request, ActivacionTerritorialPlanHormiga, ActivacionTerritorialPlanHormigaForm, 'afiliados/plan_hormiga/crud_activaciones.html', 'afiliados:lista_activaciones_plan_hormiga', pk=pk)
 @login_required
-def lista_coberturas_visitas_plan_hormiga(request): return _plan_hormiga_extra_crud(request, CoberturaVisitaPlanHormiga, CoberturaVisitaPlanHormigaForm, 'afiliados/plan_hormiga/crud_cobertura_visitas.html', 'afiliados:lista_coberturas_visitas_plan_hormiga')
+def lista_coberturas_visitas_plan_hormiga(request):
+    denied = _require_plan_hormiga(request)
+    if denied:
+        return denied
+    form = CoberturaVisitaPlanHormigaForm(request.POST or None)
+    if request.method == 'POST' and form.is_valid():
+        obj = form.save(commit=False)
+        if not getattr(obj, 'usuario_creador_id', None):
+            obj.usuario_creador = request.user
+        obj.usuario_modificador = request.user
+        obj.save()
+        messages.success(request, 'Registro de cobertura guardado correctamente.')
+        return redirect('afiliados:lista_coberturas_visitas_plan_hormiga')
+    items = CoberturaVisitaPlanHormiga.objects.all().order_by('-fecha_corte', '-id')[:200]
+    resumen = items.aggregate(
+        comunidades_atendidas=Sum('comunidades_atendidas'),
+        comunidades_pendientes=Sum('comunidades_pendientes'),
+        sectores_visitados=Sum('sectores_visitados'),
+        sectores_pendientes=Sum('sectores_pendientes'),
+    )
+    resumen = {k: (v or 0) for k, v in resumen.items()}
+    return safe_render(request, 'afiliados/plan_hormiga/crud_cobertura_visitas.html', {'form': form, 'items': items, 'resumen': resumen})
+
+
 @login_required
-def editar_coberturas_visitas_plan_hormiga(request, pk): return _plan_hormiga_extra_crud(request, CoberturaVisitaPlanHormiga, CoberturaVisitaPlanHormigaForm, 'afiliados/plan_hormiga/crud_cobertura_visitas.html', 'afiliados:lista_coberturas_visitas_plan_hormiga', pk=pk)
+def editar_coberturas_visitas_plan_hormiga(request, pk):
+    denied = _require_plan_hormiga(request)
+    if denied:
+        return denied
+    instance = get_object_or_404(CoberturaVisitaPlanHormiga, pk=pk)
+    form = CoberturaVisitaPlanHormigaForm(request.POST or None, instance=instance)
+    if request.method == 'POST' and form.is_valid():
+        obj = form.save(commit=False)
+        if not getattr(obj, 'usuario_creador_id', None):
+            obj.usuario_creador = request.user
+        obj.usuario_modificador = request.user
+        obj.save()
+        messages.success(request, 'Registro de cobertura actualizado correctamente.')
+        return redirect('afiliados:lista_coberturas_visitas_plan_hormiga')
+    items = CoberturaVisitaPlanHormiga.objects.all().order_by('-fecha_corte', '-id')[:200]
+    resumen = items.aggregate(
+        comunidades_atendidas=Sum('comunidades_atendidas'),
+        comunidades_pendientes=Sum('comunidades_pendientes'),
+        sectores_visitados=Sum('sectores_visitados'),
+        sectores_pendientes=Sum('sectores_pendientes'),
+    )
+    resumen = {k: (v or 0) for k, v in resumen.items()}
+    return safe_render(request, 'afiliados/plan_hormiga/crud_cobertura_visitas.html', {'form': form, 'items': items, 'resumen': resumen})
