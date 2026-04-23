@@ -2,9 +2,10 @@ from django import forms
 from django.contrib.auth.models import User, Group
 from django.forms import CheckboxInput, DateInput, inlineformset_factory, modelformset_factory
 from django.core.exceptions import ValidationError
+import re
 
 
-from .models import  Perfil,  Institucion, Afiliado, Comunidad, CentroVotacion, Comision, Sector, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, MujeresIntegrante, CoordinadoraMujeres, LiderMujeres, EstructuraMujeres, ResponsableMujeres, ReunionMujeres, IncidenciaMujeres
+from .models import  Perfil,  Institucion, Afiliado, Comunidad, CentroVotacion, Comision, Sector, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, MujeresIntegrante, CoordinadoraMujeres, LiderMujeres, EstructuraMujeres, ResponsableMujeres, ReunionMujeres, IncidenciaMujeres, LogisticaIntegrante, CoordinadorLogistica, LiderLogistica, EstructuraLogistica, ResponsableLogistica, ReunionLogistica, IncidenciaLogistica, RecursoLogistico, AsignacionLogistica, SolicitudLogistica, EntregaLogistica, AgendaLogistica
 
 from django.db.models import Sum, F, Value
 from django.db.models.functions import Coalesce
@@ -265,6 +266,23 @@ class AfiliadoForm(forms.ModelForm):
             cleaned_data['cargo_en_comision'] = ''
 
         return cleaned_data
+
+    def clean_dpi(self):
+        dpi_raw = self.cleaned_data.get('dpi', '')
+        dpi = re.sub(r'\D', '', dpi_raw or '')
+        if len(dpi) != 13:
+            raise ValidationError('Ingrese un DPI válido de 13 dígitos.')
+
+        duplicado = None
+        for afiliado in Afiliado.objects.only('id', 'dpi'):
+            if re.sub(r'\D', '', afiliado.dpi or '') == dpi:
+                duplicado = afiliado
+                break
+
+        if duplicado and (not self.instance or duplicado.pk != self.instance.pk):
+            raise ValidationError('Ya existe un afiliado registrado con este DPI.')
+
+        return dpi
 
     def clean_comunidad(self):
         comunidad = self.cleaned_data.get('comunidad')
@@ -896,3 +914,248 @@ class IncidenciaMujeresForm(OrganizacionTerritorialBaseForm):
         if commit:
             obj.save()
         return obj
+
+
+class LogisticaIntegranteForm(forms.ModelForm):
+    dpi = forms.CharField(
+        max_length=20,
+        required=True,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        label='DPI',
+    )
+
+    class Meta:
+        model = LogisticaIntegrante
+        fields = ['estado', 'observaciones']
+        widgets = {
+            'estado': forms.Select(attrs={'class': 'form-control'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        }
+
+
+class CoordinadorLogisticaForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = CoordinadorLogistica
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {f: forms.TextInput(attrs={'class': 'form-control'}) for f in ['nombre_completo', 'dpi', 'telefono', 'tipo_coordinacion']}
+        widgets.update({
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        })
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._setup_territorio_derivado()
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        self._aplicar_territorio_desde_comunidad(obj)
+        if commit:
+            obj.save()
+        return obj
+
+
+class LiderLogisticaForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = LiderLogistica
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}),
+            'dpi': forms.TextInput(attrs={'class': 'form-control'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-control'}),
+            'coordinador': forms.Select(attrs={'class': 'form-select'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._setup_territorio_derivado()
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        self._aplicar_territorio_desde_comunidad(obj)
+        if commit:
+            obj.save()
+        return obj
+
+
+class EstructuraLogisticaForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = EstructuraLogistica
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion', 'cantidad_integrantes']
+        widgets = {
+            'tipo_estructura': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej.: Brigada logística, equipo de transporte, comité de suministros'}),
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'coordinador_responsable': forms.HiddenInput(),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._setup_territorio_derivado()
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        self._aplicar_territorio_desde_comunidad(obj)
+        if commit:
+            obj.save()
+        return obj
+
+
+class ResponsableLogisticaForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = ResponsableLogistica
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'nombre_completo': forms.TextInput(attrs={'class': 'form-control'}),
+            'dpi': forms.TextInput(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._setup_territorio_derivado()
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        self._aplicar_territorio_desde_comunidad(obj)
+        if commit:
+            obj.save()
+        return obj
+
+
+class ReunionLogisticaForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = ReunionLogistica
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'fecha': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}, format='%Y-%m-%d'),
+            'tipo_reunion': forms.TextInput(attrs={'class': 'form-control'}),
+            'titulo': forms.TextInput(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'responsables': forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly', 'placeholder': 'Selecciona desde el modal'}),
+            'responsable_tipo': forms.HiddenInput(),
+            'responsable_referencia_id': forms.HiddenInput(),
+            'asistentes': forms.NumberInput(attrs={'class': 'form-control'}),
+            'acuerdos': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'estado_seguimiento': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._setup_territorio_derivado()
+        self.fields['fecha'].input_formats = ['%Y-%m-%d']
+        if self.instance and self.instance.pk and self.instance.fecha:
+            self.initial['fecha'] = self.instance.fecha.strftime('%Y-%m-%d')
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        self._aplicar_territorio_desde_comunidad(obj)
+        if commit:
+            obj.save()
+        return obj
+
+
+class IncidenciaLogisticaForm(OrganizacionTerritorialBaseForm):
+    class Meta:
+        model = IncidenciaLogistica
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'tipo_incidencia': forms.TextInput(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'prioridad': forms.Select(attrs={'class': 'form-select'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+            'responsable_asignado': forms.Select(attrs={'class': 'form-select'}),
+            'seguimiento': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._setup_territorio_derivado()
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        self._aplicar_territorio_desde_comunidad(obj)
+        if commit:
+            obj.save()
+        return obj
+
+
+class RecursoLogisticoForm(forms.ModelForm):
+    class Meta:
+        model = RecursoLogistico
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'nombre': forms.TextInput(attrs={'class': 'form-control'}),
+            'tipo_recurso': forms.TextInput(attrs={'class': 'form-control'}),
+            'descripcion': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+
+class AsignacionLogisticaForm(forms.ModelForm):
+    class Meta:
+        model = AsignacionLogistica
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'recurso': forms.Select(attrs={'class': 'form-select'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'actividad': forms.TextInput(attrs={'class': 'form-control'}),
+            'responsable': forms.Select(attrs={'class': 'form-select'}),
+            'fecha': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+
+class SolicitudLogisticaForm(forms.ModelForm):
+    class Meta:
+        model = SolicitudLogistica
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'titulo': forms.TextInput(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'responsable': forms.Select(attrs={'class': 'form-select'}),
+            'prioridad': forms.Select(attrs={'class': 'form-select'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
+
+
+class EntregaLogisticaForm(forms.ModelForm):
+    class Meta:
+        model = EntregaLogistica
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'solicitud': forms.Select(attrs={'class': 'form-select'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'responsable': forms.Select(attrs={'class': 'form-select'}),
+            'fecha': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'detalle': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+        }
+
+
+class AgendaLogisticaForm(forms.ModelForm):
+    class Meta:
+        model = AgendaLogistica
+        exclude = ['usuario_creador', 'usuario_modificador', 'fecha_creacion', 'fecha_actualizacion']
+        widgets = {
+            'actividad': forms.TextInput(attrs={'class': 'form-control'}),
+            'comunidad': forms.Select(attrs={'class': 'form-select'}),
+            'responsables': forms.TextInput(attrs={'class': 'form-control'}),
+            'fecha_programada': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
+            'estado': forms.Select(attrs={'class': 'form-select'}),
+            'observaciones': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        }
