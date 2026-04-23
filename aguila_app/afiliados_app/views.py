@@ -61,6 +61,7 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Font
 import re
+import uuid
 from urllib.parse import urlencode
 from django.views.generic.detail import DetailView
 from django.core.mail import BadHeaderError
@@ -1083,6 +1084,12 @@ def exportar_filtros_pdf(request):
 
 @login_required
 def afiliado_lista(request):
+    prefill = None
+    prefill_token = (request.GET.get("prefill_token") or "").strip()
+    if prefill_token:
+        session_key = f"afiliacion_prefill:{prefill_token}"
+        prefill = request.session.pop(session_key, None)
+
     afiliados = (
         Afiliado.objects
         .select_related('comunidad__sector', 'centro_votacion')
@@ -1094,7 +1101,21 @@ def afiliado_lista(request):
         )
     )
     _adjuntar_centro_votacion_resuelto(afiliados)
-    form = AfiliadoForm()  # Instancia vacía para el modal
+    form_initial = {}
+    prefill_dpi = ""
+    abrir_modal_prefill = False
+
+    if prefill:
+        form_initial = {
+            "nombre_completo": prefill.get("nombre", ""),
+            "telefono": prefill.get("telefono", ""),
+            "direccion": prefill.get("direccion", ""),
+            "comunidad": prefill.get("comunidad_id") or None,
+        }
+        prefill_dpi = prefill.get("dpi", "")
+        abrir_modal_prefill = True
+
+    form = AfiliadoForm(initial=form_initial)
 
     if request.method == 'POST':
         form = AfiliadoForm(request.POST)
@@ -1106,6 +1127,9 @@ def afiliado_lista(request):
         'afiliados': afiliados,
         'form': form,  # Pasamos el formulario al template
         'TSE_CONSULTA_URL': settings.TSE_CONSULTA_URL,
+        'prefill_data': prefill or {},
+        'prefill_dpi': prefill_dpi,
+        'abrir_modal_prefill': abrir_modal_prefill,
     })
 
 
@@ -1176,11 +1200,16 @@ def _fuente_por_referencia(fuente_clave, fuente_id, dpi):
     return persona
 
 
-@login_required
-def pendientes_afiliacion_secretarias(request):
-    if not _es_usuario_afiliacion(request.user):
-        raise PermissionDenied("No tiene permisos para acceder a esta vista.")
+def _buscar_afiliado_por_dpi_normalizado(dpi):
+    if not dpi:
+        return None
+    for afiliado in Afiliado.objects.only("id", "dpi"):
+        if _normalizar_dpi(afiliado.dpi) == dpi:
+            return afiliado
+    return None
 
+
+def _obtener_pendientes_afiliacion_secretarias():
     afiliados_dpi = {_normalizar_dpi(v) for v in Afiliado.objects.values_list('dpi', flat=True) if _normalizar_dpi(v)}
     pendientes_por_dpi = {}
 
@@ -1254,8 +1283,11 @@ def pendientes_afiliacion_secretarias(request):
             'nombre_completo': item['nombre_completo'],
             'secretarias': ", ".join(secretarias),
             'comunidad': item['comunidad'],
+            'telefono': prefill.get('telefono') or '',
             'estado': item['estado'],
             'fecha_registro': item['fecha_registro'],
+            'fuente_clave': fuente_preferida['fuente_clave'],
+            'fuente_id': fuente_preferida['fuente_id'],
             'afiliar_url': (
                 f"{reverse('afiliados:afiliar_desde_secretaria')}?"
                 f"{urlencode({'dpi': item['dpi'], 'fuente': fuente_preferida['fuente_clave'], 'fuente_id': fuente_preferida['fuente_id'], 'nombre': prefill.get('nombre') or item['nombre_completo'], 'comunidad': prefill.get('comunidad') or (item['comunidad'] if item['comunidad'] != 'N/A' else ''), 'comunidad_id': prefill.get('comunidad_id', ''), 'telefono': prefill.get('telefono', ''), 'direccion': prefill.get('direccion', '')})}"
@@ -1263,6 +1295,15 @@ def pendientes_afiliacion_secretarias(request):
         })
 
     filas.sort(key=lambda x: x['nombre_completo'].lower())
+    return filas, total_por_secretaria
+
+
+@login_required
+def pendientes_afiliacion_secretarias(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para acceder a esta vista.")
+
+    filas, total_por_secretaria = _obtener_pendientes_afiliacion_secretarias()
 
     context = {
         'pendientes': filas,
@@ -1272,6 +1313,189 @@ def pendientes_afiliacion_secretarias(request):
         'total_mujeres': total_por_secretaria.get('Mujeres', 0),
     }
     return safe_render(request, 'afiliados/pendientes_afiliacion_secretarias.html', context)
+
+
+@login_required
+def exportar_pendientes_afiliacion_secretarias_excel(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para exportar pendientes de afiliación.")
+
+    filas, _totales = _obtener_pendientes_afiliacion_secretarias()
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Pendientes afiliación"
+    headers = ["DPI", "Nombre completo", "Secretaría", "Comunidad", "Teléfono", "Estado", "Fecha registro"]
+    ws.append(headers)
+
+    for row in filas:
+        fecha = row.get('fecha_registro')
+        fecha_txt = fecha.strftime("%Y-%m-%d %H:%M:%S") if fecha else ""
+        ws.append([
+            row.get('dpi', ''),
+            row.get('nombre_completo', ''),
+            row.get('secretarias', ''),
+            row.get('comunidad', ''),
+            row.get('telefono', ''),
+            row.get('estado', ''),
+            fecha_txt,
+        ])
+
+    for col_idx, header in enumerate(headers, start=1):
+        ws.column_dimensions[get_column_letter(col_idx)].width = max(16, len(header) + 2)
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="pendientes_afiliacion_secretarias.xlsx"'
+    wb.save(response)
+    return response
+
+
+@login_required
+def prefill_afiliacion_desde_secretaria(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para ejecutar esta acción.")
+
+    dpi = _normalizar_dpi(request.GET.get('dpi', ''))
+    fuente_clave = (request.GET.get('fuente') or '').strip()
+    fuente_id = (request.GET.get('fuente_id') or '').strip()
+
+    if len(dpi) != 13:
+        return JsonResponse({'ok': False, 'message': 'DPI inválido.'}, status=400)
+
+    afiliado_existente = _buscar_afiliado_por_dpi_normalizado(dpi)
+    if afiliado_existente:
+        return JsonResponse({
+            'ok': False,
+            'exists': True,
+            'message': f'El DPI {dpi} ya está afiliado.',
+            'detalle_url': reverse('afiliados:afiliado_detalle', args=[afiliado_existente.pk]),
+        }, status=409)
+
+    persona_fuente = _fuente_por_referencia(fuente_clave, fuente_id, dpi) if fuente_clave else None
+    if not persona_fuente:
+        return JsonResponse({
+            'ok': False,
+            'message': 'No se encontró un registro fuente válido para ese DPI y secretaría de origen.',
+        }, status=404)
+
+    prefill = _extraer_prefill_desde_fuente(persona_fuente)
+    nombre = prefill.get('nombre') or ''
+    if not nombre:
+        return JsonResponse({
+            'ok': False,
+            'message': 'No se puede afiliar: el registro fuente no tiene nombre completo.',
+        }, status=422)
+
+    return JsonResponse({
+        'ok': True,
+        'prefill': {
+            'dpi': dpi,
+            'nombre': nombre,
+            'comunidad': prefill.get('comunidad') or '',
+            'comunidad_id': prefill.get('comunidad_id') or '',
+            'telefono': prefill.get('telefono') or '',
+            'direccion': prefill.get('direccion') or '',
+            'fuente': fuente_clave,
+            'fuente_id': str(fuente_id),
+        }
+    })
+
+
+@login_required
+def modal_afiliar_desde_secretaria_form(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para ejecutar esta acción.")
+
+    dpi = _normalizar_dpi(request.GET.get('dpi', ''))
+    fuente_clave = (request.GET.get('fuente') or '').strip()
+    fuente_id = (request.GET.get('fuente_id') or '').strip()
+
+    if len(dpi) != 13:
+        return JsonResponse({'ok': False, 'message': 'DPI inválido.'}, status=400)
+
+    afiliado_existente = _buscar_afiliado_por_dpi_normalizado(dpi)
+    if afiliado_existente:
+        return JsonResponse({
+            'ok': False,
+            'exists': True,
+            'message': f'El DPI {dpi} ya está afiliado.',
+            'detalle_url': reverse('afiliados:afiliado_detalle', args=[afiliado_existente.pk]),
+        }, status=409)
+
+    persona_fuente = _fuente_por_referencia(fuente_clave, fuente_id, dpi) if fuente_clave else None
+    if not persona_fuente:
+        return JsonResponse({
+            'ok': False,
+            'message': 'No se encontró un registro fuente válido para ese DPI y secretaría de origen.',
+        }, status=404)
+
+    prefill = _extraer_prefill_desde_fuente(persona_fuente)
+    form = AfiliadoForm(initial={
+        'dpi': dpi,
+        'nombre_completo': prefill.get('nombre', ''),
+        'telefono': prefill.get('telefono', ''),
+        'direccion': prefill.get('direccion', ''),
+        'comunidad': prefill.get('comunidad_id') or None,
+        'empadronado': True,
+    })
+    form_html = render_to_string(
+        'afiliados/partials/modal_afiliar_desde_secretaria_form.html',
+        {
+            'form': form,
+            'dpi': dpi,
+            'fuente': fuente_clave,
+            'fuente_id': fuente_id,
+        },
+        request=request,
+    )
+    return JsonResponse({'ok': True, 'form_html': form_html})
+
+
+@login_required
+def modal_afiliar_desde_secretaria_guardar(request):
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied("No tiene permisos para ejecutar esta acción.")
+
+    if request.method != 'POST':
+        return JsonResponse({'ok': False, 'message': 'Método no permitido.'}, status=405)
+
+    dpi = _normalizar_dpi(request.POST.get('dpi', ''))
+    fuente_clave = (request.POST.get('fuente') or '').strip()
+    fuente_id = (request.POST.get('fuente_id') or '').strip()
+    persona_fuente = _fuente_por_referencia(fuente_clave, fuente_id, dpi) if fuente_clave else None
+    if not persona_fuente:
+        return JsonResponse({
+            'ok': False,
+            'message': 'No se encontró un registro fuente válido para guardar la afiliación.',
+        }, status=404)
+
+    afiliado_existente = _buscar_afiliado_por_dpi_normalizado(dpi)
+    if afiliado_existente:
+        return JsonResponse({
+            'ok': False,
+            'exists': True,
+            'message': f'El DPI {dpi} ya está afiliado.',
+            'detalle_url': reverse('afiliados:afiliado_detalle', args=[afiliado_existente.pk]),
+        }, status=409)
+
+    form = AfiliadoForm(request.POST)
+    if form.is_valid():
+        afiliado = form.save()
+        return JsonResponse({'ok': True, 'message': f"Afiliado '{afiliado.nombre_completo}' guardado con éxito."})
+
+    form_html = render_to_string(
+        'afiliados/partials/modal_afiliar_desde_secretaria_form.html',
+        {
+            'form': form,
+            'dpi': request.POST.get('dpi', ''),
+            'fuente': fuente_clave,
+            'fuente_id': fuente_id,
+        },
+        request=request,
+    )
+    return JsonResponse({'ok': False, 'message': 'Error de validación.', 'form_html': form_html}, status=400)
 
 
 @login_required
@@ -1287,7 +1511,7 @@ def afiliar_desde_secretaria(request):
         messages.error(request, "No se puede afiliar: DPI inválido.")
         return redirect('afiliados:pendientes_afiliacion_secretarias')
 
-    afiliado_existente = Afiliado.objects.filter(dpi=dpi).first()
+    afiliado_existente = _buscar_afiliado_por_dpi_normalizado(dpi)
     if afiliado_existente:
         messages.info(request, f"El DPI {dpi} ya está afiliado. Se abrió su detalle.")
         return redirect('afiliados:afiliado_detalle', pk=afiliado_existente.pk)
@@ -1312,15 +1536,18 @@ def afiliar_desde_secretaria(request):
         messages.error(request, "No se puede abrir la afiliación: el registro fuente no tiene nombre completo.")
         return redirect('afiliados:pendientes_afiliacion_secretarias')
 
-    query = urlencode({
-        'prefill_dpi': dpi,
-        'prefill_nombre': nombre,
-        'prefill_comunidad': comunidad,
-        'prefill_comunidad_id': comunidad_id,
-        'prefill_telefono': telefono,
-        'prefill_direccion': direccion,
-        'abrir_modal': '1',
-    })
+    prefill_token = uuid.uuid4().hex
+    request.session[f"afiliacion_prefill:{prefill_token}"] = {
+        "dpi": dpi,
+        "nombre": nombre,
+        "comunidad": comunidad,
+        "comunidad_id": comunidad_id,
+        "telefono": telefono,
+        "direccion": direccion,
+        "fuente": fuente_clave,
+        "fuente_id": str(fuente_id),
+    }
+    query = urlencode({'prefill_token': prefill_token})
     messages.info(request, "Se abrió el formulario de afiliación con datos precargados.")
     return redirect(f"{reverse('afiliados:afiliado_lista')}?{query}")
 
