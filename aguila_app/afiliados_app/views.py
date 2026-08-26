@@ -45,7 +45,7 @@ from django.template.loader import get_template
 from django.http import HttpResponse
 from xhtml2pdf import pisa
 from weasyprint import HTML
-from django.db.models.functions import Cast, TruncWeek, TruncMonth
+from django.db.models.functions import Cast
 from django.utils import timezone
 from datetime import timedelta
 from reportlab.lib.pagesizes import landscape, letter
@@ -56,7 +56,8 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils.html import strip_tags
 from decimal import Decimal, InvalidOperation
-from datetime import datetime  
+from datetime import datetime
+from datetime import datetime as DateTime
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Font
@@ -66,12 +67,69 @@ from urllib.parse import urlencode
 from django.views.generic.detail import DetailView
 from django.core.mail import BadHeaderError
 from smtplib import SMTPException
-from django.db.models.functions import ExtractYear, ExtractMonth
 from django.core.serializers.json import DjangoJSONEncoder
 
 from .forms import PadronUploadForm
 
 logger = logging.getLogger(__name__)
+
+
+def _agrupar_fechas_por_mes_seguro(queryset, campo='fecha_creacion'):
+    """Agrupa fechas en Python sin funciones de zona horaria de la base de datos."""
+    conteos = defaultdict(int)
+    modelo = getattr(getattr(queryset, 'model', None), '__name__', 'desconocido')
+
+    for fecha in queryset.values_list(campo, flat=True):
+        if fecha is None or not hasattr(fecha, 'year') or not hasattr(fecha, 'month'):
+            logger.warning(
+                "Fecha inválida detectada en crecimiento mensual. modelo=%s valor=%r",
+                modelo,
+                fecha,
+            )
+            continue
+
+        # Los DateTimeField llegan de MySQL como valores UTC; la conversión se hace
+        # aquí para conservar el mes de TIME_ZONE sin depender de CONVERT_TZ.
+        if isinstance(fecha, DateTime) and timezone.is_aware(fecha):
+            fecha = timezone.localtime(fecha)
+
+        anio = fecha.year
+        mes = fecha.month
+        if not isinstance(anio, int) or not isinstance(mes, int) or not 1 <= mes <= 12:
+            logger.warning(
+                "Fecha inválida detectada en crecimiento mensual. modelo=%s valor=%r",
+                modelo,
+                fecha,
+            )
+            continue
+
+        conteos['{:04d}-{:02d}'.format(anio, mes)] += 1
+
+    return [
+        {'mes': mes, 'total': conteos[mes]}
+        for mes in sorted(conteos)
+    ]
+
+
+def _construir_series_crecimiento(querysets, campo='fecha_creacion'):
+    """Construye el contrato común de datos crudos y series de los panoramas."""
+    crecimiento = {
+        nombre: _agrupar_fechas_por_mes_seguro(queryset, campo)
+        for nombre, queryset in querysets.items()
+    }
+    meses = sorted({
+        item['mes']
+        for datos in crecimiento.values()
+        for item in datos
+    })
+    mapas = {
+        nombre: {item['mes']: item['total'] for item in datos}
+        for nombre, datos in crecimiento.items()
+    }
+    series = {'labels': meses}
+    for nombre in querysets:
+        series[nombre] = [mapas[nombre].get(mes, 0) for mes in meses]
+    return crecimiento, series
 
 
 def safe_context(request, extra=None):
@@ -201,7 +259,6 @@ from django.utils import timezone
 from django.db.models import Count, Q, Sum
 import json
 
-from django.db.models.functions import TruncMonth
 from django.db.models.functions import Coalesce
 from django.db.models import Value, Count
 
@@ -274,17 +331,8 @@ def dahsboard(request):
 # ==============================================================
 # ⭐ 1. NUEVA GRAFICA: Afiliados creados por mes
 # ==============================================================
-    afiliados_por_mes = (
-        Afiliado.objects
-        .filter(fecha_creacion__isnull=False)
-        .annotate(
-            anio=ExtractYear('fecha_creacion'),
-            mes_num=ExtractMonth('fecha_creacion')
-        )
-        .exclude(mes_num__isnull=True)
-        .values('anio', 'mes_num')
-        .annotate(total=Count('id'))
-        .order_by('anio', 'mes_num')
+    afiliados_por_mes = _agrupar_fechas_por_mes_seguro(
+        Afiliado.objects.all()
     )
 
 # Convertir mes número → nombre (para ApexCharts)
@@ -295,17 +343,10 @@ def dahsboard(request):
 
     afiliados_por_mes_list = []
     for item in afiliados_por_mes:
-        mes_num = item.get("mes_num")
-        if mes_num is None:
-            logger.warning("Dashboard: se omite registro sin mes_num. item=%s", item)
-            continue
-        if not 1 <= mes_num <= 12:
-            logger.warning("Dashboard: se omite registro con mes_num fuera de rango (%s). item=%s", mes_num, item)
-            continue
-
+        anio, mes_num = (int(parte) for parte in item["mes"].split("-"))
         afiliados_por_mes_list.append({
             "mes": meses_nombre[mes_num - 1],
-            "anio": item.get("anio"),
+            "anio": anio,
             "total": item.get("total", 0)
         })
     if not afiliados_por_mes_list:
@@ -2258,24 +2299,12 @@ def panorama_municipal_organizacion(request):
         ResponsableTerritorial.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)
     )
 
-    crecimiento = {
-        'coordinadores': list(coordinadores.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-        'lideres': list(lideres.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-        'estructuras': list(estructuras.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-        'reuniones': list(reuniones.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-    }
-
-    def _serie_por_mes(key):
-        return {item['mes'].strftime('%Y-%m'): item['total'] for item in crecimiento.get(key, []) if item.get('mes')}
-
-    meses = sorted(set(_serie_por_mes('coordinadores').keys()) | set(_serie_por_mes('lideres').keys()) | set(_serie_por_mes('estructuras').keys()) | set(_serie_por_mes('reuniones').keys()))
-    crecimiento_series = {
-        'labels': meses,
-        'coordinadores': [_serie_por_mes('coordinadores').get(m, 0) for m in meses],
-        'lideres': [_serie_por_mes('lideres').get(m, 0) for m in meses],
-        'estructuras': [_serie_por_mes('estructuras').get(m, 0) for m in meses],
-        'reuniones': [_serie_por_mes('reuniones').get(m, 0) for m in meses],
-    }
+    crecimiento, crecimiento_series = _construir_series_crecimiento({
+        'coordinadores': coordinadores,
+        'lideres': lideres,
+        'estructuras': estructuras,
+        'reuniones': reuniones,
+    })
 
     resumen_estructuras_por_comunidad = comunidad_qs.annotate(
         estructuras_total=Count('estructuras_organizacion', distinct=True),
@@ -3003,24 +3032,12 @@ def panorama_municipal_juventud(request):
 
     centro_ids_cubiertos = set(CoordinadorJuventud.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)) | set(EstructuraJuventud.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)) | set(ResponsableJuventud.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True))
 
-    crecimiento = {
-        'coordinadores': list(coordinadores.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-        'lideres': list(lideres.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-        'estructuras': list(estructuras.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-        'reuniones': list(reuniones.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-    }
-
-    def _serie_por_mes(key):
-        return {item['mes'].strftime('%Y-%m'): item['total'] for item in crecimiento.get(key, []) if item.get('mes')}
-
-    meses = sorted(set(_serie_por_mes('coordinadores').keys()) | set(_serie_por_mes('lideres').keys()) | set(_serie_por_mes('estructuras').keys()) | set(_serie_por_mes('reuniones').keys()))
-    crecimiento_series = {
-        'labels': meses,
-        'coordinadores': [_serie_por_mes('coordinadores').get(m, 0) for m in meses],
-        'lideres': [_serie_por_mes('lideres').get(m, 0) for m in meses],
-        'estructuras': [_serie_por_mes('estructuras').get(m, 0) for m in meses],
-        'reuniones': [_serie_por_mes('reuniones').get(m, 0) for m in meses],
-    }
+    crecimiento, crecimiento_series = _construir_series_crecimiento({
+        'coordinadores': coordinadores,
+        'lideres': lideres,
+        'estructuras': estructuras,
+        'reuniones': reuniones,
+    })
 
     resumen_estructuras_por_comunidad = comunidad_qs.annotate(estructuras_total=Count('estructuras_juventud', distinct=True)).order_by('nombre')
 
@@ -3573,24 +3590,12 @@ def panorama_municipal_mujeres(request):
 
     centro_ids_cubiertos = set(CoordinadoraMujeres.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)) | set(EstructuraMujeres.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)) | set(ResponsableMujeres.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True))
 
-    crecimiento = {
-        'coordinadores': list(coordinadores.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-        'lideres': list(lideres.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-        'estructuras': list(estructuras.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-        'reuniones': list(reuniones.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-    }
-
-    def _serie_por_mes(key):
-        return {item['mes'].strftime('%Y-%m'): item['total'] for item in crecimiento.get(key, []) if item.get('mes')}
-
-    meses = sorted(set(_serie_por_mes('coordinadores').keys()) | set(_serie_por_mes('lideres').keys()) | set(_serie_por_mes('estructuras').keys()) | set(_serie_por_mes('reuniones').keys()))
-    crecimiento_series = {
-        'labels': meses,
-        'coordinadores': [_serie_por_mes('coordinadores').get(m, 0) for m in meses],
-        'lideres': [_serie_por_mes('lideres').get(m, 0) for m in meses],
-        'estructuras': [_serie_por_mes('estructuras').get(m, 0) for m in meses],
-        'reuniones': [_serie_por_mes('reuniones').get(m, 0) for m in meses],
-    }
+    crecimiento, crecimiento_series = _construir_series_crecimiento({
+        'coordinadores': coordinadores,
+        'lideres': lideres,
+        'estructuras': estructuras,
+        'reuniones': reuniones,
+    })
 
     resumen_estructuras_por_comunidad = comunidad_qs.annotate(estructuras_total=Count('estructuras_mujeres', distinct=True)).order_by('nombre')
 
@@ -4136,24 +4141,12 @@ def panorama_municipal_logistica(request):
     sector_ids_cubiertos = set(CoordinadorLogistica.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)) | set(EstructuraLogistica.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)) | set(ResponsableLogistica.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True))
     centro_ids_cubiertos = set(CoordinadorLogistica.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)) | set(EstructuraLogistica.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)) | set(ResponsableLogistica.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True))
 
-    crecimiento = {
-        'coordinadores': list(coordinadores.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-        'lideres': list(lideres.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-        'estructuras': list(estructuras.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-        'reuniones': list(reuniones.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')),
-    }
-
-    def _serie_por_mes(key):
-        return {item['mes'].strftime('%Y-%m'): item['total'] for item in crecimiento.get(key, []) if item.get('mes')}
-
-    meses = sorted(set(_serie_por_mes('coordinadores').keys()) | set(_serie_por_mes('lideres').keys()) | set(_serie_por_mes('estructuras').keys()) | set(_serie_por_mes('reuniones').keys()))
-    crecimiento_series = {
-        'labels': meses,
-        'coordinadores': [_serie_por_mes('coordinadores').get(m, 0) for m in meses],
-        'lideres': [_serie_por_mes('lideres').get(m, 0) for m in meses],
-        'estructuras': [_serie_por_mes('estructuras').get(m, 0) for m in meses],
-        'reuniones': [_serie_por_mes('reuniones').get(m, 0) for m in meses],
-    }
+    crecimiento, crecimiento_series = _construir_series_crecimiento({
+        'coordinadores': coordinadores,
+        'lideres': lideres,
+        'estructuras': estructuras,
+        'reuniones': reuniones,
+    })
 
     resumen_estructuras_por_comunidad = comunidad_qs.annotate(estructuras_total=Count('estructuras_logistica', distinct=True)).order_by('nombre')
     resumen_miembros_por_estructura = EstructuraLogistica.objects.select_related('comunidad').annotate(miembros_total=Count('integrantes', distinct=True)).order_by('nombre')
@@ -4702,12 +4695,12 @@ def panorama_municipal_comunicacion(request):
     comunidad_ids_cubiertas = set(CoordinadorComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)) | set(LiderComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)) | set(EstructuraComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True)) | set(ResponsableComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, comunidad__isnull=False).values_list('comunidad_id', flat=True))
     sector_ids_cubiertos = set(CoordinadorComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)) | set(EstructuraComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True)) | set(ResponsableComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, sector__isnull=False).values_list('sector_id', flat=True))
     centro_ids_cubiertos = set(CoordinadorComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)) | set(EstructuraComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True)) | set(ResponsableComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO, centro_votacion__isnull=False).values_list('centro_votacion_id', flat=True))
-    crecimiento = {'coordinadores': list(coordinadores.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')), 'lideres': list(lideres.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')), 'estructuras': list(estructuras.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes')), 'reuniones': list(reuniones.annotate(mes=TruncMonth('fecha_creacion')).values('mes').annotate(total=Count('id')).order_by('mes'))}
-
-    def _serie_por_mes(key):
-        return {item['mes'].strftime('%Y-%m'): item['total'] for item in crecimiento.get(key, []) if item.get('mes')}
-    meses = sorted(set(_serie_por_mes('coordinadores').keys()) | set(_serie_por_mes('lideres').keys()) | set(_serie_por_mes('estructuras').keys()) | set(_serie_por_mes('reuniones').keys()))
-    crecimiento_series = {'labels': meses, 'coordinadores': [_serie_por_mes('coordinadores').get(m, 0) for m in meses], 'lideres': [_serie_por_mes('lideres').get(m, 0) for m in meses], 'estructuras': [_serie_por_mes('estructuras').get(m, 0) for m in meses], 'reuniones': [_serie_por_mes('reuniones').get(m, 0) for m in meses]}
+    crecimiento, crecimiento_series = _construir_series_crecimiento({
+        'coordinadores': coordinadores,
+        'lideres': lideres,
+        'estructuras': estructuras,
+        'reuniones': reuniones,
+    })
     context = {'total_comunidades': comunidad_qs.count(), 'comunidades_cubiertas': len(comunidad_ids_cubiertas), 'comunidades_no_cubiertas': max(comunidad_qs.count() - len(comunidad_ids_cubiertas), 0), 'total_sectores': sector_qs.count(), 'sectores_con_responsable': responsables.exclude(sector__isnull=True).values('sector_id').distinct().count(), 'sectores_sin_responsable': max(sector_qs.count() - responsables.exclude(sector__isnull=True).values('sector_id').distinct().count(), 0), 'total_centros': centro_qs.count(), 'centros_con_cobertura': len(centro_ids_cubiertos), 'centros_sin_cobertura': max(centro_qs.count() - len(centro_ids_cubiertos), 0), 'coordinadores_activos': coordinadores.filter(estado=EstadoRegistro.ACTIVO).count(), 'coordinadores_inactivos': coordinadores.filter(estado=EstadoRegistro.INACTIVO).count(), 'total_lideres': lideres.count(), 'estructuras_activas': estructuras.filter(estado=EstadoRegistro.ACTIVO).count(), 'reuniones_mes': reuniones.filter(fecha__month=timezone.now().month, fecha__year=timezone.now().year).count(), 'incidencias_abiertas': incidencias.count(), 'resumen_comunidad': comunidad_qs.annotate(total_sectores=Count('sector', distinct=True), reuniones_total=Count('reuniones_comunicacion', distinct=True), incidencias_abiertas=Count('incidencias_comunicacion', filter=Q(incidencias_comunicacion__estado=EstadoRegistro.ACTIVO), distinct=True)), 'resumen_sector': sector_qs.annotate(lideres_total=Count('lideres_comunicacion', distinct=True), estructuras_total=Count('estructuras_comunicacion', distinct=True), incidencias_total=Count('incidencias_comunicacion', distinct=True)), 'resumen_centro': centro_qs.annotate(incidencias_total=Count('incidencias_comunicacion', distinct=True), reuniones_total=Count('reuniones_comunicacion', distinct=True)), 'crecimiento': json.dumps(crecimiento, cls=DjangoJSONEncoder), 'charts_data': json.dumps({'cobertura': {'comunidades': [len(comunidad_ids_cubiertas), max(comunidad_qs.count() - len(comunidad_ids_cubiertas), 0)], 'sectores': [len(sector_ids_cubiertos), max(sector_qs.count() - len(sector_ids_cubiertos), 0)], 'centros': [len(centro_ids_cubiertos), max(centro_qs.count() - len(centro_ids_cubiertos), 0)]}, 'estructura': {'coordinadores': [coordinadores.filter(estado=EstadoRegistro.ACTIVO).count(), coordinadores.filter(estado=EstadoRegistro.INACTIVO).count()], 'lideres_total': lideres.count(), 'estructuras_activas': estructuras.filter(estado=EstadoRegistro.ACTIVO).count()}, 'crecimiento': crecimiento_series}, cls=DjangoJSONEncoder)}
     return safe_render(request, 'afiliados/comunicacion/panorama.html', context)
 
