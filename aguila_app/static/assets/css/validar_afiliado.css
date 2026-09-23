@@ -1,0 +1,117 @@
+:root {
+  --institutional-blue: #0d47a1;
+  --deep-blue: #082d5f;
+  --soft-blue: #eef5ff;
+  --success: #18794e;
+  --danger: #b42318;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--deep-blue);
+  background: linear-gradient(145deg, #edf5ff 0%, #f8fbff 48%, #e6f0fc 100%);
+  font-family: Montserrat, Arial, sans-serif;
+}
+
+.validation-page {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  padding: 28px 16px;
+}
+
+.validation-card {
+  width: min(760px, 100%);
+  padding: clamp(24px, 5vw, 46px);
+  border: 1px solid rgba(13, 71, 161, 0.12);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 24px 70px rgba(8, 45, 95, 0.15);
+  opacity: 0;
+  transform: scale(0.96);
+  animation: zoomFadeIn 0.45s ease-out forwards;
+}
+
+.validation-header {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid #e4edf8;
+}
+
+.validation-logo {
+  width: 96px;
+  height: 76px;
+  object-fit: contain;
+}
+
+.validation-eyebrow {
+  margin: 0 0 5px;
+  color: var(--institutional-blue);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.validation-header h1 { margin: 0; color: var(--institutional-blue); font-size: clamp(1.8rem, 6vw, 2.7rem); }
+.validation-header p:last-child { margin: 6px 0 0; color: #59708a; }
+
+.validation-status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 28px 0;
+  padding: 15px 18px;
+  border-radius: 14px;
+}
+
+.validation-status > span {
+  display: grid;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.validation-status strong, .validation-status small { display: block; }
+.validation-status small { margin-top: 2px; }
+.validation-status--valid { color: var(--success); background: #ecfdf3; }
+.validation-status--valid > span { background: var(--success); }
+.validation-status--invalid { color: var(--danger); background: #fff1f0; }
+.validation-status--invalid > span { background: var(--danger); }
+
+.affiliate-profile { display: grid; grid-template-columns: 180px 1fr; gap: 30px; align-items: start; }
+.affiliate-photo { width: 180px; height: 220px; border: 4px solid var(--soft-blue); border-radius: 16px; object-fit: cover; }
+.affiliate-initials { display: grid; place-items: center; color: var(--institutional-blue); background: var(--soft-blue); font-size: 3rem; font-weight: 800; }
+.affiliate-data h2 { margin: 0 0 20px; color: var(--institutional-blue); font-size: 1.55rem; }
+.affiliate-data dl, .affiliate-data dd { margin: 0; }
+.affiliate-data dl { display: grid; gap: 13px; }
+.affiliate-data dl div { padding-bottom: 10px; border-bottom: 1px solid #edf2f8; }
+.affiliate-data dt { margin-bottom: 3px; color: #6a7f95; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.affiliate-data dd { color: var(--deep-blue); font-weight: 600; overflow-wrap: anywhere; }
+.invalid-help { margin: 0; text-align: center; color: #65778a; }
+
+@keyframes zoomFadeIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .validation-card { opacity: 1; transform: none; animation: none; }
+}
+
+@media (max-width: 575px) {
+  .validation-header { align-items: flex-start; }
+  .validation-logo { width: 72px; height: 60px; }
+  .affiliate-profile { grid-template-columns: 1fr; }
+  .affiliate-photo { width: 132px; height: 162px; }
+}

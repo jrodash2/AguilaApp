@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Afiliado Cabal</title>
+  <link rel="icon" href="{% static 'assets/images/favicon.svg' %}" type="image/x-icon">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'assets/css/validar_afiliado.css' %}">
+</head>
+<body>
+  <main class="validation-page">
+    <section class="validation-card {% if not validacion_exitosa %}validation-card--invalid{% endif %}">
+      <header class="validation-header">
+        {% if institucion and institucion.logo %}
+          <img class="validation-logo" src="{{ institucion.logo.url }}" alt="Logo institucional">
+        {% else %}
+          <img class="validation-logo" src="{% static 'assets/images/favicon.svg' %}" alt="Logo del sistema">
+        {% endif %}
+        <div>
+          <p class="validation-eyebrow">Validación institucional</p>
+          <h1>Afiliado Cabal</h1>
+          <p>Consulta pública de credenciales de afiliación</p>
+        </div>
+      </header>
+
+      {% if validacion_exitosa %}
+        <div class="validation-status validation-status--valid" role="status">
+          <span aria-hidden="true">✓</span>
+          <div><strong>Afiliación verificada</strong><small>Registro válido</small></div>
+        </div>
+        <div class="affiliate-profile">
+          {% if afiliado.foto %}
+            <img class="affiliate-photo" src="{{ afiliado.foto.url }}" alt="Fotografía de {{ afiliado.nombre_completo }}">
+          {% else %}
+            <div class="affiliate-photo affiliate-initials" aria-label="Sin fotografía">{{ iniciales|default:'AC' }}</div>
+          {% endif %}
+          <div class="affiliate-data">
+            <h2>{{ afiliado.nombre_completo }}</h2>
+            <dl>
+              <div><dt>DPI</dt><dd>{{ afiliado.dpi }}</dd></div>
+              {% if afiliado.comunidad %}<div><dt>Comunidad</dt><dd>{{ afiliado.comunidad.nombre }}</dd></div>{% endif %}
+              <div><dt>Municipio</dt><dd>{{ municipio|default:'No disponible' }}</dd></div>
+              <div><dt>Departamento</dt><dd>{{ departamento|default:'No disponible' }}</dd></div>
+            </dl>
+          </div>
+        </div>
+      {% else %}
+        <div class="validation-status validation-status--invalid" role="alert">
+          <span aria-hidden="true">!</span>
+          <div><strong>QR no válido</strong><small>No se encontró un afiliado para este código de validación.</small></div>
+        </div>
+        <p class="invalid-help">Verifique que el enlace esté completo o solicite una credencial vigente.</p>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>

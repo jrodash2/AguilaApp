@@ -11,6 +11,8 @@
   var printButton = document.getElementById('imprimirCarnet');
   var data = canvas.dataset;
   var scale = canvas.width / 856;
+  var cardTextColor = window.getComputedStyle(canvas)
+    .getPropertyValue('--carnet-accent-color').trim() || '#0d47a1';
 
   function px(value) {
     return value * scale;
@@ -79,7 +81,7 @@
       gradient.addColorStop(1, '#b9ccdf');
       context.fillStyle = gradient;
       context.fillRect(x, y, width, height);
-      context.fillStyle = '#315a7d';
+      context.fillStyle = cardTextColor;
       context.font = '700 ' + px(64) + 'px Montserrat, Arial, sans-serif';
       context.textAlign = 'center';
       context.textBaseline = 'middle';
@@ -89,8 +91,8 @@
 
     context.save();
     roundedRect(x, y, width, height, radius);
-    context.strokeStyle = '#ffffff';
-    context.lineWidth = px(5);
+    context.strokeStyle = cardTextColor;
+    context.lineWidth = px(2);
     context.stroke();
     context.restore();
   }
@@ -122,34 +124,43 @@
 
   function drawLabel(label, value, y) {
     if (!value) return y;
-    context.fillStyle = '#65778a';
+    context.fillStyle = cardTextColor;
     context.font = '600 ' + px(14) + 'px Montserrat, Arial, sans-serif';
     context.fillText(label.toUpperCase(), px(322), px(y));
-    context.fillStyle = '#163a5f';
+    context.fillStyle = cardTextColor;
     context.font = '600 ' + px(21) + 'px Montserrat, Arial, sans-serif';
     context.fillText(value, px(322), px(y + 22), px(420));
     return y + 51;
   }
 
-  function renderCard(background, logo, photo) {
+  function renderCard(background, logo, photo, qrImage) {
     context.clearRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(background, 0, 0, canvas.width, canvas.height);
+    drawCover(background, 0, 0, canvas.width, canvas.height);
 
     if (logo) drawContain(logo, px(38), px(22), px(150), px(82));
 
     context.textAlign = 'left';
     context.textBaseline = 'alphabetic';
-    context.fillStyle = '#ffffff';
+    context.fillStyle = cardTextColor;
     context.font = '800 ' + px(29) + 'px Montserrat, Arial, sans-serif';
     context.fillText('CARNET DE AFILIACIÓN', px(318), px(61));
-    context.fillStyle = '#dbeafa';
+    context.fillStyle = cardTextColor;
     context.font = '500 ' + px(14) + 'px Montserrat, Arial, sans-serif';
-    context.fillText(data.institucion || '', px(320), px(88), px(475));
+    context.fillText(data.institucion || '', px(320), px(88), px(370));
+
+    context.save();
+    context.textAlign = 'center';
+    context.fillStyle = cardTextColor;
+    context.font = '700 ' + px(11) + 'px Montserrat, Arial, sans-serif';
+    context.fillText('CÓDIGO DE AFILIACIÓN', px(159), px(483));
+    context.font = '800 ' + px(16) + 'px Montserrat, Arial, sans-serif';
+    context.fillText(data.codigo, px(159), px(505));
+    context.restore();
 
     drawPhoto(photo);
 
     var fittedName = fitName(data.nombre, px(460));
-    context.fillStyle = '#082d5f';
+    context.fillStyle = cardTextColor;
     context.font = '800 ' + px(fittedName.size) + 'px Montserrat, Arial, sans-serif';
     fittedName.lines.slice(0, 2).forEach(function (line, index) {
       context.fillText(line, px(320), px(239 + index * (fittedName.size + 5)), px(470));
@@ -161,9 +172,11 @@
     detailsY = drawLabel('Municipio', data.municipio, detailsY);
     drawLabel('Departamento', data.departamento, detailsY);
 
-    context.fillStyle = '#5f7488';
+    if (qrImage) drawContain(qrImage, px(713), px(18), px(125), px(125));
+
+    context.fillStyle = cardTextColor;
     context.font = '500 ' + px(12) + 'px Montserrat, Arial, sans-serif';
-    context.fillText('AFILIACIÓN INSTITUCIONAL', px(54), px(510));
+    context.fillText('AFILIACIÓN INSTITUCIONAL', px(322), px(520));
   }
 
   function showError(message) {
@@ -176,10 +189,12 @@
     loadImage(data.fondoUrl),
     loadImage(data.logoUrl).catch(function () { return null; }),
     loadImage(data.fotoUrl).catch(function () { return null; }),
+    loadImage(data.qrUrl),
     document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()
   ]).then(function (assets) {
     if (!assets[0]) throw new Error('No fue posible cargar el fondo SVG del carnet.');
-    renderCard(assets[0], assets[1], assets[2]);
+    if (!assets[3]) throw new Error('No fue posible cargar el código QR del carnet.');
+    renderCard(assets[0], assets[1], assets[2], assets[3]);
     loading.classList.add('is-hidden');
     downloadButton.disabled = false;
     printButton.disabled = false;
