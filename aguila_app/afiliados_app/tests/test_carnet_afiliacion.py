@@ -82,18 +82,26 @@ class CarnetAfiliacionTests(TestCase):
         self.assertContains(response, 'data-municipio="Municipio de Prueba"')
         self.assertContains(response, 'data-departamento="Departamento de Prueba"')
 
-    def test_svg_has_horizontal_cr80_viewbox(self):
-        svg_path = Path(__file__).resolve().parents[2] / 'static/assets/svg/carnet_afiliacion_fondo.svg'
+    def test_uses_existing_credential_svg_as_background(self):
+        svg_path = Path(__file__).resolve().parents[2] / 'static/assets/svg/credencial.svg'
         svg = svg_path.read_text(encoding='utf-8')
-        self.assertIn('width="856" height="540" viewBox="0 0 856 540"', svg)
+        self.assertIn('viewBox="0 0 708 483.749988"', svg)
         self.assertNotIn(self.afiliado.nombre_completo, svg)
+
+        response = self.client.get(reverse('afiliados:carnet_afiliado', args=[self.afiliado.pk]))
+        self.assertContains(response, 'data-fondo-url="/static/assets/svg/credencial.svg"')
 
     def test_download_script_exports_real_jpeg_at_high_resolution(self):
         js_path = Path(__file__).resolve().parents[2] / 'static/assets/js/carnet_afiliacion.js'
         script = js_path.read_text(encoding='utf-8')
+        css_path = Path(__file__).resolve().parents[2] / 'static/assets/css/carnet_afiliacion.css'
+        stylesheet = css_path.read_text(encoding='utf-8')
+        self.assertIn('drawCover(background, 0, 0, canvas.width, canvas.height)', script)
         self.assertIn("canvas.toBlob", script)
         self.assertIn("'image/jpeg', 0.95", script)
         self.assertIn("'carnet_afiliado_' + data.afiliadoId + '.jpg'", script)
+        self.assertIn('.carnet-preview-shell {', stylesheet)
+        self.assertIn('border-radius: 0;', stylesheet)
         self.assertIn('width="1712"', self.client.get(
             reverse('afiliados:carnet_afiliado', args=[self.afiliado.pk])
         ).content.decode())
