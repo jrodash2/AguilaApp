@@ -1,0 +1,202 @@
+{% extends 'afiliados/base.html' %}
+
+{% block content %}
+<style>
+  .padron-page { max-width: 980px; margin: 0 auto; padding: 28px 12px 48px; }
+  .padron-hero { background: linear-gradient(135deg, #1b4f9c, #2774c7); color: #fff; border-radius: 18px; padding: 28px; box-shadow: 0 12px 30px rgba(21, 74, 145, .18); }
+  .padron-hero h1 { color: #fff; margin-bottom: 8px; font-size: clamp(1.55rem, 4vw, 2.15rem); }
+  .padron-hero p { margin: 0; max-width: 720px; opacity: .92; }
+  .padron-card { border: 0; border-radius: 18px; box-shadow: 0 8px 28px rgba(28, 39, 60, .09); }
+  .padron-input { min-height: 48px; font-size: 1.05rem; letter-spacing: .05em; }
+  .result-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .result-item { background: #f7f9fc; border-radius: 10px; padding: 12px 14px; overflow-wrap: anywhere; }
+  .result-label { color: #6c757d; display: block; font-size: .76rem; font-weight: 700; letter-spacing: .04em; margin-bottom: 3px; text-transform: uppercase; }
+  .result-value { color: #212529; font-weight: 600; }
+  .loading-ring { width: 1.1rem; height: 1.1rem; }
+  @media (max-width: 575.98px) {
+    .padron-page { padding: 16px 0 32px; }
+    .padron-hero { border-radius: 12px; padding: 22px 18px; }
+    .padron-card { border-radius: 12px; }
+    .result-grid { grid-template-columns: 1fr; }
+    .padron-actions .btn { width: 100%; }
+  }
+</style>
+
+<main class="padron-page">
+  <header class="padron-hero mb-4">
+    <h1>Consulta de Empadronamiento</h1>
+    <p>Consulte mediante DPI si una persona se encuentra registrada en el padrón electoral local.</p>
+  </header>
+
+  <section class="card padron-card" aria-labelledby="consulta-title">
+    <div class="card-body p-4 p-md-5">
+      <h2 id="consulta-title" class="h5 mb-3">Ingrese el DPI</h2>
+      <form id="padron-form" novalidate data-endpoint="{% url 'afiliados:consulta_empadronamiento_api' %}">
+        <label for="dpi" class="form-label fw-semibold">Documento Personal de Identificación</label>
+        <input id="dpi" name="dpi" class="form-control padron-input" type="text" inputmode="numeric"
+               autocomplete="off" maxlength="25" placeholder="Ej. 1234 56789 0101"
+               aria-describedby="dpi-help dpi-error" required>
+        <div id="dpi-help" class="form-text">Puede escribir o pegar los 13 dígitos con espacios o guiones.</div>
+        <div id="dpi-error" class="invalid-feedback"></div>
+
+        <div class="padron-actions d-flex flex-column flex-sm-row gap-2 mt-4">
+          <button id="consultar" type="submit" class="btn btn-primary px-4">
+            <span id="loading" class="spinner-border spinner-border-sm loading-ring me-2 d-none" aria-hidden="true"></span>
+            <span id="button-text">Consultar</span>
+          </button>
+          <button id="limpiar" type="button" class="btn btn-outline-secondary px-4">Limpiar</button>
+        </div>
+      </form>
+
+      <div id="status" class="visually-hidden" role="status" aria-live="polite"></div>
+      <div id="resultado" class="mt-4" aria-live="polite"></div>
+    </div>
+  </section>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  'use strict';
+
+  const form = document.getElementById('padron-form');
+  const input = document.getElementById('dpi');
+  const error = document.getElementById('dpi-error');
+  const result = document.getElementById('resultado');
+  const status = document.getElementById('status');
+  const submit = document.getElementById('consultar');
+  const clear = document.getElementById('limpiar');
+  const loading = document.getElementById('loading');
+  const buttonText = document.getElementById('button-text');
+  let requestNumber = 0;
+  let controller = null;
+
+  function normalizeDpi(value) {
+    return value.replace(/[\s-]/g, '');
+  }
+
+  function validateDpi() {
+    const normalized = normalizeDpi(input.value);
+    const valid = /^\d{13}$/.test(normalized);
+    input.classList.toggle('is-invalid', !valid);
+    error.textContent = valid ? '' : 'Ingrese un DPI válido de exactamente 13 dígitos. Solo se permiten espacios o guiones como separadores.';
+    return valid ? normalized : null;
+  }
+
+  function setLoading(active) {
+    submit.disabled = active;
+    loading.classList.toggle('d-none', !active);
+    buttonText.textContent = active ? 'Consultando…' : 'Consultar';
+    status.textContent = active ? 'Consultando el padrón local.' : '';
+  }
+
+  function addField(container, label, value) {
+    const item = document.createElement('div');
+    item.className = 'result-item';
+    const title = document.createElement('span');
+    title.className = 'result-label';
+    title.textContent = label;
+    const content = document.createElement('span');
+    content.className = 'result-value';
+    content.textContent = value === null || value === undefined || value === '' ? 'No disponible' : String(value);
+    item.append(title, content);
+    container.appendChild(item);
+  }
+
+  function showFound(data) {
+    const card = document.createElement('div');
+    card.className = 'alert alert-success mb-0';
+    const heading = document.createElement('h3');
+    heading.className = 'h5 mb-3';
+    heading.textContent = 'Estado: Encontrado en padrón local';
+    const grid = document.createElement('div');
+    grid.className = 'result-grid';
+    addField(grid, 'DPI', data.dpi);
+    addField(grid, 'Nombre completo', data.nombre_completo);
+    addField(grid, 'Edad', data.edad);
+    addField(grid, 'Comunidad', data.comunidad);
+    addField(grid, 'Departamento', data.departamento);
+    addField(grid, 'Municipio', data.municipio);
+    card.append(heading, grid);
+    result.replaceChildren(card);
+  }
+
+  function showMessage(kind, title, detail) {
+    const box = document.createElement('div');
+    box.className = 'alert alert-' + kind + ' mb-0';
+    const heading = document.createElement('h3');
+    heading.className = 'h5 mb-2';
+    heading.textContent = title;
+    box.appendChild(heading);
+    if (detail) {
+      const paragraph = document.createElement('p');
+      paragraph.className = 'mb-0';
+      paragraph.textContent = detail;
+      box.appendChild(paragraph);
+    }
+    result.replaceChildren(box);
+  }
+
+  form.addEventListener('submit', async function (event) {
+    event.preventDefault();
+    const dpi = validateDpi();
+    if (!dpi) {
+      result.replaceChildren();
+      input.focus();
+      return;
+    }
+
+    requestNumber += 1;
+    const currentRequest = requestNumber;
+    if (controller) controller.abort();
+    controller = new AbortController();
+    result.replaceChildren();
+    setLoading(true);
+
+    try {
+      const url = new URL(form.dataset.endpoint, window.location.origin);
+      url.searchParams.set('dpi', dpi);
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin',
+        signal: controller.signal
+      });
+      const payload = await response.json().catch(function () { return {}; });
+      if (currentRequest !== requestNumber) return;
+      if (!response.ok || !payload.ok) {
+        showMessage('danger', 'No fue posible realizar la consulta.', payload.error || 'El padrón local no está disponible en este momento.');
+      } else if (payload.found) {
+        showFound(payload.data || {});
+      } else {
+        showMessage('warning', 'No encontrado en el padrón local.', 'Este resultado únicamente indica que el DPI no aparece en la base de datos local consultada. No confirma que la persona no esté empadronada en el TSE.');
+      }
+    } catch (fetchError) {
+      if (fetchError.name !== 'AbortError' && currentRequest === requestNumber) {
+        showMessage('danger', 'No fue posible realizar la consulta.', 'Revise su conexión e intente nuevamente.');
+      }
+    } finally {
+      if (currentRequest === requestNumber) setLoading(false);
+    }
+  });
+
+  clear.addEventListener('click', function () {
+    requestNumber += 1;
+    if (controller) controller.abort();
+    controller = null;
+    form.reset();
+    input.classList.remove('is-invalid');
+    error.textContent = '';
+    result.replaceChildren();
+    setLoading(false);
+    input.focus();
+  });
+
+  input.addEventListener('input', function () {
+    input.classList.remove('is-invalid');
+    error.textContent = '';
+  });
+}());
+</script>
+{% endblock %}

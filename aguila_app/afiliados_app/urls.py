@@ -86,6 +86,8 @@ path('centros/eliminar/<int:pk>/', views.centro_eliminar, name='centro_eliminar'
 path("api/padron/", views.consultar_padron_local, name="consultar_padron_local"),
 path("api/padron/verificar/", views.consultar_padron_local, name="consultar_padron_verificar"),
 path("verificar-empadronamiento/", views.verificar_empadronamiento, name="verificar_empadronamiento"),
+path("consulta-empadronamiento/", views.consulta_empadronamiento, name="consulta_empadronamiento"),
+path("consulta-empadronamiento/consultar/", views.consulta_empadronamiento_api, name="consulta_empadronamiento_api"),
 path('padron/cargar/', views.padron_cargar, name='padron_cargar'),
 
     # Secretaría de Organización
