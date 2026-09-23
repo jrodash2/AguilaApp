@@ -184,7 +184,10 @@ def editar_institucion(request):
     else:
         form = InstitucionForm(instance=institucion)
 
-    return safe_render(request, 'afiliados/editar_institucion.html', {'form': form})
+    return safe_render(request, 'afiliados/editar_institucion.html', {
+        'form': form,
+        'institucion': institucion,
+    })
 
 
 
@@ -1875,6 +1878,33 @@ def afiliado_detalle(request, pk):
     }
     
     return safe_render(request, 'afiliados/afiliado_detalle.html', context)
+
+
+@login_required
+def carnet_afiliado(request, pk):
+    """Muestra el frente, de solo lectura, del carnet de un afiliado."""
+    if not _es_usuario_afiliacion(request.user):
+        raise PermissionDenied
+
+    afiliado = get_object_or_404(
+        Afiliado.objects.select_related('comunidad'),
+        pk=pk,
+    )
+    institucion = Institucion.objects.first()
+    dpi_normalizado = _normalizar_dpi(afiliado.dpi)
+    datos_padron = None
+    if dpi_normalizado:
+        datos_padron = PadronElectoral.objects.filter(
+            identificacion=dpi_normalizado,
+        ).only('municipio', 'departamento').first()
+
+    context = {
+        'afiliado': afiliado,
+        'institucion': institucion,
+        'municipio': datos_padron.municipio if datos_padron else '',
+        'departamento': datos_padron.departamento if datos_padron else '',
+    }
+    return safe_render(request, 'afiliados/carnet_afiliado.html', context)
 
 
 # -----------------------------------------

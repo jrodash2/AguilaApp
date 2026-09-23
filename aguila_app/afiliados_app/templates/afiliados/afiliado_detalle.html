@@ -124,6 +124,11 @@
         <a href="{% url 'afiliados:afiliado_editar' afiliado.id %}" class="btn btn-primary">
             <i class="icon-pencil-alt"></i> Editar
         </a>
+        {% if es_admin or es_administrador or es_gestor or es_afiliados %}
+        <a href="{% url 'afiliados:carnet_afiliado' afiliado.id %}" class="btn btn-outline-primary">
+            <i class="fa fa-id-card-o"></i> Carnet de afiliación
+        </a>
+        {% endif %}
 
         <!-- Información Personal -->
         <div class="riho-section-title">Información Personal</div>
@@ -287,9 +292,11 @@
                     </div>
 
                     <div class="overflow-hidden text-center mb-4">
-                        <a href="">
-                            <img class="img-fluid small-logo" src="{{ institucion.logo2.url }}" alt="">
-                        </a>
+                        {% if institucion and institucion.logo2 %}
+                            <a href="">
+                                <img class="img-fluid small-logo" src="{{ institucion.logo2.url }}" alt="Logo">
+                            </a>
+                        {% endif %}
                     </div>
 
                     <form method="POST" id="formNuevoAfiliado">

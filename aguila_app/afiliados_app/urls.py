@@ -43,6 +43,7 @@ path("filtros/export/pdf/", views.exportar_filtros_pdf, name="exportar_filtros_p
     path('<int:pk>/editar/', views.afiliado_editar, name='afiliado_editar'),
     path('eliminar/<int:pk>/', views.afiliado_eliminar, name='afiliado_eliminar'),
     path('detalle/<int:pk>/', views.afiliado_detalle, name='afiliado_detalle'),
+    path('carnet/<int:pk>/', views.carnet_afiliado, name='carnet_afiliado'),
     path('lideres/', views.lideres_lista, name='lideres_lista'),
     path('<int:pk>/editar-lider/', views.lider_editar, name='lider_editar'),
 
