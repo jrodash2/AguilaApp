@@ -1,6 +1,13 @@
 from django import template
 
+from afiliados_app.fotos import obtener_foto_persona
+
 register = template.Library()
+
+
+@register.filter
+def foto_persona(obj):
+    return obtener_foto_persona(obj)
 
 @register.filter
 def dict_get(d, key):

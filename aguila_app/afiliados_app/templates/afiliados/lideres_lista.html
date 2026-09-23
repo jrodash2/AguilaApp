@@ -60,7 +60,7 @@
                                     <tbody>
                                         {% for a in lideres %}
                                         <tr>
-                                            <td>{{ a.nombre_completo }}</td>
+                                            <td>{% include 'afiliados/partials/avatar_persona.html' with foto=a.foto nombre=a.nombre_completo size=40 %}</td>
                                             <td>{{ a.dpi }}</td>
                                             <td>{{ a.comunidad }}</td>
                                             <td>{{ a.telefono|default:"N/A" }}</td>

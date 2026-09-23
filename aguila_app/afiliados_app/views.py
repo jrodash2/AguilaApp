@@ -16,6 +16,7 @@ import requests
 import unicodedata
 from .form import AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, InstitucionForm, OrganizacionIntegranteForm, CoordinadorOrganizacionForm, LiderComunitarioOrganizacionForm, EstructuraOrganizativaForm, ResponsableTerritorialForm, ReunionTerritorialForm, IncidenciaTerritorialForm, JuventudIntegranteForm, CoordinadorJuventudForm, LiderJuvenilForm, EstructuraJuventudForm, ResponsableJuventudForm, ReunionJuventudForm, IncidenciaJuventudForm, MujeresIntegranteForm, CoordinadoraMujeresForm, LiderMujeresForm, EstructuraMujeresForm, ResponsableMujeresForm, ReunionMujeresForm, IncidenciaMujeresForm, LogisticaIntegranteForm, CoordinadorLogisticaForm, LiderLogisticaForm, EstructuraLogisticaForm, ResponsableLogisticaForm, ReunionLogisticaForm, IncidenciaLogisticaForm, RecursoLogisticoForm, AsignacionLogisticaForm, SolicitudLogisticaForm, EntregaLogisticaForm, AgendaLogisticaForm, ComunicacionIntegranteForm, CoordinadorComunicacionForm, LiderComunicacionForm, EstructuraComunicacionForm, ResponsableComunicacionForm, ReunionComunicacionForm, IncidenciaComunicacionForm, AgendaPublicacionForm, SolicitudContenidoForm, CoberturaActividadForm, BancoMediosForm, CampanaComunicacionForm, MonitoreoRedForm, PlanHormigaIntegranteForm, CoordinadorPlanHormigaForm, EnlaceTerritorialPlanHormigaForm, EstructuraPlanHormigaForm, ResponsableZonaPlanHormigaForm, ReunionPlanHormigaForm, IncidenciaPlanHormigaForm, VisitaPlanHormigaForm, SeguimientoContactoPlanHormigaForm, CompromisoTerritorialPlanHormigaForm, PuntoVisitadoPlanHormigaForm, ActivacionTerritorialPlanHormigaForm, CoberturaVisitaPlanHormigaForm
 from .models import Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil, Institucion, Sector, PadronElectoral, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, EstructuraIntegrante, EstadoRegistro, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, EstructuraIntegranteJuventud, MujeresIntegrante, CoordinadoraMujeres, LiderMujeres, EstructuraMujeres, ResponsableMujeres, ReunionMujeres, IncidenciaMujeres, EstructuraIntegranteMujeres, LogisticaIntegrante, CoordinadorLogistica, LiderLogistica, EstructuraLogistica, ResponsableLogistica, ReunionLogistica, IncidenciaLogistica, EstructuraIntegranteLogistica, RecursoLogistico, AsignacionLogistica, SolicitudLogistica, EntregaLogistica, AgendaLogistica, ComunicacionIntegrante, CoordinadorComunicacion, LiderComunicacion, EstructuraComunicacion, ResponsableComunicacion, ReunionComunicacion, IncidenciaComunicacion, EstructuraIntegranteComunicacion, AgendaPublicacion, SolicitudContenido, CoberturaActividad, BancoMedios, CampanaComunicacion, MonitoreoRed, PlanHormigaIntegrante, CoordinadorPlanHormiga, EnlaceTerritorialPlanHormiga, EstructuraPlanHormiga, ResponsableZonaPlanHormiga, ReunionPlanHormiga, IncidenciaPlanHormiga, EstructuraIntegrantePlanHormiga, VisitaPlanHormiga, SeguimientoContactoPlanHormiga, CompromisoTerritorialPlanHormiga, PuntoVisitadoPlanHormiga, ActivacionTerritorialPlanHormiga, CoberturaVisitaPlanHormiga
+from .fotos import asignar_fotos_personas, guardar_foto_persona, obtener_foto_persona
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
@@ -1224,9 +1225,10 @@ def afiliado_lista(request):
     form = AfiliadoForm(initial=form_initial)
 
     if request.method == 'POST':
-        form = AfiliadoForm(request.POST)
+        form = AfiliadoForm(request.POST, request.FILES or None)
         if form.is_valid():
-            form.save()
+            afiliado = form.save()
+            guardar_foto_persona(afiliado, eliminar=request.POST.get('eliminar_foto') == '1')
             return redirect('afiliados:afiliado_lista')
 
     return safe_render(request, 'afiliados/lista.html', {
@@ -1587,9 +1589,10 @@ def modal_afiliar_desde_secretaria_guardar(request):
             'detalle_url': reverse('afiliados:afiliado_detalle', args=[afiliado_existente.pk]),
         }, status=409)
 
-    form = AfiliadoForm(request.POST)
+    form = AfiliadoForm(request.POST, request.FILES or None)
     if form.is_valid():
         afiliado = form.save()
+        guardar_foto_persona(afiliado, eliminar=request.POST.get('eliminar_foto') == '1')
         return JsonResponse({'ok': True, 'message': f"Afiliado '{afiliado.nombre_completo}' guardado con éxito."})
 
     form_html = render_to_string(
@@ -1666,13 +1669,14 @@ def afiliado_nuevo(request):
     
     if request.method == 'POST':
         # 1. Usar el AfiliadoForm actualizado
-        form = AfiliadoForm(request.POST) 
+        form = AfiliadoForm(request.POST, request.FILES or None)
         
         # Si la solicitud es AJAX (desde el modal)
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             
             if form.is_valid():
                 afiliado = form.save()
+                guardar_foto_persona(afiliado, eliminar=request.POST.get('eliminar_foto') == '1')
                 
                 # 🛠️ Verificación Adicional (Opcional pero Recomendada)
                 # Si el afiliado es guardado con lider_vinculado, nos aseguramos que ese 'lider_vinculado'
@@ -1706,7 +1710,8 @@ def afiliado_nuevo(request):
         # Si la solicitud es POST normal (no AJAX)
         else:
             if form.is_valid():
-                form.save()
+                afiliado = form.save()
+                guardar_foto_persona(afiliado, eliminar=request.POST.get('eliminar_foto') == '1')
                 messages.success(request, 'Afiliado guardado con éxito.')
                 return redirect('afiliados:afiliados_lista') # Asegúrate que el nombre de la URL sea correcto
             else:
@@ -1733,9 +1738,10 @@ def afiliado_nuevo(request):
 def afiliado_editar(request, pk):
     afiliado = get_object_or_404(Afiliado, pk=pk)
     if request.method == 'POST':
-        form = AfiliadoForm(request.POST, instance=afiliado)
+        form = AfiliadoForm(request.POST, request.FILES or None, instance=afiliado)
         if form.is_valid():
-            form.save()
+            afiliado = form.save()
+            guardar_foto_persona(afiliado, eliminar=request.POST.get('eliminar_foto') == '1')
             messages.success(request, "Afiliado actualizado correctamente.")
             return redirect('afiliados:afiliado_lista')
     else:
@@ -1751,9 +1757,10 @@ def lider_editar(request, pk):
     #     return redirect('afiliados:afiliado_editar', pk=pk)
 
     if request.method == 'POST':
-        form = AfiliadoForm(request.POST, instance=afiliado)
+        form = AfiliadoForm(request.POST, request.FILES or None, instance=afiliado)
         if form.is_valid():
-            form.save()
+            afiliado = form.save()
+            guardar_foto_persona(afiliado, eliminar=request.POST.get('eliminar_foto') == '1')
             messages.success(request, f"Líder {afiliado.nombre_completo} actualizado correctamente.")
             return redirect('afiliados:lideres_lista') # 🚀 Redirección CLAVE
     else:
@@ -2190,7 +2197,7 @@ def crear_integrante_organizacion(request):
     if denied:
         return denied
 
-    form = OrganizacionIntegranteForm(request.POST or None)
+    form = OrganizacionIntegranteForm(request.POST or None, request.FILES or None)
     if request.method == 'POST' and form.is_valid():
         afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
 
@@ -2206,6 +2213,9 @@ def crear_integrante_organizacion(request):
             integrante.usuario_registro = request.user
             integrante.usuario_modificacion = request.user
             integrante.save()
+            guardar_foto_persona(
+                integrante, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
             messages.success(request, 'Integrante agregado a Secretaría de Organización correctamente.')
             return redirect('afiliados:lista_integrantes_organizacion')
 
@@ -2248,6 +2258,9 @@ def editar_integrante_organizacion(request, pk):
             integrante.afiliado = afiliado
             integrante.usuario_modificacion = request.user
             integrante.save()
+            guardar_foto_persona(
+                integrante, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
             messages.success(request, 'Integrante de Secretaría de Organización actualizado correctamente.')
             return redirect('afiliados:detalle_integrante_organizacion', pk=integrante.pk)
 
@@ -2431,13 +2444,18 @@ def _org_crud(request, model, form_class, template, list_name, create_name, edit
     if denied:
         return denied
     instance = get_object_or_404(model, pk=pk) if pk else None
-    form = form_class(request.POST or None, instance=instance)
+    foto_actual = obtener_foto_persona(instance) if instance and hasattr(instance, 'dpi') else None
+    form = form_class(request.POST or None, request.FILES or None, instance=instance)
     if request.method == 'POST' and form.is_valid():
         obj = form.save(commit=False)
         if not getattr(obj, 'usuario_creador_id', None):
             obj.usuario_creador = request.user
         obj.usuario_modificador = request.user
         obj.save()
+        if hasattr(obj, 'nombre_completo') and hasattr(obj, 'dpi'):
+            guardar_foto_persona(
+                obj, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
         messages.success(request, 'Registro guardado correctamente.')
         return redirect(list_name)
     descripciones = {
@@ -2463,7 +2481,8 @@ def _org_crud(request, model, form_class, template, list_name, create_name, edit
 
     context = {
         'form': form,
-        'items': items_qs[:200],
+        'foto_actual': foto_actual,
+        'items': asignar_fotos_personas(items_qs[:200]),
         'entity_label': template,
         'create_name': create_name,
         'edit_name': edit_name,
@@ -2943,7 +2962,7 @@ def crear_integrante_juventud(request):
     if denied:
         return denied
 
-    form = JuventudIntegranteForm(request.POST or None)
+    form = JuventudIntegranteForm(request.POST or None, request.FILES or None)
     if request.method == 'POST' and form.is_valid():
         afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
 
@@ -2959,6 +2978,9 @@ def crear_integrante_juventud(request):
             integrante.usuario_registro = request.user
             integrante.usuario_modificacion = request.user
             integrante.save()
+            guardar_foto_persona(
+                integrante, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
             messages.success(request, 'Integrante agregado a Secretaría de la Juventud correctamente.')
             return redirect('afiliados:lista_integrantes_juventud')
 
@@ -3001,6 +3023,9 @@ def editar_integrante_juventud(request, pk):
             integrante.afiliado = afiliado
             integrante.usuario_modificacion = request.user
             integrante.save()
+            guardar_foto_persona(
+                integrante, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
             messages.success(request, 'Integrante de Secretaría de la Juventud actualizado correctamente.')
             return redirect('afiliados:detalle_integrante_juventud', pk=integrante.pk)
 
@@ -3137,13 +3162,18 @@ def _juv_crud(request, model, form_class, template, list_name, create_name, edit
     if denied:
         return denied
     instance = get_object_or_404(model, pk=pk) if pk else None
-    form = form_class(request.POST or None, instance=instance)
+    foto_actual = obtener_foto_persona(instance) if instance and hasattr(instance, 'dpi') else None
+    form = form_class(request.POST or None, request.FILES or None, instance=instance)
     if request.method == 'POST' and form.is_valid():
         obj = form.save(commit=False)
         if not getattr(obj, 'usuario_creador_id', None):
             obj.usuario_creador = request.user
         obj.usuario_modificador = request.user
         obj.save()
+        if hasattr(obj, 'nombre_completo') and hasattr(obj, 'dpi'):
+            guardar_foto_persona(
+                obj, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
         messages.success(request, 'Registro guardado correctamente.')
         return redirect(list_name)
 
@@ -3153,7 +3183,8 @@ def _juv_crud(request, model, form_class, template, list_name, create_name, edit
 
     context = {
         'form': form,
-        'items': items_qs[:200],
+        'foto_actual': foto_actual,
+        'items': asignar_fotos_personas(items_qs[:200]),
         'entity_label': template,
         'create_name': create_name,
         'edit_name': edit_name,
@@ -3501,7 +3532,7 @@ def crear_integrante_mujeres(request):
     if denied:
         return denied
 
-    form = MujeresIntegranteForm(request.POST or None)
+    form = MujeresIntegranteForm(request.POST or None, request.FILES or None)
     if request.method == 'POST' and form.is_valid():
         afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
 
@@ -3517,6 +3548,9 @@ def crear_integrante_mujeres(request):
             integrante.usuario_registro = request.user
             integrante.usuario_modificacion = request.user
             integrante.save()
+            guardar_foto_persona(
+                integrante, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
             messages.success(request, 'Integrante agregado a Secretaría de la Mujeres correctamente.')
             return redirect('afiliados:lista_integrantes_mujeres')
 
@@ -3559,6 +3593,9 @@ def editar_integrante_mujeres(request, pk):
             integrante.afiliado = afiliado
             integrante.usuario_modificacion = request.user
             integrante.save()
+            guardar_foto_persona(
+                integrante, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
             messages.success(request, 'Integrante de Secretaría de la Mujeres actualizado correctamente.')
             return redirect('afiliados:detalle_integrante_mujeres', pk=integrante.pk)
 
@@ -3695,13 +3732,18 @@ def _muj_crud(request, model, form_class, template, list_name, create_name, edit
     if denied:
         return denied
     instance = get_object_or_404(model, pk=pk) if pk else None
-    form = form_class(request.POST or None, instance=instance)
+    foto_actual = obtener_foto_persona(instance) if instance and hasattr(instance, 'dpi') else None
+    form = form_class(request.POST or None, request.FILES or None, instance=instance)
     if request.method == 'POST' and form.is_valid():
         obj = form.save(commit=False)
         if not getattr(obj, 'usuario_creador_id', None):
             obj.usuario_creador = request.user
         obj.usuario_modificador = request.user
         obj.save()
+        if hasattr(obj, 'nombre_completo') and hasattr(obj, 'dpi'):
+            guardar_foto_persona(
+                obj, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
         messages.success(request, 'Registro guardado correctamente.')
         return redirect(list_name)
 
@@ -3711,7 +3753,8 @@ def _muj_crud(request, model, form_class, template, list_name, create_name, edit
 
     context = {
         'form': form,
-        'items': items_qs[:200],
+        'foto_actual': foto_actual,
+        'items': asignar_fotos_personas(items_qs[:200]),
         'entity_label': template,
         'create_name': create_name,
         'edit_name': edit_name,
@@ -4059,7 +4102,7 @@ def crear_integrante_logistica(request):
     if denied:
         return denied
 
-    form = LogisticaIntegranteForm(request.POST or None)
+    form = LogisticaIntegranteForm(request.POST or None, request.FILES or None)
     if request.method == 'POST' and form.is_valid():
         afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
 
@@ -4075,6 +4118,9 @@ def crear_integrante_logistica(request):
             integrante.usuario_registro = request.user
             integrante.usuario_modificacion = request.user
             integrante.save()
+            guardar_foto_persona(
+                integrante, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
             messages.success(request, 'Integrante agregado a Secretaría de Logística correctamente.')
             return redirect('afiliados:lista_integrantes_logistica')
 
@@ -4116,6 +4162,9 @@ def editar_integrante_logistica(request, pk):
             integrante.afiliado = afiliado
             integrante.usuario_modificacion = request.user
             integrante.save()
+            guardar_foto_persona(
+                integrante, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
             messages.success(request, 'Integrante de Secretaría de Logística actualizado correctamente.')
             return redirect('afiliados:detalle_integrante_logistica', pk=integrante.pk)
 
@@ -4242,13 +4291,18 @@ def _log_crud(request, model, form_class, template, list_name, create_name, edit
     if denied:
         return denied
     instance = get_object_or_404(model, pk=pk) if pk else None
-    form = form_class(request.POST or None, instance=instance)
+    foto_actual = obtener_foto_persona(instance) if instance and hasattr(instance, 'dpi') else None
+    form = form_class(request.POST or None, request.FILES or None, instance=instance)
     if request.method == 'POST' and form.is_valid():
         obj = form.save(commit=False)
         if not getattr(obj, 'usuario_creador_id', None):
             obj.usuario_creador = request.user
         obj.usuario_modificador = request.user
         obj.save()
+        if hasattr(obj, 'nombre_completo') and hasattr(obj, 'dpi'):
+            guardar_foto_persona(
+                obj, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
         messages.success(request, 'Registro guardado correctamente.')
         return redirect(list_name)
     items_qs = model.objects.all().order_by('-id')
@@ -4256,7 +4310,8 @@ def _log_crud(request, model, form_class, template, list_name, create_name, edit
         items_qs = items_qs.select_related('comunidad', 'sector', 'centro_votacion')
     context = {
         'form': form,
-        'items': items_qs[:200],
+        'foto_actual': foto_actual,
+        'items': asignar_fotos_personas(items_qs[:200]),
         'entity_label': template,
         'create_name': create_name,
         'edit_name': edit_name,
@@ -4525,18 +4580,24 @@ def _logistica_extra_crud(request, model, form_class, template_name, list_url, t
     if denied:
         return denied
     instance = get_object_or_404(model, pk=pk) if pk else None
-    form = form_class(request.POST or None, instance=instance)
+    foto_actual = obtener_foto_persona(instance) if instance and hasattr(instance, 'dpi') else None
+    form = form_class(request.POST or None, request.FILES or None, instance=instance)
     if request.method == 'POST' and form.is_valid():
         obj = form.save(commit=False)
         if not getattr(obj, 'usuario_creador_id', None):
             obj.usuario_creador = request.user
         obj.usuario_modificador = request.user
         obj.save()
+        if hasattr(obj, 'nombre_completo') and hasattr(obj, 'dpi'):
+            guardar_foto_persona(
+                obj, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
         messages.success(request, 'Registro guardado correctamente.')
         return redirect(list_url)
     context = {
         'form': form,
-        'items': model.objects.all().order_by('-id')[:200],
+        'foto_actual': foto_actual,
+        'items': asignar_fotos_personas(model.objects.all().order_by('-id')[:200]),
         'titulo': titulo,
         'list_url': list_url,
         'edit_url_name': extra.get('edit_url_name') if extra else None,
@@ -4638,7 +4699,7 @@ def crear_integrante_comunicacion(request):
     denied = _require_comunicacion(request)
     if denied:
         return denied
-    form = ComunicacionIntegranteForm(request.POST or None)
+    form = ComunicacionIntegranteForm(request.POST or None, request.FILES or None)
     if request.method == 'POST' and form.is_valid():
         afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
         if error_dpi:
@@ -4653,6 +4714,9 @@ def crear_integrante_comunicacion(request):
             integrante.usuario_registro = request.user
             integrante.usuario_modificacion = request.user
             integrante.save()
+            guardar_foto_persona(
+                integrante, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
             messages.success(request, 'Integrante agregado correctamente.')
             return redirect('afiliados:lista_integrantes_comunicacion')
     return safe_render(request, 'afiliados/comunicacion/form.html', {'form': form, 'es_edicion': False})
@@ -4688,6 +4752,9 @@ def editar_integrante_comunicacion(request, pk):
             integrante.afiliado = afiliado
             integrante.usuario_modificacion = request.user
             integrante.save()
+            guardar_foto_persona(
+                integrante, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
             messages.success(request, 'Integrante actualizado correctamente.')
             return redirect('afiliados:detalle_integrante_comunicacion', pk=integrante.pk)
     return safe_render(request, 'afiliados/comunicacion/form.html', {'form': form, 'es_edicion': True, 'integrante': integrante})
@@ -4769,16 +4836,21 @@ def _com_crud(request, model, form_class, template, list_name, create_name, edit
     if denied:
         return denied
     instance = get_object_or_404(model, pk=pk) if pk else None
-    form = form_class(request.POST or None, instance=instance)
+    foto_actual = obtener_foto_persona(instance) if instance and hasattr(instance, 'dpi') else None
+    form = form_class(request.POST or None, request.FILES or None, instance=instance)
     if request.method == 'POST' and form.is_valid():
         obj = form.save(commit=False)
         if not getattr(obj, 'usuario_creador_id', None):
             obj.usuario_creador = request.user
         obj.usuario_modificador = request.user
         obj.save()
+        if hasattr(obj, 'nombre_completo') and hasattr(obj, 'dpi'):
+            guardar_foto_persona(
+                obj, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
         messages.success(request, 'Registro guardado correctamente.')
         return redirect(list_name)
-    context = {'form': form, 'items': model.objects.all().order_by('-id')[:200], 'entity_label': template, 'create_name': create_name, 'edit_name': edit_name, 'detail_name': {'coordinadores': 'afiliados:detalle_coordinador_comunicacion', 'lideres': 'afiliados:detalle_lider_comunicacion', 'estructuras': 'afiliados:detalle_estructura_comunicacion', 'responsables': 'afiliados:detalle_responsable_comunicacion', 'reuniones': 'afiliados:detalle_reunion_comunicacion', 'incidencias': 'afiliados:detalle_incidencia_comunicacion'}.get(template), 'comunidad_lookup_url': reverse('afiliados:comunicacion_comunidad_lookup'), 'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_comunicacion')}
+    context = {'form': form, 'foto_actual': foto_actual, 'items': asignar_fotos_personas(model.objects.all().order_by('-id')[:200]), 'entity_label': template, 'create_name': create_name, 'edit_name': edit_name, 'detail_name': {'coordinadores': 'afiliados:detalle_coordinador_comunicacion', 'lideres': 'afiliados:detalle_lider_comunicacion', 'estructuras': 'afiliados:detalle_estructura_comunicacion', 'responsables': 'afiliados:detalle_responsable_comunicacion', 'reuniones': 'afiliados:detalle_reunion_comunicacion', 'incidencias': 'afiliados:detalle_incidencia_comunicacion'}.get(template), 'comunidad_lookup_url': reverse('afiliados:comunicacion_comunidad_lookup'), 'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_comunicacion')}
     if template == 'reuniones':
         responsables_modal = []
         for responsable in ResponsableComunicacion.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
@@ -4947,16 +5019,21 @@ def _com_extra_crud(request, model, form_class, template_name, list_url, pk=None
     if denied:
         return denied
     instance = get_object_or_404(model, pk=pk) if pk else None
-    form = form_class(request.POST or None, instance=instance)
+    foto_actual = obtener_foto_persona(instance) if instance and hasattr(instance, 'dpi') else None
+    form = form_class(request.POST or None, request.FILES or None, instance=instance)
     if request.method == 'POST' and form.is_valid():
         obj = form.save(commit=False)
         if not getattr(obj, 'usuario_creador_id', None):
             obj.usuario_creador = request.user
         obj.usuario_modificador = request.user
         obj.save()
+        if hasattr(obj, 'nombre_completo') and hasattr(obj, 'dpi'):
+            guardar_foto_persona(
+                obj, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
         messages.success(request, 'Registro guardado correctamente.')
         return redirect(list_url)
-    return safe_render(request, template_name, {'form': form, 'items': model.objects.all().order_by('-id')[:200]})
+    return safe_render(request, template_name, {'form': form, 'items': asignar_fotos_personas(model.objects.all().order_by('-id')[:200])})
 
 
 @login_required
@@ -5029,7 +5106,7 @@ def crear_integrante_plan_hormiga(request):
     denied = _require_plan_hormiga(request)
     if denied:
         return denied
-    form = PlanHormigaIntegranteForm(request.POST or None)
+    form = PlanHormigaIntegranteForm(request.POST or None, request.FILES or None)
     if request.method == 'POST' and form.is_valid():
         afiliado, _dpi, error_dpi = _afiliado_por_dpi(form.cleaned_data['dpi'])
         if error_dpi:
@@ -5044,6 +5121,9 @@ def crear_integrante_plan_hormiga(request):
             integrante.usuario_registro = request.user
             integrante.usuario_modificacion = request.user
             integrante.save()
+            guardar_foto_persona(
+                integrante, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
             messages.success(request, 'Integrante agregado correctamente.')
             return redirect('afiliados:lista_integrantes_plan_hormiga')
     return safe_render(request, 'afiliados/plan_hormiga/form.html', {'form': form, 'es_edicion': False})
@@ -5079,6 +5159,9 @@ def editar_integrante_plan_hormiga(request, pk):
             integrante.afiliado = afiliado
             integrante.usuario_modificacion = request.user
             integrante.save()
+            guardar_foto_persona(
+                integrante, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
             messages.success(request, 'Integrante actualizado correctamente.')
             return redirect('afiliados:detalle_integrante_plan_hormiga', pk=integrante.pk)
     return safe_render(request, 'afiliados/plan_hormiga/form.html', {'form': form, 'es_edicion': True, 'integrante': integrante})
@@ -5131,7 +5214,8 @@ def _plan_hormiga_crud(request, model, form_class, template, list_name, create_n
     denied = _require_plan_hormiga(request)
     if denied: return denied
     instance = get_object_or_404(model, pk=pk) if pk else None
-    form = form_class(request.POST or None, instance=instance)
+    foto_actual = obtener_foto_persona(instance) if instance and hasattr(instance, 'dpi') else None
+    form = form_class(request.POST or None, request.FILES or None, instance=instance)
     if request.method == 'POST' and form.is_valid():
         obj = form.save(commit=False)
         if hasattr(obj, 'usuario_creador_id') and not getattr(obj, 'usuario_creador_id', None):
@@ -5139,9 +5223,13 @@ def _plan_hormiga_crud(request, model, form_class, template, list_name, create_n
         if hasattr(obj, 'usuario_modificador_id'):
             obj.usuario_modificador = request.user
         obj.save()
+        if hasattr(obj, 'nombre_completo') and hasattr(obj, 'dpi'):
+            guardar_foto_persona(
+                obj, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
         messages.success(request, 'Registro guardado correctamente.')
         return redirect(list_name)
-    context = {'form': form, 'items': model.objects.all().order_by('-id')[:200], 'entity_label': template, 'create_name': create_name, 'edit_name': edit_name, 'detail_name': {'coordinadores': 'afiliados:detalle_coordinador_plan_hormiga', 'enlaces': 'afiliados:detalle_enlace_plan_hormiga', 'estructuras': 'afiliados:detalle_estructura_plan_hormiga', 'responsables': 'afiliados:detalle_responsable_plan_hormiga', 'reuniones': 'afiliados:detalle_reunion_plan_hormiga', 'incidencias': 'afiliados:detalle_incidencia_plan_hormiga'}.get(template), 'comunidad_lookup_url': reverse('afiliados:plan_hormiga_comunidad_lookup'), 'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_plan_hormiga')}
+    context = {'form': form, 'foto_actual': foto_actual, 'items': asignar_fotos_personas(model.objects.all().order_by('-id')[:200]), 'entity_label': template, 'create_name': create_name, 'edit_name': edit_name, 'detail_name': {'coordinadores': 'afiliados:detalle_coordinador_plan_hormiga', 'enlaces': 'afiliados:detalle_enlace_plan_hormiga', 'estructuras': 'afiliados:detalle_estructura_plan_hormiga', 'responsables': 'afiliados:detalle_responsable_plan_hormiga', 'reuniones': 'afiliados:detalle_reunion_plan_hormiga', 'incidencias': 'afiliados:detalle_incidencia_plan_hormiga'}.get(template), 'comunidad_lookup_url': reverse('afiliados:plan_hormiga_comunidad_lookup'), 'empadronamiento_url': reverse('afiliados:verificar_empadronamiento_plan_hormiga')}
     if template == 'reuniones':
         responsables_modal = []
         for responsable in ResponsableZonaPlanHormiga.objects.filter(estado=EstadoRegistro.ACTIVO).select_related('comunidad').order_by('nombre_completo'):
@@ -5275,15 +5363,20 @@ def _plan_hormiga_extra_crud(request, model, form_class, template_name, list_url
     denied = _require_plan_hormiga(request)
     if denied: return denied
     instance = get_object_or_404(model, pk=pk) if pk else None
-    form = form_class(request.POST or None, instance=instance)
+    foto_actual = obtener_foto_persona(instance) if instance and hasattr(instance, 'dpi') else None
+    form = form_class(request.POST or None, request.FILES or None, instance=instance)
     if request.method == 'POST' and form.is_valid():
         obj = form.save(commit=False)
         if not getattr(obj, 'usuario_creador_id', None): obj.usuario_creador = request.user
         obj.usuario_modificador = request.user
         obj.save()
+        if hasattr(obj, 'nombre_completo') and hasattr(obj, 'dpi'):
+            guardar_foto_persona(
+                obj, request.FILES.get('foto'), request.POST.get('eliminar_foto') == '1'
+            )
         messages.success(request, 'Registro guardado correctamente.')
         return redirect(list_url)
-    return safe_render(request, template_name, {'form': form, 'items': model.objects.all().order_by('-id')[:200]})
+    return safe_render(request, template_name, {'form': form, 'items': asignar_fotos_personas(model.objects.all().order_by('-id')[:200])})
 
 @login_required
 def lista_visitas_plan_hormiga(request): return _plan_hormiga_extra_crud(request, VisitaPlanHormiga, VisitaPlanHormigaForm, 'afiliados/plan_hormiga/crud_visitas.html', 'afiliados:lista_visitas_plan_hormiga')

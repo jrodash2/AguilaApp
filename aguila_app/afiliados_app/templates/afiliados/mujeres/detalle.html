@@ -5,7 +5,7 @@
     <div class="page-title"><h4>Detalle de integrante - Mujeres</h4></div>
     <div class="card">
       <div class="card-body">
-        <h5>{{ integrante.afiliado.nombre_completo }}</h5>
+        {% include 'afiliados/partials/avatar_persona.html' with foto=integrante.afiliado.foto nombre=integrante.afiliado.nombre_completo size=128 %}
         <p><strong>DPI:</strong> {{ integrante.afiliado.dpi }}</p>
         <p><strong>Teléfono:</strong> {{ integrante.afiliado.telefono|default:'N/A' }}</p>
         <p><strong>Estado:</strong> {{ integrante.get_estado_display }}</p>

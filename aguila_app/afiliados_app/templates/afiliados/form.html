@@ -161,6 +161,10 @@
                 </style>
 
 
+                <div class="row mt-4"><div class="col-12">
+                  {% include 'afiliados/partials/foto_persona.html' with foto_actual=afiliado.foto component_id='foto-afiliado' %}
+                </div></div>
+
                 <div class="form-footer text-end mt-4">
                   <button type="submit" class="btn btn-primary">
                     {% if form.instance.pk %}Actualizar Afiliado{% else %}Crear Afiliado{% endif %}

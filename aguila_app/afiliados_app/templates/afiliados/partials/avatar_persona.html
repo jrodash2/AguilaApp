@@ -1,0 +1,7 @@
+{% load static %}
+<span class="d-inline-flex align-items-center gap-2">
+  <img src="{% if foto %}{{ foto.url }}{% else %}{% static 'assets/images/dashboard/profile2.png' %}{% endif %}"
+       alt="" width="{{ size|default:'40' }}" height="{{ size|default:'40' }}"
+       class="rounded-circle flex-shrink-0" style="object-fit:cover;box-shadow:0 2px 7px rgba(35,50,70,.14)">
+  {% if nombre %}<span>{{ nombre }}</span>{% endif %}
+</span>

@@ -1,4 +1,5 @@
 {% extends 'afiliados/base.html' %}
+{% load custom_filters %}
 {% block content %}
-<div class="page-body"><div class="container-fluid"><div class="card"><div class="card-header"><h5>Detalle {{ titulo }}</h5></div><div class="card-body"><pre>{{ obj }}</pre></div></div></div></div>
+<div class="page-body"><div class="container-fluid"><div class="card"><div class="card-header"><h5>Detalle {{ titulo }}</h5></div><div class="card-body">{% with foto=obj|foto_persona %}{% include 'afiliados/partials/avatar_persona.html' with foto=foto nombre=obj size=128 %}{% endwith %}</div></div></div></div>
 {% endblock %}

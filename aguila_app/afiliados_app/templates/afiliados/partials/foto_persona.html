@@ -1,0 +1,55 @@
+{% load static %}
+<div class="foto-persona" data-foto-persona data-component-id="{{ component_id|default:'foto-persona' }}">
+  <label class="form-label fw-semibold">Fotografía</label>
+  <div class="d-flex flex-column flex-sm-row align-items-sm-center gap-3">
+    <div class="foto-persona-preview-wrap">
+      <img class="foto-persona-preview" data-photo-preview
+           src="{% if foto_actual %}{{ foto_actual.url }}{% else %}{% static 'assets/images/dashboard/profile2.png' %}{% endif %}"
+           data-placeholder="{% static 'assets/images/dashboard/profile2.png' %}" alt="Vista previa de la fotografía">
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <button type="button" class="btn btn-primary" data-photo-camera>Tomar fotografía</button>
+      <button type="button" class="btn btn-outline-primary" data-photo-upload>Cargar fotografía</button>
+      <button type="button" class="btn btn-outline-secondary" data-photo-change>Cambiar fotografía</button>
+      <button type="button" class="btn btn-outline-danger" data-photo-remove>Eliminar fotografía</button>
+    </div>
+  </div>
+  {% if form.foto %}{{ form.foto }}{% else %}<input class="d-none foto-persona-input" type="file" name="foto" accept="image/jpeg,image/png,image/webp">{% endif %}
+  <input type="hidden" name="eliminar_foto" value="0" data-photo-remove-input>
+  <p class="form-text mb-0 mt-2">La imagen final se recorta a 600 × 600 px y se comprime antes de enviarse.</p>
+
+  <div class="modal fade" data-photo-modal tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-fullscreen-sm-down">
+      <div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Fotografía de la persona</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+        <div class="modal-body">
+          <div class="alert alert-warning d-none" data-camera-error role="alert"></div>
+          <section data-camera-step>
+            <div class="camera-frame">
+              <video data-camera-video autoplay playsinline muted></video>
+              <div class="camera-grid" aria-hidden="true"><span></span></div>
+            </div>
+            <p class="small text-muted mt-2 mb-0">Centre el rostro dentro del óvalo. La cuadrícula es solo una guía y no se guardará.</p>
+          </section>
+          <section class="d-none" data-editor-step>
+            <div class="photo-editor" data-photo-editor><img data-editor-image alt="Fotografía capturada para ajustar"></div>
+            <label class="form-label mt-3" data-zoom-label>Zoom</label>
+            <input class="form-range" type="range" min="1" max="3" step="0.01" value="1" data-photo-zoom aria-label="Zoom de la fotografía">
+            <p class="small text-muted mb-0">Arrastre la fotografía con el cursor o con un dedo para centrarla.</p>
+          </section>
+        </div>
+        <div class="modal-footer flex-wrap">
+          <button type="button" class="btn btn-primary" data-photo-capture>Capturar</button>
+          <button type="button" class="btn btn-outline-secondary d-none" data-photo-retake>Volver a tomar</button>
+          <button type="button" class="btn btn-success d-none" data-photo-use>Usar fotografía</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if not foto_persona_assets_loaded %}
+<link rel="stylesheet" href="{% static 'css/foto_persona.css' %}">
+<script src="{% static 'js/foto_persona.js' %}" defer></script>
+{% endif %}
