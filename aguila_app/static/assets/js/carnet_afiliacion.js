@@ -142,8 +142,8 @@
     context.textAlign = 'left';
     context.textBaseline = 'alphabetic';
     context.fillStyle = cardTextColor;
-    context.font = '800 ' + px(29) + 'px Montserrat, Arial, sans-serif';
-    context.fillText('CARNET DE AFILIACIÓN', px(318), px(61));
+    context.font = '800 ' + px(35) + 'px Montserrat, Arial, sans-serif';
+    context.fillText('CARNET DE AFILIACIÓN', px(218), px(61));
     context.fillStyle = cardTextColor;
     context.font = '500 ' + px(14) + 'px Montserrat, Arial, sans-serif';
     context.fillText(data.institucion || '', px(320), px(88), px(370));
@@ -151,17 +151,17 @@
     context.save();
     context.textAlign = 'center';
     context.fillStyle = cardTextColor;
-    context.font = '700 ' + px(11) + 'px Montserrat, Arial, sans-serif';
-    context.fillText('CÓDIGO DE AFILIACIÓN', px(159), px(483));
+    context.font = '700 ' + px(16) + 'px Montserrat, Arial, sans-serif';
+    context.fillText('CÓDIGO DE AFILIACIÓN:', px(159), px(505));
     context.font = '800 ' + px(16) + 'px Montserrat, Arial, sans-serif';
-    context.fillText(data.codigo, px(159), px(505));
+    context.fillText(data.codigo, px(490), px(505));
     context.restore();
 
     context.save();
     context.textAlign = 'right';
     context.fillStyle = cardTextColor;
     context.font = '700 ' + px(16) + 'px Montserrat, Arial, sans-serif';
-    context.fillText('CÓD. ' + data.codigo, px(838), px(31));
+
     context.restore();
 
     drawPhoto(photo);
@@ -170,20 +170,20 @@
     context.fillStyle = cardTextColor;
     context.font = '800 ' + px(fittedName.size) + 'px Montserrat, Arial, sans-serif';
     fittedName.lines.slice(0, 2).forEach(function (line, index) {
-      context.fillText(line, px(320), px(239 + index * (fittedName.size + 5)), px(470));
+      context.fillText(line, px(320), px(210 + index * (fittedName.size + 5)), px(470));
     });
 
-    var detailsY = fittedName.lines.length > 1 ? 305 : 280;
+    var detailsY = fittedName.lines.length > 1 ? 280 : 280;
     detailsY = drawLabel('DPI', data.dpi, detailsY);
     detailsY = drawLabel('Comunidad', data.comunidad, detailsY);
     detailsY = drawLabel('Municipio', data.municipio, detailsY);
     drawLabel('Departamento', data.departamento, detailsY);
 
-    if (qrImage) drawContain(qrImage, px(713), px(18), px(125), px(125));
+    if (qrImage) drawContain(qrImage, px(913), px(18), px(225), px(225));
 
     context.fillStyle = cardTextColor;
-    context.font = '500 ' + px(12) + 'px Montserrat, Arial, sans-serif';
-    context.fillText('AFILIACIÓN INSTITUCIONAL', px(322), px(520));
+    context.font = '500 ' + px() + 'px Montserrat, Arial, sans-serif';
+
   }
 
   function showError(message) {
