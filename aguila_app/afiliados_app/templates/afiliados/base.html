@@ -176,7 +176,7 @@
 
 
 <!-- BODY WRAPPER -->
-<div class="page-body-wrapper">
+<div class="page-body-wrapper {% block page_body_wrapper_class %}{% endblock %}">
 
     <!-- SIDEBAR -->
     <div class="sidebar-wrapper" data-layout="stroke-svg">
@@ -653,6 +653,16 @@
                                 </a>
                             </li>
                         {% endif %}
+
+                        {% if puede_consultar_padron %}
+                            <li class="sidebar-list {% if '/afiliados/consulta-empadronamiento/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:consulta_empadronamiento' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg#stroke-search' %}"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg#fill-search' %}"></use></svg>
+                                    <span>Consulta de Empadronamiento</span>
+                                </a>
+                            </li>
+                        {% endif %}
                     {% endif %}
 
                 </ul>
@@ -661,10 +671,10 @@
     </div>
 
     <!-- CONTENT -->
-    <div class="container-fluid">
+    <main class="container-fluid {% block page_body_class %}{% endblock %}">
         {% block content %}
         {% endblock %}
-    </div>
+    </main>
 
     <!-- FOOTER -->
     <footer class="footer text-center">

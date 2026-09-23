@@ -667,7 +667,62 @@ def datos_centro(request):
 @login_required
 @require_GET
 def consultar_padron_local(request):
+    if not _puede_consultar_padron(request.user):
+        return JsonResponse({
+            'ok': False,
+            'error': 'No tiene permisos para consultar el padrón local.',
+        }, status=403)
     payload, status_code = _resultado_padron_local(request.GET.get("dpi", ""))
+    return JsonResponse(payload, status=status_code)
+
+
+GRUPOS_CONSULTA_PADRON = {
+    'Administrador',
+    'Organizacion',
+    'Jovenes',
+    'Mujeres',
+    'Logistica',
+    'Comunicacion',
+    'PlanHormiga',
+    'afiliados',
+}
+
+
+def _puede_consultar_padron(user):
+    return user.is_authenticated and user.groups.filter(
+        name__in=GRUPOS_CONSULTA_PADRON
+    ).exists()
+
+
+@login_required
+@require_GET
+def consulta_empadronamiento(request):
+    """Pantalla informativa compartida para consultar el padrón local."""
+    if not _puede_consultar_padron(request.user):
+        return HttpResponseForbidden("No tiene permisos para consultar el padrón local.")
+    return safe_render(request, 'afiliados/consulta_empadronamiento.html')
+
+
+@login_required
+@require_GET
+def consulta_empadronamiento_api(request):
+    """Endpoint de solo lectura utilizado por la consulta compartida."""
+    if not _puede_consultar_padron(request.user):
+        return JsonResponse({
+            'ok': False,
+            'error': 'No tiene permisos para consultar el padrón local.',
+        }, status=403)
+
+    try:
+        payload, status_code = _resultado_padron_local(request.GET.get('dpi', ''))
+    except Exception:
+        logging.getLogger(__name__).exception(
+            'No fue posible consultar el padrón electoral local.'
+        )
+        return JsonResponse({
+            'ok': False,
+            'error': 'El padrón local no está disponible en este momento. Intente nuevamente más tarde.',
+        }, status=503)
     return JsonResponse(payload, status=status_code)
 
 
@@ -691,9 +746,11 @@ def verificar_empadronamiento(request):
 
 
 def _resultado_padron_local(dpi_raw):
-    dpi_limpio = re.sub(r"\D", "", dpi_raw or "")
+    # Se tolera el formato visual con espacios o guiones, pero no letras ni
+    # otros caracteres que podrían convertir silenciosamente un DPI inválido.
+    dpi_limpio = re.sub(r"[\s-]", "", str(dpi_raw or ""))
 
-    if len(dpi_limpio) != 13:
+    if not re.fullmatch(r"\d{13}", dpi_limpio):
         return ({
             "ok": False,
             "found": False,
@@ -708,7 +765,7 @@ def _resultado_padron_local(dpi_raw):
             "ok": True,
             "found": False,
             "empadronado": False,
-            "message": "No aparece en padrón local: podría estar vecindado en otro municipio o no empadronado. Consulte TSE.",
+            "message": "No encontrado en el padrón local.",
         }, 200)
 
     return ({
