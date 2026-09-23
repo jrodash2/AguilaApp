@@ -1,0 +1,280 @@
+{% extends 'afiliados/base.html' %}
+
+{% block page_body_wrapper_class %}consulta-padron-layout{% endblock %}
+{% block page_body_class %}page-body consulta-padron-body{% endblock %}
+
+{% block content %}
+<style>
+  .consulta-padron-layout { min-height: 100vh; display: flex; flex-direction: column; }
+  .page-wrapper.compact-wrapper .page-body-wrapper.consulta-padron-layout .page-body.consulta-padron-body { width: auto; min-height: 0; flex: 1 0 auto; display: flex; flex-direction: column; padding-top: 24px; padding-bottom: 32px; }
+  .consulta-padron-layout > .footer { flex: 0 0 auto; padding: 12px 15px; font-size: .82rem; line-height: 1.4; }
+  .padron-page { width: 100%; max-width: 900px; margin: auto; padding: 0 12px; }
+  .padron-hero { position: relative; overflow: hidden; background: linear-gradient(125deg, #174785 0%, #2269b4 60%, #3488d3 100%); color: #fff; border-radius: 22px; padding: 34px 38px; box-shadow: 0 16px 36px rgba(22, 71, 133, .2); }
+  .padron-hero::after { content: ""; position: absolute; width: 220px; height: 220px; right: -70px; top: -105px; border: 38px solid rgba(255,255,255,.09); border-radius: 50%; }
+  .padron-hero h1 { position: relative; color: #fff; margin-bottom: 9px; font-size: clamp(1.65rem, 4vw, 2.2rem); font-weight: 700; letter-spacing: -.025em; }
+  .padron-hero p { position: relative; margin: 0; max-width: 680px; opacity: .9; line-height: 1.65; }
+  .padron-card { border: 1px solid rgba(32, 79, 126, .07); border-radius: 20px; box-shadow: 0 12px 32px rgba(28, 50, 77, .08); }
+  .form-heading { color: #26364a; font-weight: 700; letter-spacing: -.01em; }
+  .form-heading-mark { display: inline-flex; width: 38px; height: 38px; align-items: center; justify-content: center; margin-right: 10px; color: #2269b4; background: #edf5fd; border-radius: 11px; font-size: 1.05rem; }
+  .padron-label { color: #34465c; font-size: .86rem; }
+  .padron-input-wrap { position: relative; }
+  .padron-input-icon { position: absolute; z-index: 2; left: 17px; top: 50%; transform: translateY(-50%); color: #74879c; font-size: 1rem; pointer-events: none; }
+  .padron-input { min-height: 54px; padding-left: 45px; border: 1px solid #dbe4ed; border-radius: 12px; background: #fbfcfe; font-size: 1.06rem; letter-spacing: .055em; transition: border-color .2s ease, box-shadow .2s ease, background .2s ease; }
+  .padron-input:focus { border-color: #438bc9; background: #fff; box-shadow: 0 0 0 4px rgba(48, 130, 200, .12); }
+  .padron-input.is-invalid { border-color: #dc6571; background-image: none; box-shadow: 0 0 0 4px rgba(220, 83, 97, .08); }
+  .padron-help { display: flex; align-items: center; gap: 7px; color: #75879a; font-size: .82rem; margin-top: 9px; }
+  .padron-error { padding: 10px 13px; margin-top: 10px; color: #a93643; background: #fff1f2; border: 1px solid #f7d3d7; border-radius: 9px; font-size: .84rem; }
+  .padron-actions .btn { min-height: 46px; border-radius: 11px; font-weight: 600; }
+  .padron-submit { min-width: 150px; border: 0; background: linear-gradient(125deg, #1d5f9f, #2c7ec3); box-shadow: 0 7px 16px rgba(35, 105, 171, .2); }
+  .padron-submit:hover, .padron-submit:focus { background: linear-gradient(125deg, #174f88, #246dae); transform: translateY(-1px); }
+  .padron-clear { min-width: 112px; border-color: #d5dee7; color: #536579; }
+  .padron-tse { min-width: 164px; border-color: #9aabc0; color: #40566f; background: #fff; }
+  .padron-tse:hover, .padron-tse:focus { border-color: #405f7f; color: #304b68; background: #f5f8fb; transform: translateY(-1px); }
+  .padron-tse-icon { margin-left: 6px; font-size: .9em; }
+  .padron-tse-help { margin: 10px 0 0; color: #77889a; font-size: .78rem; line-height: 1.5; }
+  .result-card { overflow: hidden; border: 1px solid #e5ebf1; border-radius: 18px; background: #fff; box-shadow: 0 12px 30px rgba(28, 50, 77, .09); animation: resultIn .28s ease-out; }
+  .result-card-header { display: flex; align-items: center; gap: 14px; padding: 21px 24px; color: #fff; background: linear-gradient(125deg, #176f68, #23988c); }
+  .result-card-icon { display: inline-flex; flex: 0 0 44px; width: 44px; height: 44px; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,.38); border-radius: 50%; background: rgba(255,255,255,.16); font-size: 1.35rem; font-weight: 700; }
+  .result-card-title { margin: 0 0 2px; color: #fff; font-size: 1.08rem; font-weight: 700; }
+  .result-card-subtitle { margin: 0; color: rgba(255,255,255,.88); font-size: .88rem; }
+  .result-card-body { padding: 25px; }
+  .result-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .result-item { min-height: 88px; padding: 17px 18px; overflow-wrap: anywhere; background: #f8fafc; border: 1px solid #edf1f5; border-radius: 12px; }
+  .result-label { display: block; margin-bottom: 7px; color: #77889a; font-size: .7rem; font-weight: 700; letter-spacing: .075em; text-transform: uppercase; }
+  .result-value { color: #25384d; font-size: .98rem; font-weight: 700; line-height: 1.45; }
+  .state-card { display: flex; align-items: flex-start; gap: 16px; padding: 22px 24px; border: 1px solid; border-radius: 16px; animation: resultIn .28s ease-out; }
+  .state-card-warning { color: #695322; background: #fffaf0; border-color: #f0dfb4; }
+  .state-card-danger { color: #783c44; background: #fff5f6; border-color: #f0d3d7; }
+  .state-icon { display: inline-flex; flex: 0 0 42px; width: 42px; height: 42px; align-items: center; justify-content: center; border-radius: 12px; background: rgba(255,255,255,.7); box-shadow: 0 3px 10px rgba(61, 53, 35, .08); font-size: 1.2rem; font-weight: 800; }
+  .state-title { margin: 0 0 6px; color: inherit; font-size: 1.03rem; font-weight: 700; }
+  .state-message { margin: 0; font-weight: 600; line-height: 1.55; }
+  .state-detail { margin: 6px 0 0; color: inherit; opacity: .78; font-size: .84rem; line-height: 1.55; }
+  .loading-ring { width: 1.1rem; height: 1.1rem; }
+  @keyframes resultIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  @media (max-width: 575.98px) {
+    .page-wrapper.compact-wrapper .page-body-wrapper.consulta-padron-layout .page-body.consulta-padron-body { padding-top: 22px; padding-bottom: 24px; }
+    .padron-page { padding: 0; }
+    .padron-hero { border-radius: 15px; padding: 25px 20px; }
+    .padron-card { border-radius: 15px; }
+    .result-card-header, .result-card-body, .state-card { padding: 19px; }
+    .result-grid { grid-template-columns: 1fr; }
+    .padron-actions .btn { width: 100%; }
+    .state-card { gap: 12px; }
+  }
+</style>
+
+<main class="padron-page">
+  <header class="padron-hero mb-4">
+    <h1>Consulta de Empadronamiento</h1>
+    <p>Consulte mediante DPI si una persona se encuentra registrada en el padrón electoral local.</p>
+  </header>
+
+  <section class="card padron-card" aria-labelledby="consulta-title">
+    <div class="card-body p-4 p-md-5">
+      <h2 id="consulta-title" class="h5 form-heading d-flex align-items-center mb-4"><span class="form-heading-mark" aria-hidden="true">⌕</span>Ingrese el DPI</h2>
+      <form id="padron-form" novalidate data-endpoint="{% url 'afiliados:consulta_empadronamiento_api' %}">
+        <label for="dpi" class="form-label fw-semibold padron-label">Documento Personal de Identificación</label>
+        <div class="padron-input-wrap">
+          <span class="padron-input-icon" aria-hidden="true">#</span>
+          <input id="dpi" name="dpi" class="form-control padron-input" type="text" inputmode="numeric"
+                 autocomplete="off" maxlength="25" placeholder="Ej. 1234 56789 0101"
+                 aria-describedby="dpi-help dpi-error" required>
+        </div>
+        <div id="dpi-help" class="padron-help"><span aria-hidden="true">ⓘ</span>Puede escribir o pegar los 13 dígitos usando espacios o guiones.</div>
+        <div id="dpi-error" class="padron-error d-none" role="alert"></div>
+
+        <div class="padron-actions d-flex flex-wrap gap-2 mt-4">
+          <button id="consultar" type="submit" class="btn btn-primary padron-submit px-4">
+            <span id="loading" class="spinner-border spinner-border-sm loading-ring me-2 d-none" aria-hidden="true"></span>
+            <span id="button-text">Consultar</span>
+          </button>
+          <button id="limpiar" type="button" class="btn btn-outline-secondary padron-clear px-4">Limpiar</button>
+          <a href="{{ TSE_CONSULTA_URL }}" target="_blank" rel="noopener noreferrer"
+             class="btn btn-outline-secondary padron-tse px-4"
+             aria-label="Consultar en el sitio oficial del TSE (abre en una nueva pestaña)">
+            Consultar en TSE <span class="padron-tse-icon" aria-hidden="true">↗</span>
+          </a>
+        </div>
+        <p class="padron-tse-help">Abre el sitio oficial del Tribunal Supremo Electoral en una nueva pestaña.</p>
+      </form>
+
+      <div id="status" class="visually-hidden" role="status" aria-live="polite"></div>
+      <div id="resultado" class="mt-4" aria-live="polite"></div>
+    </div>
+  </section>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+  'use strict';
+
+  const form = document.getElementById('padron-form');
+  const input = document.getElementById('dpi');
+  const error = document.getElementById('dpi-error');
+  const result = document.getElementById('resultado');
+  const status = document.getElementById('status');
+  const submit = document.getElementById('consultar');
+  const clear = document.getElementById('limpiar');
+  const loading = document.getElementById('loading');
+  const buttonText = document.getElementById('button-text');
+  let requestNumber = 0;
+  let controller = null;
+
+  function normalizeDpi(value) {
+    return value.replace(/[\s-]/g, '');
+  }
+
+  function validateDpi() {
+    const normalized = normalizeDpi(input.value);
+    const valid = /^\d{13}$/.test(normalized);
+    input.classList.toggle('is-invalid', !valid);
+    error.textContent = valid ? '' : 'Ingrese un DPI válido de exactamente 13 dígitos. Solo se permiten espacios o guiones como separadores.';
+    error.classList.toggle('d-none', valid);
+    return valid ? normalized : null;
+  }
+
+  function setLoading(active) {
+    submit.disabled = active;
+    loading.classList.toggle('d-none', !active);
+    buttonText.textContent = active ? 'Consultando…' : 'Consultar';
+    status.textContent = active ? 'Consultando el padrón local.' : '';
+  }
+
+  function addField(container, label, value) {
+    const item = document.createElement('div');
+    item.className = 'result-item';
+    const title = document.createElement('span');
+    title.className = 'result-label';
+    title.textContent = label;
+    const content = document.createElement('span');
+    content.className = 'result-value';
+    content.textContent = value === null || value === undefined || value === '' ? 'No disponible' : String(value);
+    item.append(title, content);
+    container.appendChild(item);
+  }
+
+  function showFound(data) {
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    const header = document.createElement('div');
+    header.className = 'result-card-header';
+    const icon = document.createElement('span');
+    icon.className = 'result-card-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = '✓';
+    const headingWrap = document.createElement('div');
+    const heading = document.createElement('h3');
+    heading.className = 'result-card-title';
+    heading.textContent = 'Resultado de consulta';
+    const subtitle = document.createElement('p');
+    subtitle.className = 'result-card-subtitle';
+    subtitle.textContent = 'Encontrado en padrón local';
+    headingWrap.append(heading, subtitle);
+    header.append(icon, headingWrap);
+    const body = document.createElement('div');
+    body.className = 'result-card-body';
+    const grid = document.createElement('div');
+    grid.className = 'result-grid';
+    addField(grid, 'Nombre completo', data.nombre_completo);
+    addField(grid, 'DPI', data.dpi);
+    addField(grid, 'Departamento', data.departamento);
+    addField(grid, 'Municipio', data.municipio);
+    body.appendChild(grid);
+    card.append(header, body);
+    result.replaceChildren(card);
+  }
+
+  function showMessage(kind, title, message, detail) {
+    const box = document.createElement('div');
+    box.className = 'state-card state-card-' + kind;
+    const icon = document.createElement('span');
+    icon.className = 'state-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = kind === 'warning' ? '!' : '×';
+    const content = document.createElement('div');
+    const heading = document.createElement('h3');
+    heading.className = 'state-title';
+    heading.textContent = title;
+    content.appendChild(heading);
+    if (message) {
+      const paragraph = document.createElement('p');
+      paragraph.className = 'state-message';
+      paragraph.textContent = message;
+      content.appendChild(paragraph);
+    }
+    if (detail) {
+      const clarification = document.createElement('p');
+      clarification.className = 'state-detail';
+      clarification.textContent = detail;
+      content.appendChild(clarification);
+    }
+    box.append(icon, content);
+    result.replaceChildren(box);
+  }
+
+  form.addEventListener('submit', async function (event) {
+    event.preventDefault();
+    const dpi = validateDpi();
+    if (!dpi) {
+      result.replaceChildren();
+      input.focus();
+      return;
+    }
+
+    requestNumber += 1;
+    const currentRequest = requestNumber;
+    if (controller) controller.abort();
+    controller = new AbortController();
+    result.replaceChildren();
+    setLoading(true);
+
+    try {
+      const url = new URL(form.dataset.endpoint, window.location.origin);
+      url.searchParams.set('dpi', dpi);
+      const response = await fetch(url.toString(), {
+        method: 'GET',
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        credentials: 'same-origin',
+        signal: controller.signal
+      });
+      const payload = await response.json().catch(function () { return {}; });
+      if (currentRequest !== requestNumber) return;
+      if (!response.ok || !payload.ok) {
+        showMessage('danger', 'No fue posible realizar la consulta', payload.error || 'El padrón local no está disponible en este momento.');
+      } else if (payload.found) {
+        showFound(payload.data || {});
+      } else {
+        showMessage('warning', 'No encontrado', 'Este DPI no aparece en el padrón local consultado.', 'Este resultado solo corresponde a la base local disponible y no confirma la situación oficial ante el TSE.');
+      }
+    } catch (fetchError) {
+      if (fetchError.name !== 'AbortError' && currentRequest === requestNumber) {
+        showMessage('danger', 'No fue posible realizar la consulta', 'Revise su conexión e intente nuevamente.');
+      }
+    } finally {
+      if (currentRequest === requestNumber) setLoading(false);
+    }
+  });
+
+  clear.addEventListener('click', function () {
+    requestNumber += 1;
+    if (controller) controller.abort();
+    controller = null;
+    form.reset();
+    input.classList.remove('is-invalid');
+    error.textContent = '';
+    error.classList.add('d-none');
+    result.replaceChildren();
+    setLoading(false);
+    input.focus();
+  });
+
+  input.addEventListener('input', function () {
+    input.classList.remove('is-invalid');
+    error.textContent = '';
+    error.classList.add('d-none');
+  });
+}());
+</script>
+{% endblock %}

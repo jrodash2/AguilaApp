@@ -225,6 +225,7 @@ class AfiliadoForm(forms.ModelForm):
             'es_lider_comunitario',  # 🌟 NUEVO: El check para ser líder
             'lider_vinculado',       # 🔗 RENOMBRADO: Apunta a otro Afiliado (Líder)
             'empadronado',
+            'foto',
         ]
         
         widgets = {
@@ -241,6 +242,10 @@ class AfiliadoForm(forms.ModelForm):
 
             'empadronado': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'es_lider_comunitario': forms.CheckboxInput(attrs={'class': 'form-check-input'}), # 🌟 NUEVO
+            'foto': forms.FileInput(attrs={
+                'class': 'd-none foto-persona-input',
+                'accept': 'image/jpeg,image/png,image/webp',
+            }),
 
         }
 
@@ -287,6 +292,12 @@ class AfiliadoForm(forms.ModelForm):
     def clean_comunidad(self):
         comunidad = self.cleaned_data.get('comunidad')
         return comunidad or None
+
+    def clean_foto(self):
+        foto = self.cleaned_data.get('foto')
+        if foto and foto.size > 5 * 1024 * 1024:
+            raise ValidationError('La fotografía no puede superar 5 MB.')
+        return foto
 
     def save(self, commit=True):
         afiliado = super().save(commit=commit)

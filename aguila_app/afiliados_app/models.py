@@ -8,6 +8,8 @@ from django.urls import reverse
 from django.db.models import Sum
 from django.db.models.signals import post_save
 from django.utils import timezone
+import os
+import uuid
 
 
 
@@ -115,6 +117,14 @@ class Comunidad(models.Model):
         return self.nombre
 
 
+def foto_persona_upload_to(instance, filename):
+    """Genera nombres opacos; nunca incluye DPI ni nombre de la persona."""
+    extension = os.path.splitext(filename or '')[1].lower()
+    if extension not in {'.jpg', '.jpeg', '.png', '.webp'}:
+        extension = '.jpg'
+    return 'afiliados/fotos/{}{}'.format(uuid.uuid4().hex, extension)
+
+
 class Afiliado(models.Model):
     class CargoComision(models.TextChoices):
         COORDINADOR = "COORDINADOR", "Coordinador"
@@ -150,6 +160,7 @@ class Afiliado(models.Model):
         blank=True,
         null=True,
     )
+    foto = models.ImageField(upload_to=foto_persona_upload_to, blank=True, null=True)
 
     # 📅 Nueva columna: Fecha y hora de creación automática
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -160,6 +171,16 @@ class Afiliado(models.Model):
 
     def __str__(self):
         return f"{self.nombre_completo} ({self.dpi})"
+
+
+class FotoPersona(models.Model):
+    """Foto única para personas registradas fuera de Afiliación, identificada por DPI."""
+    dpi = models.CharField(max_length=13, unique=True, db_index=True)
+    foto = models.ImageField(upload_to=foto_persona_upload_to)
+    fecha_actualizacion = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return 'Fotografía de persona'
 
     
 class OrganizacionIntegrante(models.Model):

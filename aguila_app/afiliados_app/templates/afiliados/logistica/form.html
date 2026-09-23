@@ -6,7 +6,7 @@
     <div class="page-title"><h4>{% if es_edicion %}Editar{% else %}Nuevo{% endif %} integrante de Logística</h4></div>
     <div class="card">
       <div class="card-body">
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
           {% csrf_token %}
           {% if form.errors %}
           <div class="alert alert-danger">{{ form.errors }}</div>
@@ -33,6 +33,7 @@
               {{ form.observaciones }}
             </div>
           </div>
+          <div class="mb-4">{% include 'afiliados/partials/foto_persona.html' with foto_actual=integrante.afiliado.foto component_id='foto-integrante' %}</div>
           <button type="submit" class="btn btn-primary">Guardar</button>
           <a href="{% url 'afiliados:lista_integrantes_logistica' %}" class="btn btn-secondary">Cancelar</a>
         </form>

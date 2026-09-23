@@ -116,6 +116,7 @@
 
         <!-- Encabezado limpio y centrado -->
         <div class="card-riho-header-clean text-center">
+            {% include 'afiliados/partials/avatar_persona.html' with foto=afiliado.foto nombre='' size=128 %}
             <div class="riho-title">{{ afiliado.nombre_completo }}</div>
             <div class="riho-subtitle">DPI: {{ afiliado.dpi }}</div>
         </div>

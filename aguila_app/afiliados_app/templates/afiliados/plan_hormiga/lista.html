@@ -192,7 +192,7 @@
             <tbody>
               {% for item in integrantes %}
               <tr>
-                <td>{{ item.afiliado.nombre_completo }}</td>
+                <td>{% include 'afiliados/partials/avatar_persona.html' with foto=item.afiliado.foto nombre=item.afiliado.nombre_completo size=40 %}</td>
                 <td>{{ item.afiliado.dpi }}</td>
                 <td>
                   <span class="state-pill {% if item.estado == 'PENDIENTE' %}pendiente{% elif item.estado == 'REVISADO' %}revisado{% elif item.estado == 'APROBADO' %}aprobado{% else %}default{% endif %}">
