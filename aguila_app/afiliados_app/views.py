@@ -700,7 +700,9 @@ def consulta_empadronamiento(request):
     """Pantalla informativa compartida para consultar el padrón local."""
     if not _puede_consultar_padron(request.user):
         return HttpResponseForbidden("No tiene permisos para consultar el padrón local.")
-    return safe_render(request, 'afiliados/consulta_empadronamiento.html')
+    return safe_render(request, 'afiliados/consulta_empadronamiento.html', {
+        'TSE_CONSULTA_URL': settings.TSE_CONSULTA_URL,
+    })
 
 
 @login_required

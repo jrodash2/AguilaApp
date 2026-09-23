@@ -6,9 +6,9 @@
 {% block content %}
 <style>
   .consulta-padron-layout { min-height: 100vh; display: flex; flex-direction: column; }
-  .page-wrapper.compact-wrapper .page-body-wrapper.consulta-padron-layout .page-body.consulta-padron-body { width: auto; min-height: 0; flex: 1 0 auto; padding-top: 24px; padding-bottom: 32px; }
+  .page-wrapper.compact-wrapper .page-body-wrapper.consulta-padron-layout .page-body.consulta-padron-body { width: auto; min-height: 0; flex: 1 0 auto; display: flex; flex-direction: column; padding-top: 24px; padding-bottom: 32px; }
   .consulta-padron-layout > .footer { flex: 0 0 auto; padding: 12px 15px; font-size: .82rem; line-height: 1.4; }
-  .padron-page { max-width: 960px; margin: 0 auto; padding: 0 12px 24px; }
+  .padron-page { width: 100%; max-width: 900px; margin: auto; padding: 0 12px; }
   .padron-hero { position: relative; overflow: hidden; background: linear-gradient(125deg, #174785 0%, #2269b4 60%, #3488d3 100%); color: #fff; border-radius: 22px; padding: 34px 38px; box-shadow: 0 16px 36px rgba(22, 71, 133, .2); }
   .padron-hero::after { content: ""; position: absolute; width: 220px; height: 220px; right: -70px; top: -105px; border: 38px solid rgba(255,255,255,.09); border-radius: 50%; }
   .padron-hero h1 { position: relative; color: #fff; margin-bottom: 9px; font-size: clamp(1.65rem, 4vw, 2.2rem); font-weight: 700; letter-spacing: -.025em; }
@@ -28,6 +28,10 @@
   .padron-submit { min-width: 150px; border: 0; background: linear-gradient(125deg, #1d5f9f, #2c7ec3); box-shadow: 0 7px 16px rgba(35, 105, 171, .2); }
   .padron-submit:hover, .padron-submit:focus { background: linear-gradient(125deg, #174f88, #246dae); transform: translateY(-1px); }
   .padron-clear { min-width: 112px; border-color: #d5dee7; color: #536579; }
+  .padron-tse { min-width: 164px; border-color: #9aabc0; color: #40566f; background: #fff; }
+  .padron-tse:hover, .padron-tse:focus { border-color: #405f7f; color: #304b68; background: #f5f8fb; transform: translateY(-1px); }
+  .padron-tse-icon { margin-left: 6px; font-size: .9em; }
+  .padron-tse-help { margin: 10px 0 0; color: #77889a; font-size: .78rem; line-height: 1.5; }
   .result-card { overflow: hidden; border: 1px solid #e5ebf1; border-radius: 18px; background: #fff; box-shadow: 0 12px 30px rgba(28, 50, 77, .09); animation: resultIn .28s ease-out; }
   .result-card-header { display: flex; align-items: center; gap: 14px; padding: 21px 24px; color: #fff; background: linear-gradient(125deg, #176f68, #23988c); }
   .result-card-icon { display: inline-flex; flex: 0 0 44px; width: 44px; height: 44px; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,.38); border-radius: 50%; background: rgba(255,255,255,.16); font-size: 1.35rem; font-weight: 700; }
@@ -49,7 +53,7 @@
   @keyframes resultIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   @media (max-width: 575.98px) {
     .page-wrapper.compact-wrapper .page-body-wrapper.consulta-padron-layout .page-body.consulta-padron-body { padding-top: 22px; padding-bottom: 24px; }
-    .padron-page { padding: 0 0 20px; }
+    .padron-page { padding: 0; }
     .padron-hero { border-radius: 15px; padding: 25px 20px; }
     .padron-card { border-radius: 15px; }
     .result-card-header, .result-card-body, .state-card { padding: 19px; }
@@ -79,13 +83,19 @@
         <div id="dpi-help" class="padron-help"><span aria-hidden="true">ⓘ</span>Puede escribir o pegar los 13 dígitos usando espacios o guiones.</div>
         <div id="dpi-error" class="padron-error d-none" role="alert"></div>
 
-        <div class="padron-actions d-flex flex-column flex-sm-row gap-2 mt-4">
+        <div class="padron-actions d-flex flex-wrap gap-2 mt-4">
           <button id="consultar" type="submit" class="btn btn-primary padron-submit px-4">
             <span id="loading" class="spinner-border spinner-border-sm loading-ring me-2 d-none" aria-hidden="true"></span>
             <span id="button-text">Consultar</span>
           </button>
           <button id="limpiar" type="button" class="btn btn-outline-secondary padron-clear px-4">Limpiar</button>
+          <a href="{{ TSE_CONSULTA_URL }}" target="_blank" rel="noopener noreferrer"
+             class="btn btn-outline-secondary padron-tse px-4"
+             aria-label="Consultar en el sitio oficial del TSE (abre en una nueva pestaña)">
+            Consultar en TSE <span class="padron-tse-icon" aria-hidden="true">↗</span>
+          </a>
         </div>
+        <p class="padron-tse-help">Abre el sitio oficial del Tribunal Supremo Electoral en una nueva pestaña.</p>
       </form>
 
       <div id="status" class="visually-hidden" role="status" aria-live="polite"></div>

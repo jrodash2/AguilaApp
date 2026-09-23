@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from django.contrib.auth.models import Group, User
+from django.conf import settings
 from django.db import DatabaseError
 from django.test import TestCase
 from django.urls import reverse
@@ -60,6 +61,13 @@ class ConsultaEmpadronamientoTests(TestCase):
                 )
                 self.client.logout()
 
+    def test_page_links_to_configured_tse_site_in_new_tab(self):
+        self.client.force_login(self.user)
+        response = self.client.get(self.page_url)
+        self.assertContains(response, 'href="{}"'.format(settings.TSE_CONSULTA_URL))
+        self.assertContains(response, 'target="_blank"')
+        self.assertContains(response, 'rel="noopener noreferrer"')
+
     def test_existing_dpi_returns_only_local_person_data(self):
         self.client.force_login(self.user)
         response = self.client.get(self.api_url, {'dpi': self.dpi_existente})
@@ -109,4 +117,3 @@ class ConsultaEmpadronamientoTests(TestCase):
         self.client.get(self.api_url, {'dpi': '9999999999999'})
         self.client.get(self.api_url, {'dpi': '123'})
         self.assertEqual(list(PadronElectoral.objects.values()), before)
-
