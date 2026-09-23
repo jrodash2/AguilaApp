@@ -39,6 +39,16 @@
             {% if institucion and institucion.logo %}data-logo-url="{{ institucion.logo.url }}"{% endif %}
             {% if afiliado.foto %}data-foto-url="{{ afiliado.foto.url }}"{% endif %}
           >Su navegador no permite mostrar la vista previa del carnet.</canvas>
+          <a
+            class="qr-validacion-link"
+            href="{{ url_validacion }}"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Ver validación del afiliado"
+            aria-label="Abrir validación del afiliado en una nueva pestaña"
+          >
+            <img class="qr-validacion" src="{{ qr_data_uri }}" alt="QR de validación">
+          </a>
           <div id="carnetLoading" class="carnet-loading" aria-live="polite">
             Preparando vista previa…
           </div>

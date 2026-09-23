@@ -1919,6 +1919,7 @@ def carnet_afiliado(request, pk):
         'municipio': datos_padron.municipio if datos_padron else '',
         'departamento': datos_padron.departamento if datos_padron else '',
         'qr_data_uri': qr_data_uri,
+        'url_validacion': url_validacion,
     }
     return safe_render(request, 'afiliados/carnet_afiliado.html', context)
 

@@ -162,7 +162,7 @@
     detailsY = drawLabel('Municipio', data.municipio, detailsY);
     drawLabel('Departamento', data.departamento, detailsY);
 
-    if (qrImage) drawContain(qrImage, px(744), px(408), px(88), px(88));
+    if (qrImage) drawContain(qrImage, px(744), px(386), px(110), px(110));
 
     context.fillStyle = cardTextColor;
     context.font = '500 ' + px(12) + 'px Montserrat, Arial, sans-serif';

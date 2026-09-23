@@ -60,6 +60,16 @@ class CarnetAfiliacionTests(TestCase):
             response.content.decode(),
             r'data-qr-url="data:image/png;base64,[A-Za-z0-9+/=]+"',
         )
+        validation_url = reverse(
+            'afiliados:validar_afiliado',
+            args=[self.afiliado.token_validacion],
+        )
+        self.assertContains(
+            response,
+            'href="{}"'.format(response.wsgi_request.build_absolute_uri(validation_url)),
+        )
+        self.assertContains(response, 'target="_blank"')
+        self.assertContains(response, 'rel="noopener noreferrer"')
 
     def test_renders_photo_logo_long_name_and_optional_location(self):
         self.afiliado.nombre_completo = 'María Fernanda de los Ángeles Apellido Primero Apellido Segundo'
@@ -110,11 +120,14 @@ class CarnetAfiliacionTests(TestCase):
         self.assertIn("cardTextColor = '#0d47a1'", script)
         self.assertIn('loadImage(data.qrUrl)', script)
         self.assertIn('renderCard(assets[0], assets[1], assets[2], assets[3])', script)
+        self.assertIn('px(744), px(386), px(110), px(110)', script)
         self.assertIn("canvas.toBlob", script)
         self.assertIn("'image/jpeg', 0.95", script)
         self.assertIn("'carnet_afiliado_' + data.afiliadoId + '.jpg'", script)
         self.assertIn('.carnet-preview-shell {', stylesheet)
         self.assertIn('border-radius: 0;', stylesheet)
+        self.assertIn('.qr-validacion-link {', stylesheet)
+        self.assertIn('width: 12.85%;', stylesheet)
         self.assertIn('width="1712"', self.client.get(
             reverse('afiliados:carnet_afiliado', args=[self.afiliado.pk])
         ).content.decode())
