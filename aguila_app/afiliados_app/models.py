@@ -161,6 +161,7 @@ class Afiliado(models.Model):
         null=True,
     )
     foto = models.ImageField(upload_to=foto_persona_upload_to, blank=True, null=True)
+    token_validacion = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
 
     # 📅 Nueva columna: Fecha y hora de creación automática
     fecha_creacion = models.DateTimeField(auto_now_add=True)
