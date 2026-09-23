@@ -5,6 +5,7 @@ from pathlib import Path
 from django.contrib.auth.models import Group, User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
+from django.templatetags.static import static
 from django.urls import reverse
 
 from afiliados_app.models import Afiliado, Comunidad, Institucion, PadronElectoral
@@ -89,7 +90,10 @@ class CarnetAfiliacionTests(TestCase):
         self.assertNotIn(self.afiliado.nombre_completo, svg)
 
         response = self.client.get(reverse('afiliados:carnet_afiliado', args=[self.afiliado.pk]))
-        self.assertContains(response, 'data-fondo-url="/static/assets/svg/credencial.svg"')
+        self.assertContains(
+            response,
+            'data-fondo-url="{}"'.format(static('assets/svg/credencial.svg')),
+        )
 
     def test_download_script_exports_real_jpeg_at_high_resolution(self):
         js_path = Path(__file__).resolve().parents[2] / 'static/assets/js/carnet_afiliacion.js'
@@ -105,3 +109,10 @@ class CarnetAfiliacionTests(TestCase):
         self.assertIn('width="1712"', self.client.get(
             reverse('afiliados:carnet_afiliado', args=[self.afiliado.pk])
         ).content.decode())
+
+    def test_sidebar_scroll_only_reads_offset_when_active_link_exists(self):
+        js_path = Path(__file__).resolve().parents[2] / 'static/assets/js/sidebar-menu.js'
+        script = js_path.read_text(encoding='utf-8')
+        self.assertIn('a.active, .sidebar-list.active > a', script)
+        self.assertIn('$activeSidebarLink.length', script)
+        self.assertIn('activeSidebarOffset &&', script)
