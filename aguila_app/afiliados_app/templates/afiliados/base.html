@@ -184,7 +184,7 @@
         <div class="logo-wrapper">
             <a href="javascript:void(0);" role="button" aria-label="Logo">
                 {% if institucion and institucion.logo %}
-                    <img class="b-r-10" src="{{ institucion.logo.url }}" alt="Logo Institución">
+                    <img class="img-fluid" src="{{ institucion.logo.url }}" alt="">
                 {% else %}
                     <img class="b-r-10" src="{% static 'assets/images/dashboard/profile2.png' %}" alt="Default">
                 {% endif %}
