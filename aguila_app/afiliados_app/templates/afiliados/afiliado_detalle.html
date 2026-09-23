@@ -287,9 +287,11 @@
                     </div>
 
                     <div class="overflow-hidden text-center mb-4">
-                        <a href="">
-                            <img class="img-fluid small-logo" src="{{ institucion.logo2.url }}" alt="">
-                        </a>
+                        {% if institucion and institucion.logo2 %}
+                            <a href="">
+                                <img class="img-fluid small-logo" src="{{ institucion.logo2.url }}" alt="Logo">
+                            </a>
+                        {% endif %}
                     </div>
 
                     <form method="POST" id="formNuevoAfiliado">
