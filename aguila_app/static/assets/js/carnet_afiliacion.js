@@ -133,7 +133,7 @@
 
   function renderCard(background, logo, photo) {
     context.clearRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(background, 0, 0, canvas.width, canvas.height);
+    drawCover(background, 0, 0, canvas.width, canvas.height);
 
     if (logo) drawContain(logo, px(38), px(22), px(150), px(82));
 

@@ -173,6 +173,15 @@
 .sidebar-list.active .sidebar-link span::after {
     width: 100% !important;
 }
+.sidebar-main-logo {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 115px;
+    max-height: 75px;
+    object-fit: contain;
+    margin: 0 auto;
+}
 </style>
 
 
@@ -185,9 +194,9 @@
         <div class="logo-wrapper">
             <a href="javascript:void(0);" role="button" aria-label="Logo">
                 {% if institucion and institucion.logo %}
-                    <img class="img-fluid" src="{{ institucion.logo.url }}" alt="">
+                    <img class="img-fluid sidebar-main-logo" src="{{ institucion.logo.url }}" alt="Logo institucional">
                 {% else %}
-                    <img class="b-r-10" src="{% static 'assets/images/dashboard/profile2.png' %}" alt="Default">
+                    <img class="b-r-10 sidebar-main-logo" src="{% static 'assets/images/dashboard/profile2.png' %}" alt="Logo predeterminado">
                 {% endif %}
             </a>
             <div class="toggle-sidebar">
