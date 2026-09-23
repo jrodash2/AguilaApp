@@ -157,6 +157,13 @@
     context.fillText(data.codigo, px(159), px(505));
     context.restore();
 
+    context.save();
+    context.textAlign = 'right';
+    context.fillStyle = cardTextColor;
+    context.font = '700 ' + px(16) + 'px Montserrat, Arial, sans-serif';
+    context.fillText('CÓD. ' + data.codigo, px(838), px(31));
+    context.restore();
+
     drawPhoto(photo);
 
     var fittedName = fitName(data.nombre, px(460));
