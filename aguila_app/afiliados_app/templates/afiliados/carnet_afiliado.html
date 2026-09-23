@@ -1,0 +1,67 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'assets/css/carnet_afiliacion.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="page-body carnet-page">
+  <div class="container-fluid">
+    <div class="page-title carnet-page-title">
+      <div class="row align-items-center">
+        <div class="col-12">
+          <h4 class="mb-1">Carnet de Afiliación</h4>
+          <p class="text-muted mb-0">Vista previa</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card carnet-preview-card">
+      <div class="card-body">
+        <div class="carnet-preview-shell">
+          <canvas
+            id="carnetAfiliacion"
+            class="carnet-preview"
+            width="1712"
+            height="1080"
+            role="img"
+            aria-label="Carnet de afiliación de {{ afiliado.nombre_completo }}"
+            data-afiliado-id="{{ afiliado.id }}"
+            data-nombre="{{ afiliado.nombre_completo }}"
+            data-dpi="{{ afiliado.dpi }}"
+            data-comunidad="{% if afiliado.comunidad %}{{ afiliado.comunidad.nombre }}{% endif %}"
+            data-municipio="{{ municipio|default:'' }}"
+            data-departamento="{{ departamento|default:'' }}"
+            data-institucion="{% if institucion %}{{ institucion.nombre }}{% endif %}"
+            data-fondo-url="{% static 'assets/svg/carnet_afiliacion_fondo.svg' %}"
+            {% if institucion and institucion.logo %}data-logo-url="{{ institucion.logo.url }}"{% endif %}
+            {% if afiliado.foto %}data-foto-url="{{ afiliado.foto.url }}"{% endif %}
+          >Su navegador no permite mostrar la vista previa del carnet.</canvas>
+          <div id="carnetLoading" class="carnet-loading" aria-live="polite">
+            Preparando vista previa…
+          </div>
+        </div>
+
+        <div id="carnetError" class="alert alert-danger mt-3 d-none" role="alert"></div>
+
+        <div class="carnet-actions mt-4">
+          <button type="button" id="descargarCarnet" class="btn btn-primary" disabled>
+            <i class="fa fa-download me-1"></i> Descargar JPG
+          </button>
+          <button type="button" id="imprimirCarnet" class="btn btn-outline-secondary" disabled>
+            <i class="fa fa-print me-1"></i> Imprimir
+          </button>
+          <a href="{% url 'afiliados:afiliado_detalle' afiliado.id %}" class="btn btn-light">
+            <i class="fa fa-arrow-left me-1"></i> Volver
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'assets/js/carnet_afiliacion.js' %}"></script>
+{% endblock %}

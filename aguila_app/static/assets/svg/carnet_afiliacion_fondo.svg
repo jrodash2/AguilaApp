@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="856" height="540" viewBox="0 0 856 540" role="img" aria-labelledby="title desc">
+  <title id="title">Fondo institucional para carnet de afiliación</title>
+  <desc id="desc">Diseño horizontal azul y dorado con espacio claro para fotografía y datos.</desc>
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fbff"/>
+      <stop offset="0.58" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef4fb"/>
+    </linearGradient>
+    <linearGradient id="navy" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#082d5f"/>
+      <stop offset="1" stop-color="#0d5791"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#c89a2b"/>
+      <stop offset="0.5" stop-color="#f2cf69"/>
+      <stop offset="1" stop-color="#b98319"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="7" stdDeviation="10" flood-color="#082d5f" flood-opacity=".14"/>
+    </filter>
+    <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.4" fill="#ffffff" opacity=".14"/>
+    </pattern>
+  </defs>
+  <rect width="856" height="540" rx="26" fill="url(#base)"/>
+  <path d="M0 0h856v126c-134 43-291 27-425-8C278 78 133 71 0 111Z" fill="url(#navy)"/>
+  <path d="M0 0h856v126c-134 43-291 27-425-8C278 78 133 71 0 111Z" fill="url(#dots)"/>
+  <path d="M0 112c145-43 286-25 431 12 135 35 292 48 425 3v13c-139 47-299 33-438-3C277 101 139 84 0 126Z" fill="url(#gold)"/>
+  <path d="M856 322c-62 8-122 33-169 73-55 46-91 98-151 145h320Z" fill="#0b4076" opacity=".96"/>
+  <path d="M856 370c-76 11-124 50-169 95-25 25-51 51-83 75h252Z" fill="url(#gold)" opacity=".95"/>
+  <path d="M856 421c-59 14-95 53-132 86-13 12-27 23-43 33h175Z" fill="#082d5f"/>
+  <rect x="34" y="158" width="250" height="326" rx="24" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="34.75" y="158.75" width="248.5" height="324.5" rx="23.25" fill="none" stroke="#d8e4f0" stroke-width="1.5"/>
+  <path d="M318 188h460" stroke="#dce6f0" stroke-width="2"/>
+  <circle cx="809" cy="183" r="5" fill="#d1a438"/>
+  <circle cx="790" cy="183" r="3" fill="#0d5791" opacity=".55"/>
+  <rect x="0.75" y="0.75" width="854.5" height="538.5" rx="25.25" fill="none" stroke="#d4dfeb" stroke-width="1.5"/>
+</svg>

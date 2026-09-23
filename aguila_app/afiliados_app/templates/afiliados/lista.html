@@ -79,6 +79,14 @@
             <i class="icon-pencil-alt"></i>
         </a>
     </li>
+
+    {% if es_admin or es_administrador or es_gestor or es_afiliados %}
+        <li class="detail me-2">
+            <a href="{% url 'afiliados:carnet_afiliado' a.id %}" title="Ver carnet" aria-label="Ver carnet de {{ a.nombre_completo }}">
+                <i class="fa fa-id-card-o"></i>
+            </a>
+        </li>
+    {% endif %}
     
     <li class="delete"> 
         <a href="#" 
