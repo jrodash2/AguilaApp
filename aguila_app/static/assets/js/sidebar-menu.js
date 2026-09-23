@@ -435,16 +435,21 @@
   }
 
   // active link
+  var $sidebarContent = $(".simplebar-wrapper .simplebar-content-wrapper");
+  var $activeSidebarLink = $sidebarContent
+    .find("a.active, .sidebar-list.active > a")
+    .first();
+  var activeSidebarOffset = $activeSidebarLink.length
+    ? $activeSidebarLink.offset()
+    : null;
+
   if (
-    $(".simplebar-wrapper .simplebar-content-wrapper") &&
+    $sidebarContent.length &&
+    activeSidebarOffset &&
     $("#pageWrapper").hasClass("compact-wrapper")
   ) {
-    $(".simplebar-wrapper .simplebar-content-wrapper").animate(
-      {
-        scrollTop:
-          $(".simplebar-wrapper .simplebar-content-wrapper a.active").offset()
-            .top - 400,
-      },
+    $sidebarContent.animate(
+      { scrollTop: activeSidebarOffset.top - 400 },
       1000
     );
   }

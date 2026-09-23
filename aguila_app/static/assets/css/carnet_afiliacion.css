@@ -11,7 +11,7 @@
   margin: 0 auto;
   aspect-ratio: 856 / 540;
   overflow: hidden;
-  border-radius: clamp(10px, 2.8vw, 26px);
+  border-radius: 0;
   background: #eef4fb;
   box-shadow: 0 16px 45px rgba(8, 45, 95, 0.2);
 }
@@ -20,6 +20,7 @@
   display: block;
   width: 100%;
   height: 100%;
+  border-radius: 0;
 }
 
 .carnet-loading {
