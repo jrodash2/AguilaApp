@@ -59,6 +59,9 @@ from django.utils.html import strip_tags
 from decimal import Decimal, InvalidOperation
 from datetime import datetime
 from datetime import datetime as DateTime
+from io import BytesIO
+import base64
+import qrcode
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment, Font
@@ -1898,13 +1901,65 @@ def carnet_afiliado(request, pk):
             identificacion=dpi_normalizado,
         ).only('municipio', 'departamento').first()
 
+    url_validacion = request.build_absolute_uri(
+        reverse('afiliados:validar_afiliado', args=[afiliado.token_validacion])
+    )
+    qr = qrcode.QRCode(version=None, box_size=8, border=2)
+    qr.add_data(url_validacion)
+    qr.make(fit=True)
+    qr_buffer = BytesIO()
+    qr.make_image(fill_color='#0d47a1', back_color='white').save(qr_buffer, format='PNG')
+    qr_data_uri = 'data:image/png;base64,{}'.format(
+        base64.b64encode(qr_buffer.getvalue()).decode('ascii')
+    )
+
     context = {
         'afiliado': afiliado,
         'institucion': institucion,
         'municipio': datos_padron.municipio if datos_padron else '',
         'departamento': datos_padron.departamento if datos_padron else '',
+        'qr_data_uri': qr_data_uri,
     }
     return safe_render(request, 'afiliados/carnet_afiliado.html', context)
+
+
+def validar_afiliado(request, token):
+    """Valida públicamente un carnet sin exponer el identificador secuencial."""
+    try:
+        token_uuid = uuid.UUID(str(token))
+    except (ValueError, AttributeError, TypeError):
+        token_uuid = None
+    afiliado = None
+    if token_uuid:
+        afiliado = Afiliado.objects.select_related('comunidad').filter(
+            token_validacion=token_uuid,
+        ).first()
+    institucion = Institucion.objects.first()
+    datos_padron = None
+    if afiliado:
+        dpi_normalizado = _normalizar_dpi(afiliado.dpi)
+        if dpi_normalizado:
+            datos_padron = PadronElectoral.objects.filter(
+                identificacion=dpi_normalizado,
+            ).only('municipio', 'departamento').first()
+    palabras_nombre = afiliado.nombre_completo.split() if afiliado else []
+    iniciales = ''.join(
+        palabra[0] for palabra in (palabras_nombre[:1] + palabras_nombre[-1:])
+    ).upper()
+
+    return safe_render(
+        request,
+        'afiliados/validar_afiliado.html',
+        {
+            'afiliado': afiliado,
+            'institucion': institucion,
+            'municipio': datos_padron.municipio if datos_padron else '',
+            'departamento': datos_padron.departamento if datos_padron else '',
+            'validacion_exitosa': afiliado is not None,
+            'iniciales': iniciales,
+        },
+        status=200 if afiliado else 404,
+    )
 
 
 # -----------------------------------------

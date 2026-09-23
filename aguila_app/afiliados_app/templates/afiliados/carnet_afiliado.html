@@ -34,7 +34,8 @@
             data-municipio="{{ municipio|default:'' }}"
             data-departamento="{{ departamento|default:'' }}"
             data-institucion="{% if institucion %}{{ institucion.nombre }}{% endif %}"
-            data-fondo-url="{% static 'assets/svg/carnet_afiliacion_fondo.svg' %}"
+            data-fondo-url="{% static 'assets/svg/credencial.svg' %}"
+            data-qr-url="{{ qr_data_uri }}"
             {% if institucion and institucion.logo %}data-logo-url="{{ institucion.logo.url }}"{% endif %}
             {% if afiliado.foto %}data-foto-url="{{ afiliado.foto.url }}"{% endif %}
           >Su navegador no permite mostrar la vista previa del carnet.</canvas>
