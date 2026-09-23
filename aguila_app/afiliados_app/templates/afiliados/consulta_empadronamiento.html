@@ -1,8 +1,14 @@
 {% extends 'afiliados/base.html' %}
 
+{% block page_body_wrapper_class %}consulta-padron-layout{% endblock %}
+{% block page_body_class %}page-body consulta-padron-body{% endblock %}
+
 {% block content %}
 <style>
-  .padron-page { max-width: 960px; margin: 0 auto; padding: 32px 12px 56px; }
+  .consulta-padron-layout { min-height: 100vh; display: flex; flex-direction: column; }
+  .page-wrapper.compact-wrapper .page-body-wrapper.consulta-padron-layout .page-body.consulta-padron-body { width: auto; min-height: 0; flex: 1 0 auto; padding-top: 24px; padding-bottom: 32px; }
+  .consulta-padron-layout > .footer { flex: 0 0 auto; padding: 12px 15px; font-size: .82rem; line-height: 1.4; }
+  .padron-page { max-width: 960px; margin: 0 auto; padding: 0 12px 24px; }
   .padron-hero { position: relative; overflow: hidden; background: linear-gradient(125deg, #174785 0%, #2269b4 60%, #3488d3 100%); color: #fff; border-radius: 22px; padding: 34px 38px; box-shadow: 0 16px 36px rgba(22, 71, 133, .2); }
   .padron-hero::after { content: ""; position: absolute; width: 220px; height: 220px; right: -70px; top: -105px; border: 38px solid rgba(255,255,255,.09); border-radius: 50%; }
   .padron-hero h1 { position: relative; color: #fff; margin-bottom: 9px; font-size: clamp(1.65rem, 4vw, 2.2rem); font-weight: 700; letter-spacing: -.025em; }
@@ -42,7 +48,8 @@
   .loading-ring { width: 1.1rem; height: 1.1rem; }
   @keyframes resultIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   @media (max-width: 575.98px) {
-    .padron-page { padding: 16px 0 36px; }
+    .page-wrapper.compact-wrapper .page-body-wrapper.consulta-padron-layout .page-body.consulta-padron-body { padding-top: 22px; padding-bottom: 24px; }
+    .padron-page { padding: 0 0 20px; }
     .padron-hero { border-radius: 15px; padding: 25px 20px; }
     .padron-card { border-radius: 15px; }
     .result-card-header, .result-card-body, .state-card { padding: 19px; }

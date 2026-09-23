@@ -176,7 +176,7 @@
 
 
 <!-- BODY WRAPPER -->
-<div class="page-body-wrapper">
+<div class="page-body-wrapper {% block page_body_wrapper_class %}{% endblock %}">
 
     <!-- SIDEBAR -->
     <div class="sidebar-wrapper" data-layout="stroke-svg">
@@ -671,10 +671,10 @@
     </div>
 
     <!-- CONTENT -->
-    <div class="container-fluid">
+    <main class="container-fluid {% block page_body_class %}{% endblock %}">
         {% block content %}
         {% endblock %}
-    </div>
+    </main>
 
     <!-- FOOTER -->
     <footer class="footer text-center">
