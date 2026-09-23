@@ -184,7 +184,10 @@ def editar_institucion(request):
     else:
         form = InstitucionForm(instance=institucion)
 
-    return safe_render(request, 'afiliados/editar_institucion.html', {'form': form})
+    return safe_render(request, 'afiliados/editar_institucion.html', {
+        'form': form,
+        'institucion': institucion,
+    })
 
 
 
