@@ -54,6 +54,10 @@ class CarnetAfiliacionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Carnet de Afiliación')
         self.assertContains(response, 'data-nombre="Nombre Corto"')
+        self.assertContains(
+            response,
+            'data-codigo="{}"'.format(str(self.afiliado.token_validacion)[:8].upper()),
+        )
         self.assertNotContains(response, 'data-logo-url=')
         self.assertNotContains(response, 'data-foto-url=')
         self.assertRegex(
@@ -117,7 +121,10 @@ class CarnetAfiliacionTests(TestCase):
         css_path = Path(__file__).resolve().parents[2] / 'static/assets/css/carnet_afiliacion.css'
         stylesheet = css_path.read_text(encoding='utf-8')
         self.assertIn('drawCover(background, 0, 0, canvas.width, canvas.height)', script)
-        self.assertIn("cardTextColor = '#0d47a1'", script)
+        self.assertIn(".getPropertyValue('--carnet-accent-color')", script)
+        self.assertIn('context.lineWidth = px(2)', script)
+        self.assertIn("context.font = '700 ' + px(16)", script)
+        self.assertIn("context.fillText('CÓD. ' + data.codigo, px(838), px(31))", script)
         self.assertIn('loadImage(data.qrUrl)', script)
         self.assertIn('renderCard(assets[0], assets[1], assets[2], assets[3])', script)
         self.assertIn('px(744), px(386), px(110), px(110)', script)
@@ -125,6 +132,7 @@ class CarnetAfiliacionTests(TestCase):
         self.assertIn("'image/jpeg', 0.95", script)
         self.assertIn("'carnet_afiliado_' + data.afiliadoId + '.jpg'", script)
         self.assertIn('.carnet-preview-shell {', stylesheet)
+        self.assertIn('--carnet-accent-color: #0d47a1;', stylesheet)
         self.assertIn('border-radius: 0;', stylesheet)
         self.assertIn('.qr-validacion-link {', stylesheet)
         self.assertIn('width: 12.85%;', stylesheet)

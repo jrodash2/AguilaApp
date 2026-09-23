@@ -28,6 +28,7 @@
             role="img"
             aria-label="Carnet de afiliación de {{ afiliado.nombre_completo }}"
             data-afiliado-id="{{ afiliado.id }}"
+            data-codigo="{{ afiliado.token_validacion|slice:':8'|upper }}"
             data-nombre="{{ afiliado.nombre_completo }}"
             data-dpi="{{ afiliado.dpi }}"
             data-comunidad="{% if afiliado.comunidad %}{{ afiliado.comunidad.nombre }}{% endif %}"

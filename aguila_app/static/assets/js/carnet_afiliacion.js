@@ -11,7 +11,8 @@
   var printButton = document.getElementById('imprimirCarnet');
   var data = canvas.dataset;
   var scale = canvas.width / 856;
-  var cardTextColor = '#0d47a1';
+  var cardTextColor = window.getComputedStyle(canvas)
+    .getPropertyValue('--carnet-accent-color').trim() || '#0d47a1';
 
   function px(value) {
     return value * scale;
@@ -90,8 +91,8 @@
 
     context.save();
     roundedRect(x, y, width, height, radius);
-    context.strokeStyle = '#ffffff';
-    context.lineWidth = px(5);
+    context.strokeStyle = cardTextColor;
+    context.lineWidth = px(2);
     context.stroke();
     context.restore();
   }
@@ -146,6 +147,13 @@
     context.fillStyle = cardTextColor;
     context.font = '500 ' + px(14) + 'px Montserrat, Arial, sans-serif';
     context.fillText(data.institucion || '', px(320), px(88), px(475));
+
+    context.save();
+    context.textAlign = 'right';
+    context.fillStyle = cardTextColor;
+    context.font = '700 ' + px(16) + 'px Montserrat, Arial, sans-serif';
+    context.fillText('CÓD. ' + data.codigo, px(838), px(31));
+    context.restore();
 
     drawPhoto(photo);
 
