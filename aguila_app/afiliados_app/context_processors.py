@@ -19,6 +19,14 @@ def frase_del_dia(request):
 
 def grupo_usuario(request):
     is_authenticated = bool(getattr(request, 'user', None) and request.user.is_authenticated)
+    grupos_padron = {
+        'Administrador', 'Organizacion', 'Jovenes', 'Mujeres', 'Logistica',
+        'Comunicacion', 'PlanHormiga', 'afiliados',
+    }
+    puede_consultar_padron = (
+        request.user.groups.filter(name__in=grupos_padron).exists()
+        if is_authenticated else False
+    )
 
     return {
         'es_gestor': request.user.groups.filter(name='Gestor').exists() if is_authenticated else False,
@@ -31,6 +39,7 @@ def grupo_usuario(request):
         'es_logistica': request.user.groups.filter(name='Logistica').exists() if is_authenticated else False,
         'es_comunicacion': request.user.groups.filter(name='Comunicacion').exists() if is_authenticated else False,
         'es_plan_hormiga': request.user.groups.filter(name='PlanHormiga').exists() if is_authenticated else False,
+        'puede_consultar_padron': puede_consultar_padron,
     }
 
 
