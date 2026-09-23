@@ -138,7 +138,11 @@
 
           <div class="overflow-hidden text-center mb-4">
             <a href="">
-              <img class="img-fluid small-logo" src="{{ institucion.logo2.url }}" alt="">
+             {% if institucion.logo2 %}
+  <a href="">
+    <img class="img-fluid small-logo" src="{{ institucion.logo2.url }}" alt="Logo">
+  </a>
+{% endif %}
             </a>
           </div>
 
