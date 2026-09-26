@@ -9,6 +9,9 @@
   var errorBox = document.getElementById('carnetError');
   var downloadButton = document.getElementById('descargarCarnet');
   var printButton = document.getElementById('imprimirCarnet');
+  var previewShell = canvas.closest('.carnet-preview-shell');
+  var qrImage = document.getElementById('qrValidacion');
+  var qrLink = qrImage ? qrImage.closest('.qr-validacion-link') : null;
   var data = canvas.dataset;
   var scale = canvas.width / 856;
   var cardTextColor = window.getComputedStyle(canvas)
@@ -25,10 +28,76 @@
         return;
       }
       var image = new Image();
-      image.onload = function () { resolve(image); };
+      image.onload = function () {
+        if (typeof image.decode === 'function') {
+          image.decode().catch(function () {
+            // El evento load confirma que la imagen ya puede dibujarse.
+          }).then(function () { resolve(image); });
+          return;
+        }
+        resolve(image);
+      };
       image.onerror = function () { reject(new Error('No fue posible cargar una imagen del carnet.')); };
       image.src = url;
     });
+  }
+
+  function esperarImagenes(contenedor) {
+    if (!contenedor) return Promise.resolve();
+    var imagenes = Array.prototype.slice.call(contenedor.querySelectorAll('img'));
+    return Promise.all(imagenes.map(function (image) {
+      var cargada = image.complete && image.naturalWidth > 0
+        ? Promise.resolve()
+        : new Promise(function (resolve, reject) {
+          image.addEventListener('load', resolve, { once: true });
+          image.addEventListener('error', reject, { once: true });
+        });
+
+      return cargada.then(function () {
+        if (typeof image.decode !== 'function') return undefined;
+        return image.decode().catch(function () {
+          // Puede estar decodificada después del evento load.
+        });
+      });
+    }));
+  }
+
+  function esperarPintado() {
+    return new Promise(function (resolve) {
+      window.requestAnimationFrame(function () {
+        window.requestAnimationFrame(resolve);
+      });
+    });
+  }
+
+  function validarQrDibujado(contexto, x, y, width, height) {
+    var muestra = contexto.getImageData(
+      Math.max(0, Math.floor(x)),
+      Math.max(0, Math.floor(y)),
+      Math.max(1, Math.floor(width)),
+      Math.max(1, Math.floor(height))
+    ).data;
+    var pixelesOscuros = 0;
+    var pixelesClaros = 0;
+    var salto = Math.max(4, Math.floor(muestra.length / 16000 / 4) * 4);
+
+    for (var index = 0; index < muestra.length; index += salto) {
+      var luminosidad = (muestra[index] * 299 + muestra[index + 1] * 587 + muestra[index + 2] * 114) / 1000;
+      if (luminosidad < 120) pixelesOscuros += 1;
+      if (luminosidad > 220) pixelesClaros += 1;
+    }
+
+    if (!pixelesOscuros || !pixelesClaros) {
+      throw new Error('No fue posible verificar el QR en el carnet exportado.');
+    }
+  }
+
+  function canvasToJpegDataUrl(exportCanvas) {
+    var dataUrl = exportCanvas.toDataURL('image/jpeg', 0.95);
+    if (dataUrl.indexOf('data:image/jpeg') !== 0) {
+      throw new Error('El navegador no pudo crear el archivo JPEG.');
+    }
+    return dataUrl;
   }
 
   function drawCover(image, x, y, width, height) {
@@ -133,7 +202,7 @@
     return y + 51;
   }
 
-  function renderCard(background, logo, photo, qrImage) {
+  function renderCard(background, logo, photo) {
     context.clearRect(0, 0, canvas.width, canvas.height);
     drawCover(background, 0, 0, canvas.width, canvas.height);
 
@@ -179,8 +248,6 @@
     detailsY = drawLabel('Municipio', data.municipio, detailsY);
     drawLabel('Departamento', data.departamento, detailsY);
 
-    if (qrImage) drawContain(qrImage, px(913), px(18), px(225), px(225));
-
     context.fillStyle = cardTextColor;
     context.font = '500 ' + px() + 'px Montserrat, Arial, sans-serif';
 
@@ -192,16 +259,14 @@
     loading.classList.add('is-hidden');
   }
 
-  Promise.all([
+  var renderPromise = Promise.all([
     loadImage(data.fondoUrl),
     loadImage(data.logoUrl).catch(function () { return null; }),
     loadImage(data.fotoUrl).catch(function () { return null; }),
-    loadImage(data.qrUrl),
     document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()
   ]).then(function (assets) {
     if (!assets[0]) throw new Error('No fue posible cargar el fondo SVG del carnet.');
-    if (!assets[3]) throw new Error('No fue posible cargar el código QR del carnet.');
-    renderCard(assets[0], assets[1], assets[2], assets[3]);
+    renderCard(assets[0], assets[1], assets[2]);
     loading.classList.add('is-hidden');
     downloadButton.disabled = false;
     printButton.disabled = false;
@@ -209,23 +274,63 @@
     showError(error.message || 'No fue posible generar la vista previa del carnet.');
   });
 
-  downloadButton.addEventListener('click', function () {
+  downloadButton.addEventListener('click', async function () {
     try {
-      canvas.toBlob(function (blob) {
-        if (!blob || blob.type !== 'image/jpeg') {
-          showError('El navegador no pudo crear el archivo JPEG.');
-          return;
-        }
-        var link = document.createElement('a');
-        link.download = 'carnet_afiliado_' + data.afiliadoId + '.jpg';
-        link.href = URL.createObjectURL(blob);
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
-      }, 'image/jpeg', 0.95);
+      await renderPromise;
+      await esperarImagenes(previewShell);
+      await esperarPintado();
+      if (!qrImage || !qrLink || !qrImage.complete || qrImage.naturalWidth === 0) {
+        throw new Error('No fue posible cargar el código QR del carnet.');
+      }
+      if (!previewShell.contains(qrImage)) {
+        throw new Error('El código QR no está dentro del carnet.');
+      }
+      if (typeof window.html2canvas !== 'function') {
+        throw new Error('No fue posible iniciar la captura del carnet.');
+      }
+
+      var carnetRect = previewShell.getBoundingClientRect();
+      var qrRect = qrLink.getBoundingClientRect();
+      var exportQrImage = await loadImage(qrImage.currentSrc || qrImage.src);
+      var previousVisibility = qrLink.style.visibility;
+      var exportCanvas;
+
+      qrLink.style.visibility = 'hidden';
+      try {
+        exportCanvas = await window.html2canvas(previewShell, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: null,
+          logging: false
+        });
+      } finally {
+        qrLink.style.visibility = previousVisibility;
+      }
+
+      var scaleX = exportCanvas.width / carnetRect.width;
+      var scaleY = exportCanvas.height / carnetRect.height;
+      var qrX = (qrRect.left - carnetRect.left) * scaleX;
+      var qrY = (qrRect.top - carnetRect.top) * scaleY;
+      var qrWidth = qrRect.width * scaleX;
+      var qrHeight = qrRect.height * scaleY;
+      var exportContext = exportCanvas.getContext('2d');
+      exportContext.drawImage(
+        exportQrImage,
+        qrX,
+        qrY,
+        qrWidth,
+        qrHeight
+      );
+      validarQrDibujado(exportContext, qrX, qrY, qrWidth, qrHeight);
+
+      var link = document.createElement('a');
+      link.download = 'carnet_afiliado_' + data.afiliadoId + '.jpg';
+      link.href = canvasToJpegDataUrl(exportCanvas);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
     } catch (error) {
-      showError('No fue posible descargar el carnet. Verifique que las imágenes pertenezcan a este sitio.');
+      showError(error.message || 'No fue posible descargar el carnet.');
     }
   });
 
