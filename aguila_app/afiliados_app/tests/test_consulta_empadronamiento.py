@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from afiliados_app.models import PadronElectoral
-from afiliados_app.views import GRUPOS_CONSULTA_PADRON
+from afiliados_app.views import GRUPOS_CONSULTA_PADRON, _resultado_padron_local
 
 
 class ConsultaEmpadronamientoTests(TestCase):
@@ -91,6 +91,22 @@ class ConsultaEmpadronamientoTests(TestCase):
                 response = self.client.get(self.api_url, {'dpi': formatted_dpi})
                 self.assertEqual(response.status_code, 200)
                 self.assertTrue(response.json()['found'])
+
+    def test_central_lookup_accepts_a_numeric_dpi(self):
+        payload, status_code = _resultado_padron_local(int(self.dpi_existente))
+        self.assertEqual(status_code, 200)
+        self.assertTrue(payload['encontrado'])
+        self.assertEqual(payload['dpi'], self.dpi_existente)
+
+    def test_central_lookup_uses_identificacion_field(self):
+        with patch(
+            'afiliados_app.views.PadronElectoral.objects.filter',
+            wraps=PadronElectoral.objects.filter,
+        ) as filter_mock:
+            payload, status_code = _resultado_padron_local(self.dpi_existente)
+        self.assertEqual(status_code, 200)
+        self.assertTrue(payload['found'])
+        filter_mock.assert_called_once_with(identificacion=self.dpi_existente)
 
     def test_incomplete_or_alphabetic_dpi_is_rejected(self):
         self.client.force_login(self.user)
