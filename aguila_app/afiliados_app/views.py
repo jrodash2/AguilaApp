@@ -17,7 +17,7 @@ import unicodedata
 from .form import AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, InstitucionForm, OrganizacionIntegranteForm, CoordinadorOrganizacionForm, LiderComunitarioOrganizacionForm, EstructuraOrganizativaForm, ResponsableTerritorialForm, ReunionTerritorialForm, IncidenciaTerritorialForm, JuventudIntegranteForm, CoordinadorJuventudForm, LiderJuvenilForm, EstructuraJuventudForm, ResponsableJuventudForm, ReunionJuventudForm, IncidenciaJuventudForm, MujeresIntegranteForm, CoordinadoraMujeresForm, LiderMujeresForm, EstructuraMujeresForm, ResponsableMujeresForm, ReunionMujeresForm, IncidenciaMujeresForm, LogisticaIntegranteForm, CoordinadorLogisticaForm, LiderLogisticaForm, EstructuraLogisticaForm, ResponsableLogisticaForm, ReunionLogisticaForm, IncidenciaLogisticaForm, RecursoLogisticoForm, AsignacionLogisticaForm, SolicitudLogisticaForm, EntregaLogisticaForm, AgendaLogisticaForm, ComunicacionIntegranteForm, CoordinadorComunicacionForm, LiderComunicacionForm, EstructuraComunicacionForm, ResponsableComunicacionForm, ReunionComunicacionForm, IncidenciaComunicacionForm, AgendaPublicacionForm, SolicitudContenidoForm, CoberturaActividadForm, BancoMediosForm, CampanaComunicacionForm, MonitoreoRedForm, PlanHormigaIntegranteForm, CoordinadorPlanHormigaForm, EnlaceTerritorialPlanHormigaForm, EstructuraPlanHormigaForm, ResponsableZonaPlanHormigaForm, ReunionPlanHormigaForm, IncidenciaPlanHormigaForm, VisitaPlanHormigaForm, SeguimientoContactoPlanHormigaForm, CompromisoTerritorialPlanHormigaForm, PuntoVisitadoPlanHormigaForm, ActivacionTerritorialPlanHormigaForm, CoberturaVisitaPlanHormigaForm
 from .models import Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil, Institucion, Sector, PadronElectoral, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, EstructuraIntegrante, EstadoRegistro, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, EstructuraIntegranteJuventud, MujeresIntegrante, CoordinadoraMujeres, LiderMujeres, EstructuraMujeres, ResponsableMujeres, ReunionMujeres, IncidenciaMujeres, EstructuraIntegranteMujeres, LogisticaIntegrante, CoordinadorLogistica, LiderLogistica, EstructuraLogistica, ResponsableLogistica, ReunionLogistica, IncidenciaLogistica, EstructuraIntegranteLogistica, RecursoLogistico, AsignacionLogistica, SolicitudLogistica, EntregaLogistica, AgendaLogistica, ComunicacionIntegrante, CoordinadorComunicacion, LiderComunicacion, EstructuraComunicacion, ResponsableComunicacion, ReunionComunicacion, IncidenciaComunicacion, EstructuraIntegranteComunicacion, AgendaPublicacion, SolicitudContenido, CoberturaActividad, BancoMedios, CampanaComunicacion, MonitoreoRed, PlanHormigaIntegrante, CoordinadorPlanHormiga, EnlaceTerritorialPlanHormiga, EstructuraPlanHormiga, ResponsableZonaPlanHormiga, ReunionPlanHormiga, IncidenciaPlanHormiga, EstructuraIntegrantePlanHormiga, VisitaPlanHormiga, SeguimientoContactoPlanHormiga, CompromisoTerritorialPlanHormiga, PuntoVisitadoPlanHormiga, ActivacionTerritorialPlanHormiga, CoberturaVisitaPlanHormiga
 from .fotos import asignar_fotos_personas, guardar_foto_persona, obtener_foto_persona
-from .utils import normalizar_dpi
+from .utils import formatear_dpi_padron, normalizar_dpi
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
@@ -766,6 +766,11 @@ def _normalizar_dpi(valor):
     return normalizar_dpi(valor)
 
 
+def _formatear_dpi_padron(valor):
+    """Adapta un DPI válido al formato conservado en PadronElectoral."""
+    return formatear_dpi_padron(valor)
+
+
 def _resultado_padron_local(dpi_raw):
     """Consulta única de padrón y construye el contrato JSON compatible."""
     dpi_limpio = _normalizar_dpi(dpi_raw)
@@ -778,7 +783,11 @@ def _resultado_padron_local(dpi_raw):
             "error": "DPI inválido. Debe contener exactamente 13 dígitos.",
         }, 400)
 
-    persona = PadronElectoral.objects.filter(identificacion=dpi_limpio).first()
+    dpi_formateado = _formatear_dpi_padron(dpi_limpio)
+    persona = PadronElectoral.objects.filter(
+        Q(identificacion=dpi_formateado) |
+        Q(identificacion=dpi_limpio)
+    ).first()
 
     if not persona:
         return ({
@@ -791,7 +800,9 @@ def _resultado_padron_local(dpi_raw):
         }, 200)
 
     datos = {
-        "dpi": persona.identificacion,
+        # El frontend siempre recibe los 13 dígitos, aunque la fila encontrada
+        # conserve espacios en ``identificacion``.
+        "dpi": dpi_limpio,
         "nombre_completo": persona.nombre,
         "nombre": persona.nombre,
         "comunidad": persona.comunidad,

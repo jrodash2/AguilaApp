@@ -10,6 +10,14 @@ def normalizar_dpi(valor):
     return re.sub(r"\D", "", valor_texto)
 
 
+def formatear_dpi_padron(valor):
+    """Devuelve el formato ``#### ##### ####`` usado por el padrón importado."""
+    dpi = normalizar_dpi(valor)
+    if len(dpi) != 13:
+        return ""
+    return "{} {} {}".format(dpi[:4], dpi[4:9], dpi[9:13])
+
+
 def grupo_requerido(*_nombres_grupos):
     """Decorador deprecated: mantiene compatibilidad sin bloquear acceso por grupos."""
     def decorador(view_func):

@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.contrib.auth.models import Group, User
 from django.conf import settings
 from django.db import DatabaseError
+from django.db.models import Q
 from django.test import TestCase
 from django.urls import reverse
 
@@ -11,7 +12,8 @@ from afiliados_app.views import GRUPOS_CONSULTA_PADRON, _resultado_padron_local
 
 
 class ConsultaEmpadronamientoTests(TestCase):
-    dpi_existente = '1234567890101'
+    dpi_existente = '2850755860203'
+    dpi_guardado = '2850 75586 0203'
 
     @classmethod
     def setUpTestData(cls):
@@ -25,12 +27,12 @@ class ConsultaEmpadronamientoTests(TestCase):
             username='sin-secretaria', password='test-pass'
         )
         cls.person = PadronElectoral.objects.create(
-            identificacion=cls.dpi_existente,
-            nombre='Persona de Prueba',
-            edad=32,
-            comunidad='Comunidad Central',
-            departamento='El Progreso',
-            municipio='San Agustín Acasaguastlán',
+            identificacion=cls.dpi_guardado,
+            nombre='RODAS HERNANDEZ, JULIO RENE',
+            edad=40,
+            comunidad='PUEBLO SAN AGUSTIN ACASAGUASTLAN',
+            departamento='EL PROGRESO',
+            municipio='SAN AGUSTÍN ACASAGUASTLÁN',
         )
 
     def setUp(self):
@@ -86,7 +88,12 @@ class ConsultaEmpadronamientoTests(TestCase):
 
     def test_spaces_and_hyphens_are_normalized(self):
         self.client.force_login(self.user)
-        for formatted_dpi in ('1234 56789 0101', '1234-56789-0101'):
+        for formatted_dpi in (
+            self.dpi_existente,
+            self.dpi_guardado,
+            '2850-75586-0203',
+            '2850 75586-0203',
+        ):
             with self.subTest(dpi=formatted_dpi):
                 response = self.client.get(self.api_url, {'dpi': formatted_dpi})
                 self.assertEqual(response.status_code, 200)
@@ -106,11 +113,14 @@ class ConsultaEmpadronamientoTests(TestCase):
             payload, status_code = _resultado_padron_local(self.dpi_existente)
         self.assertEqual(status_code, 200)
         self.assertTrue(payload['found'])
-        filter_mock.assert_called_once_with(identificacion=self.dpi_existente)
+        filter_mock.assert_called_once_with(
+            Q(identificacion=self.dpi_guardado) |
+            Q(identificacion=self.dpi_existente)
+        )
 
     def test_incomplete_or_alphabetic_dpi_is_rejected(self):
         self.client.force_login(self.user)
-        for invalid_dpi in ('123456789012', 'A1234567890101', '1234567890101A'):
+        for invalid_dpi in ('123456789012', 'A2850755860203', '', None):
             with self.subTest(dpi=invalid_dpi):
                 response = self.client.get(self.api_url, {'dpi': invalid_dpi})
                 self.assertEqual(response.status_code, 400)
