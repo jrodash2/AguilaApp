@@ -241,12 +241,10 @@
     loadImage(data.fondoUrl),
     loadImage(data.logoUrl).catch(function () { return null; }),
     loadImage(data.fotoUrl).catch(function () { return null; }),
-    loadImage(data.qrUrl),
     document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()
   ]).then(function (assets) {
     if (!assets[0]) throw new Error('No fue posible cargar el fondo SVG del carnet.');
-    if (!assets[3]) throw new Error('No fue posible cargar el código QR del carnet.');
-    renderCard(assets[0], assets[1], assets[2], assets[3]);
+    renderCard(assets[0], assets[1], assets[2]);
     loading.classList.add('is-hidden');
     downloadButton.disabled = false;
     printButton.disabled = false;
