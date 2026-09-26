@@ -41,30 +41,31 @@
     });
   }
 
+  function esperarImagenes(contenedor) {
+    var imagenes = Array.prototype.slice.call(contenedor.querySelectorAll('img'));
+    return Promise.all(imagenes.map(async function (image) {
+      if (!image.complete) {
+        await new Promise(function (resolve, reject) {
+          image.addEventListener('load', resolve, { once: true });
+          image.addEventListener('error', reject, { once: true });
+        });
+      }
+      if (typeof image.decode === 'function') {
+        try {
+          await image.decode();
+        } catch (error) {
+          // naturalWidth/naturalHeight se validan antes de capturar.
+        }
+      }
+    }));
+  }
+
   function esperarPintado() {
     return new Promise(function (resolve) {
       window.requestAnimationFrame(function () {
         window.requestAnimationFrame(resolve);
       });
     });
-  }
-
-  async function esperarQr(image) {
-    if (!image.complete) {
-      await new Promise(function (resolve, reject) {
-        image.addEventListener('load', resolve, { once: true });
-        image.addEventListener('error', function () {
-          reject(new Error('El QR de validación no se pudo cargar.'));
-        }, { once: true });
-      });
-    }
-    if (typeof image.decode === 'function') {
-      try {
-        await image.decode();
-      } catch (error) {
-        // naturalWidth/naturalHeight determinan abajo si la carga fue válida.
-      }
-    }
   }
 
   function canvasToJpegDataUrl(exportCanvas) {
@@ -177,7 +178,7 @@
     return y + 51;
   }
 
-  function renderCard(background, logo, photo) {
+  function renderCard(background, logo, photo, qr) {
     context.clearRect(0, 0, canvas.width, canvas.height);
     drawCover(background, 0, 0, canvas.width, canvas.height);
 
@@ -223,6 +224,8 @@
     detailsY = drawLabel('Municipio', data.municipio, detailsY);
     drawLabel('Departamento', data.departamento, detailsY);
 
+    drawContain(qr, px(713), px(18), px(125), px(125));
+
     context.fillStyle = cardTextColor;
     context.font = '500 ' + px() + 'px Montserrat, Arial, sans-serif';
 
@@ -259,7 +262,7 @@
       if (!(qrImage instanceof HTMLImageElement)) {
         throw new Error('El QR de validación no es una imagen válida.');
       }
-      await esperarQr(qrImage);
+      await esperarImagenes(previewShell);
       await esperarPintado();
       if (!qrImage.complete || !qrImage.naturalWidth || !qrImage.naturalHeight) {
         throw new Error('El QR de validación no se pudo cargar.');
@@ -271,37 +274,12 @@
         throw new Error('No fue posible iniciar la captura del carnet.');
       }
 
-      var carnetRect = previewShell.getBoundingClientRect();
-      var qrRect = qrImage.getBoundingClientRect();
-      var previousVisibility = qrImage.style.visibility;
-      var exportCanvas;
-
-      qrImage.style.visibility = 'hidden';
-      try {
-        exportCanvas = await window.html2canvas(previewShell, {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          logging: false
-        });
-      } finally {
-        qrImage.style.visibility = previousVisibility;
-      }
-
-      var scaleX = exportCanvas.width / carnetRect.width;
-      var scaleY = exportCanvas.height / carnetRect.height;
-      var qrX = (qrRect.left - carnetRect.left) * scaleX;
-      var qrY = (qrRect.top - carnetRect.top) * scaleY;
-      var qrWidth = qrRect.width * scaleX;
-      var qrHeight = qrRect.height * scaleY;
-      var exportContext = exportCanvas.getContext('2d');
-      exportContext.drawImage(
-        qrImage,
-        qrX,
-        qrY,
-        qrWidth,
-        qrHeight
-      );
+      var exportCanvas = await window.html2canvas(previewShell, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
 
       var link = document.createElement('a');
       link.download = 'carnet_afiliado_' + data.afiliadoId + '.jpg';
