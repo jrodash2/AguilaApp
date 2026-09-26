@@ -10,6 +10,8 @@
   var downloadButton = document.getElementById('descargarCarnet');
   var printButton = document.getElementById('imprimirCarnet');
   var previewShell = canvas.closest('.carnet-preview-shell');
+  var qrImage = document.getElementById('qrValidacion');
+  var qrLink = qrImage ? qrImage.closest('.qr-validacion-link') : null;
   var data = canvas.dataset;
   var scale = canvas.width / 856;
   var cardTextColor = window.getComputedStyle(canvas)
@@ -170,7 +172,7 @@
     return y + 51;
   }
 
-  function renderCard(background, logo, photo, qrImage) {
+  function renderCard(background, logo, photo) {
     context.clearRect(0, 0, canvas.width, canvas.height);
     drawCover(background, 0, 0, canvas.width, canvas.height);
 
@@ -216,8 +218,6 @@
     detailsY = drawLabel('Municipio', data.municipio, detailsY);
     drawLabel('Departamento', data.departamento, detailsY);
 
-    if (qrImage) drawContain(qrImage, px(713), px(18), px(125), px(125));
-
     context.fillStyle = cardTextColor;
     context.font = '500 ' + px() + 'px Montserrat, Arial, sans-serif';
 
@@ -233,12 +233,10 @@
     loadImage(data.fondoUrl),
     loadImage(data.logoUrl).catch(function () { return null; }),
     loadImage(data.fotoUrl).catch(function () { return null; }),
-    loadImage(data.qrUrl),
     document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()
   ]).then(function (assets) {
     if (!assets[0]) throw new Error('No fue posible cargar el fondo SVG del carnet.');
-    if (!assets[3]) throw new Error('No fue posible cargar el código QR del carnet.');
-    renderCard(assets[0], assets[1], assets[2], assets[3]);
+    renderCard(assets[0], assets[1], assets[2]);
     loading.classList.add('is-hidden');
     downloadButton.disabled = false;
     printButton.disabled = false;
@@ -251,7 +249,42 @@
       await renderPromise;
       await esperarImagenes(previewShell);
       await esperarPintado();
-      canvas.toBlob(function (blob) {
+      if (!qrImage || !qrLink || !qrImage.complete || qrImage.naturalWidth === 0) {
+        throw new Error('No fue posible cargar el código QR del carnet.');
+      }
+      if (typeof window.html2canvas !== 'function') {
+        throw new Error('No fue posible iniciar la captura del carnet.');
+      }
+
+      var carnetRect = previewShell.getBoundingClientRect();
+      var qrRect = qrLink.getBoundingClientRect();
+      var previousVisibility = qrLink.style.visibility;
+      var exportCanvas;
+
+      qrLink.style.visibility = 'hidden';
+      try {
+        exportCanvas = await window.html2canvas(previewShell, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: null,
+          logging: false
+        });
+      } finally {
+        qrLink.style.visibility = previousVisibility;
+      }
+
+      var scaleX = exportCanvas.width / carnetRect.width;
+      var scaleY = exportCanvas.height / carnetRect.height;
+      var exportContext = exportCanvas.getContext('2d');
+      exportContext.drawImage(
+        qrImage,
+        (qrRect.left - carnetRect.left) * scaleX,
+        (qrRect.top - carnetRect.top) * scaleY,
+        qrRect.width * scaleX,
+        qrRect.height * scaleY
+      );
+
+      exportCanvas.toBlob(function (blob) {
         if (!blob || blob.type !== 'image/jpeg') {
           showError('El navegador no pudo crear el archivo JPEG.');
           return;
