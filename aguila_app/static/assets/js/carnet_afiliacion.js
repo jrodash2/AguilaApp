@@ -41,26 +41,6 @@
     });
   }
 
-  function esperarImagenes(contenedor) {
-    if (!contenedor) return Promise.resolve();
-    var imagenes = Array.prototype.slice.call(contenedor.querySelectorAll('img'));
-    return Promise.all(imagenes.map(function (image) {
-      var cargada = image.complete && image.naturalWidth > 0
-        ? Promise.resolve()
-        : new Promise(function (resolve, reject) {
-          image.addEventListener('load', resolve, { once: true });
-          image.addEventListener('error', reject, { once: true });
-        });
-
-      return cargada.then(function () {
-        if (typeof image.decode !== 'function') return undefined;
-        return image.decode().catch(function () {
-          // Puede estar decodificada después del evento load.
-        });
-      });
-    }));
-  }
-
   function esperarPintado() {
     return new Promise(function (resolve) {
       window.requestAnimationFrame(function () {
@@ -270,6 +250,7 @@
   });
 
   downloadButton.addEventListener('click', async function () {
+    downloadButton.disabled = true;
     try {
       await renderPromise;
       if (!qrImage) {
@@ -279,7 +260,6 @@
         throw new Error('El QR de validación no es una imagen válida.');
       }
       await esperarQr(qrImage);
-      await esperarImagenes(previewShell);
       await esperarPintado();
       if (!qrImage.complete || !qrImage.naturalWidth || !qrImage.naturalHeight) {
         throw new Error('El QR de validación no se pudo cargar.');
@@ -331,6 +311,8 @@
       link.remove();
     } catch (error) {
       showError(error.message || 'No fue posible descargar el carnet.');
+    } finally {
+      downloadButton.disabled = false;
     }
   });
 
