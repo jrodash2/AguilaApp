@@ -9,6 +9,7 @@
   var errorBox = document.getElementById('carnetError');
   var downloadButton = document.getElementById('descargarCarnet');
   var printButton = document.getElementById('imprimirCarnet');
+  var previewShell = canvas.closest('.carnet-preview-shell');
   var data = canvas.dataset;
   var scale = canvas.width / 856;
   var cardTextColor = window.getComputedStyle(canvas)
@@ -25,9 +26,45 @@
         return;
       }
       var image = new Image();
-      image.onload = function () { resolve(image); };
+      image.onload = function () {
+        if (typeof image.decode === 'function') {
+          image.decode().catch(function () {
+            // El evento load confirma que la imagen ya puede dibujarse.
+          }).then(function () { resolve(image); });
+          return;
+        }
+        resolve(image);
+      };
       image.onerror = function () { reject(new Error('No fue posible cargar una imagen del carnet.')); };
       image.src = url;
+    });
+  }
+
+  function esperarImagenes(contenedor) {
+    if (!contenedor) return Promise.resolve();
+    var imagenes = Array.prototype.slice.call(contenedor.querySelectorAll('img'));
+    return Promise.all(imagenes.map(function (image) {
+      var cargada = image.complete && image.naturalWidth > 0
+        ? Promise.resolve()
+        : new Promise(function (resolve, reject) {
+          image.addEventListener('load', resolve, { once: true });
+          image.addEventListener('error', reject, { once: true });
+        });
+
+      return cargada.then(function () {
+        if (typeof image.decode !== 'function') return undefined;
+        return image.decode().catch(function () {
+          // Puede estar decodificada después del evento load.
+        });
+      });
+    }));
+  }
+
+  function esperarPintado() {
+    return new Promise(function (resolve) {
+      window.requestAnimationFrame(function () {
+        window.requestAnimationFrame(resolve);
+      });
     });
   }
 
@@ -179,7 +216,7 @@
     detailsY = drawLabel('Municipio', data.municipio, detailsY);
     drawLabel('Departamento', data.departamento, detailsY);
 
-    if (qrImage) drawContain(qrImage, px(913), px(18), px(225), px(225));
+    if (qrImage) drawContain(qrImage, px(713), px(18), px(125), px(125));
 
     context.fillStyle = cardTextColor;
     context.font = '500 ' + px() + 'px Montserrat, Arial, sans-serif';
@@ -192,7 +229,7 @@
     loading.classList.add('is-hidden');
   }
 
-  Promise.all([
+  var renderPromise = Promise.all([
     loadImage(data.fondoUrl),
     loadImage(data.logoUrl).catch(function () { return null; }),
     loadImage(data.fotoUrl).catch(function () { return null; }),
@@ -209,8 +246,11 @@
     showError(error.message || 'No fue posible generar la vista previa del carnet.');
   });
 
-  downloadButton.addEventListener('click', function () {
+  downloadButton.addEventListener('click', async function () {
     try {
+      await renderPromise;
+      await esperarImagenes(previewShell);
+      await esperarPintado();
       canvas.toBlob(function (blob) {
         if (!blob || blob.type !== 'image/jpeg') {
           showError('El navegador no pudo crear el archivo JPEG.');
