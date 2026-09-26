@@ -70,16 +70,34 @@
     });
   }
 
-  function canvasToJpegBlob(exportCanvas) {
-    return new Promise(function (resolve, reject) {
-      exportCanvas.toBlob(function (blob) {
-        if (!blob || blob.type !== 'image/jpeg') {
-          reject(new Error('El navegador no pudo crear el archivo JPEG.'));
-          return;
-        }
-        resolve(blob);
-      }, 'image/jpeg', 0.95);
-    });
+  function validarQrDibujado(contexto, x, y, width, height) {
+    var muestra = contexto.getImageData(
+      Math.max(0, Math.floor(x)),
+      Math.max(0, Math.floor(y)),
+      Math.max(1, Math.floor(width)),
+      Math.max(1, Math.floor(height))
+    ).data;
+    var pixelesOscuros = 0;
+    var pixelesClaros = 0;
+    var salto = Math.max(4, Math.floor(muestra.length / 16000 / 4) * 4);
+
+    for (var index = 0; index < muestra.length; index += salto) {
+      var luminosidad = (muestra[index] * 299 + muestra[index + 1] * 587 + muestra[index + 2] * 114) / 1000;
+      if (luminosidad < 120) pixelesOscuros += 1;
+      if (luminosidad > 220) pixelesClaros += 1;
+    }
+
+    if (!pixelesOscuros || !pixelesClaros) {
+      throw new Error('No fue posible verificar el QR en el carnet exportado.');
+    }
+  }
+
+  function canvasToJpegDataUrl(exportCanvas) {
+    var dataUrl = exportCanvas.toDataURL('image/jpeg', 0.95);
+    if (dataUrl.indexOf('data:image/jpeg') !== 0) {
+      throw new Error('El navegador no pudo crear el archivo JPEG.');
+    }
+    return dataUrl;
   }
 
   function drawCover(image, x, y, width, height) {
@@ -291,25 +309,28 @@
 
       var scaleX = exportCanvas.width / carnetRect.width;
       var scaleY = exportCanvas.height / carnetRect.height;
+      var qrX = (qrRect.left - carnetRect.left) * scaleX;
+      var qrY = (qrRect.top - carnetRect.top) * scaleY;
+      var qrWidth = qrRect.width * scaleX;
+      var qrHeight = qrRect.height * scaleY;
       var exportContext = exportCanvas.getContext('2d');
       exportContext.drawImage(
         exportQrImage,
-        (qrRect.left - carnetRect.left) * scaleX,
-        (qrRect.top - carnetRect.top) * scaleY,
-        qrRect.width * scaleX,
-        qrRect.height * scaleY
+        qrX,
+        qrY,
+        qrWidth,
+        qrHeight
       );
+      validarQrDibujado(exportContext, qrX, qrY, qrWidth, qrHeight);
 
-      var blob = await canvasToJpegBlob(exportCanvas);
       var link = document.createElement('a');
       link.download = 'carnet_afiliado_' + data.afiliadoId + '.jpg';
-      link.href = URL.createObjectURL(blob);
+      link.href = canvasToJpegDataUrl(exportCanvas);
       document.body.appendChild(link);
       link.click();
       link.remove();
-      setTimeout(function () { URL.revokeObjectURL(link.href); }, 1000);
     } catch (error) {
-      showError('No fue posible descargar el carnet. Verifique que las imágenes pertenezcan a este sitio.');
+      showError(error.message || 'No fue posible descargar el carnet.');
     }
   });
 
