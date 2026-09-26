@@ -17,6 +17,7 @@ import unicodedata
 from .form import AfiliadoForm, CentroVotacionForm, ComisionForm, ComunidadForm, PerfilForm, SectorForm, UserCreateForm, UserEditForm, InstitucionForm, OrganizacionIntegranteForm, CoordinadorOrganizacionForm, LiderComunitarioOrganizacionForm, EstructuraOrganizativaForm, ResponsableTerritorialForm, ReunionTerritorialForm, IncidenciaTerritorialForm, JuventudIntegranteForm, CoordinadorJuventudForm, LiderJuvenilForm, EstructuraJuventudForm, ResponsableJuventudForm, ReunionJuventudForm, IncidenciaJuventudForm, MujeresIntegranteForm, CoordinadoraMujeresForm, LiderMujeresForm, EstructuraMujeresForm, ResponsableMujeresForm, ReunionMujeresForm, IncidenciaMujeresForm, LogisticaIntegranteForm, CoordinadorLogisticaForm, LiderLogisticaForm, EstructuraLogisticaForm, ResponsableLogisticaForm, ReunionLogisticaForm, IncidenciaLogisticaForm, RecursoLogisticoForm, AsignacionLogisticaForm, SolicitudLogisticaForm, EntregaLogisticaForm, AgendaLogisticaForm, ComunicacionIntegranteForm, CoordinadorComunicacionForm, LiderComunicacionForm, EstructuraComunicacionForm, ResponsableComunicacionForm, ReunionComunicacionForm, IncidenciaComunicacionForm, AgendaPublicacionForm, SolicitudContenidoForm, CoberturaActividadForm, BancoMediosForm, CampanaComunicacionForm, MonitoreoRedForm, PlanHormigaIntegranteForm, CoordinadorPlanHormigaForm, EnlaceTerritorialPlanHormigaForm, EstructuraPlanHormigaForm, ResponsableZonaPlanHormigaForm, ReunionPlanHormigaForm, IncidenciaPlanHormigaForm, VisitaPlanHormigaForm, SeguimientoContactoPlanHormigaForm, CompromisoTerritorialPlanHormigaForm, PuntoVisitadoPlanHormigaForm, ActivacionTerritorialPlanHormigaForm, CoberturaVisitaPlanHormigaForm
 from .models import Afiliado, CentroVotacion, Comision, Comunidad, Eleccion2023, Perfil, Institucion, Sector, PadronElectoral, OrganizacionIntegrante, CoordinadorOrganizacion, LiderComunitarioOrganizacion, EstructuraOrganizativa, ResponsableTerritorial, ReunionTerritorial, IncidenciaTerritorial, EstructuraIntegrante, EstadoRegistro, JuventudIntegrante, CoordinadorJuventud, LiderJuvenil, EstructuraJuventud, ResponsableJuventud, ReunionJuventud, IncidenciaJuventud, EstructuraIntegranteJuventud, MujeresIntegrante, CoordinadoraMujeres, LiderMujeres, EstructuraMujeres, ResponsableMujeres, ReunionMujeres, IncidenciaMujeres, EstructuraIntegranteMujeres, LogisticaIntegrante, CoordinadorLogistica, LiderLogistica, EstructuraLogistica, ResponsableLogistica, ReunionLogistica, IncidenciaLogistica, EstructuraIntegranteLogistica, RecursoLogistico, AsignacionLogistica, SolicitudLogistica, EntregaLogistica, AgendaLogistica, ComunicacionIntegrante, CoordinadorComunicacion, LiderComunicacion, EstructuraComunicacion, ResponsableComunicacion, ReunionComunicacion, IncidenciaComunicacion, EstructuraIntegranteComunicacion, AgendaPublicacion, SolicitudContenido, CoberturaActividad, BancoMedios, CampanaComunicacion, MonitoreoRed, PlanHormigaIntegrante, CoordinadorPlanHormiga, EnlaceTerritorialPlanHormiga, EstructuraPlanHormiga, ResponsableZonaPlanHormiga, ReunionPlanHormiga, IncidenciaPlanHormiga, EstructuraIntegrantePlanHormiga, VisitaPlanHormiga, SeguimientoContactoPlanHormiga, CompromisoTerritorialPlanHormiga, PuntoVisitadoPlanHormiga, ActivacionTerritorialPlanHormiga, CoberturaVisitaPlanHormiga
 from .fotos import asignar_fotos_personas, guardar_foto_persona, obtener_foto_persona
+from .utils import normalizar_dpi
 from django.views.generic import CreateView
 from django.views.generic import ListView
 from django.urls import reverse_lazy
@@ -754,10 +755,20 @@ def verificar_empadronamiento(request):
         }, status=500)
 
 
+def _normalizar_dpi(valor):
+    """Devuelve el DPI canónico sin alterar el valor almacenado en el padrón.
+
+    Los formularios muestran habitualmente el DPI con espacios o guiones. Se
+    aceptan también valores numéricos (por ejemplo, desde una importación), pero
+    se rechazan otros caracteres para no convertir silenciosamente una entrada
+    equivocada en un DPI válido.
+    """
+    return normalizar_dpi(valor)
+
+
 def _resultado_padron_local(dpi_raw):
-    # Se tolera el formato visual con espacios o guiones, pero no letras ni
-    # otros caracteres que podrían convertir silenciosamente un DPI inválido.
-    dpi_limpio = re.sub(r"[\s-]", "", str(dpi_raw or ""))
+    """Consulta única de padrón y construye el contrato JSON compatible."""
+    dpi_limpio = _normalizar_dpi(dpi_raw)
 
     if not re.fullmatch(r"\d{13}", dpi_limpio):
         return ({
@@ -773,23 +784,31 @@ def _resultado_padron_local(dpi_raw):
         return ({
             "ok": True,
             "found": False,
+            "encontrado": False,
             "empadronado": False,
             "message": "No encontrado en el padrón local.",
+            "mensaje": "No encontrado en el padrón local.",
         }, 200)
 
+    datos = {
+        "dpi": persona.identificacion,
+        "nombre_completo": persona.nombre,
+        "nombre": persona.nombre,
+        "comunidad": persona.comunidad,
+        "departamento": persona.departamento,
+        "municipio": persona.municipio,
+        "edad": persona.edad,
+    }
     return ({
         "ok": True,
         "found": True,
+        "encontrado": True,
         "empadronado": True,
-        "data": {
-            "dpi": persona.identificacion,
-            "nombre_completo": persona.nombre,
-            "comunidad": persona.comunidad,
-            "departamento": persona.departamento,
-            "municipio": persona.municipio,
-            "edad": persona.edad,
-        },
+        "data": datos,
+        # Alias de primer nivel para consumidores anteriores del endpoint.
+        **datos,
         "message": "Encontrado en padrón local",
+        "mensaje": "Encontrado en padrón local",
     }, 200)
 
 def _normalizar_columna(nombre_columna):
@@ -1251,10 +1270,6 @@ def _es_usuario_afiliacion(user):
     if not user.is_authenticated:
         return False
     return user.groups.filter(name__in=['Administrador', 'Gestor', 'afiliados']).exists()
-
-
-def _normalizar_dpi(dpi_raw):
-    return re.sub(r"\D", "", (dpi_raw or ""))
 
 
 def _coalescer_texto(*values):
