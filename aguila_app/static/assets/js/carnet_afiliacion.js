@@ -10,7 +10,7 @@
   var downloadButton = document.getElementById('descargarCarnet');
   var printButton = document.getElementById('imprimirCarnet');
   var previewShell = canvas.closest('.carnet-preview-shell');
-  var qrImage = document.getElementById('qrValidacion');
+  var qrImg = document.getElementById('qr-validacion-img');
   var data = canvas.dataset;
   var scale = canvas.width / 856;
   var cardTextColor = window.getComputedStyle(canvas)
@@ -41,23 +41,32 @@
     });
   }
 
+  async function esperarImagen(image) {
+    if (!(image instanceof HTMLImageElement)) {
+      throw new Error('El elemento QR no es una imagen HTML válida.');
+    }
+    if (!image.complete) {
+      await new Promise(function (resolve, reject) {
+        image.addEventListener('load', resolve, { once: true });
+        image.addEventListener('error', reject, { once: true });
+      });
+    }
+    if (typeof image.decode === 'function') {
+      try {
+        await image.decode();
+      } catch (error) {
+        // Puede estar ya decodificada; las dimensiones se validan después.
+      }
+    }
+    if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+      throw new Error('La imagen QR no se cargó correctamente.');
+    }
+    return image;
+  }
+
   function esperarImagenes(contenedor) {
     var imagenes = Array.prototype.slice.call(contenedor.querySelectorAll('img'));
-    return Promise.all(imagenes.map(async function (image) {
-      if (!image.complete) {
-        await new Promise(function (resolve, reject) {
-          image.addEventListener('load', resolve, { once: true });
-          image.addEventListener('error', reject, { once: true });
-        });
-      }
-      if (typeof image.decode === 'function') {
-        try {
-          await image.decode();
-        } catch (error) {
-          // naturalWidth/naturalHeight se validan antes de capturar.
-        }
-      }
-    }));
+    return Promise.all(imagenes.map(esperarImagen));
   }
 
   function esperarPintado() {
@@ -178,7 +187,7 @@
     return y + 51;
   }
 
-  function renderCard(background, logo, photo, qr) {
+  function renderCard(background, logo, photo) {
     context.clearRect(0, 0, canvas.width, canvas.height);
     drawCover(background, 0, 0, canvas.width, canvas.height);
 
@@ -224,7 +233,7 @@
     detailsY = drawLabel('Municipio', data.municipio, detailsY);
     drawLabel('Departamento', data.departamento, detailsY);
 
-    drawContain(qr, px(713), px(18), px(125), px(125));
+    drawContain(qrImg, px(713), px(18), px(125), px(125));
 
     context.fillStyle = cardTextColor;
     context.font = '500 ' + px() + 'px Montserrat, Arial, sans-serif';
@@ -241,6 +250,7 @@
     loadImage(data.fondoUrl),
     loadImage(data.logoUrl).catch(function () { return null; }),
     loadImage(data.fotoUrl).catch(function () { return null; }),
+    esperarImagen(qrImg),
     document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()
   ]).then(function (assets) {
     if (!assets[0]) throw new Error('No fue posible cargar el fondo SVG del carnet.');
@@ -256,18 +266,18 @@
     downloadButton.disabled = true;
     try {
       await renderPromise;
-      if (!qrImage) {
+      if (!qrImg) {
         throw new Error('No se encontró el QR de validación.');
       }
-      if (!(qrImage instanceof HTMLImageElement)) {
+      if (!(qrImg instanceof HTMLImageElement)) {
         throw new Error('El QR de validación no es una imagen válida.');
       }
       await esperarImagenes(previewShell);
       await esperarPintado();
-      if (!qrImage.complete || !qrImage.naturalWidth || !qrImage.naturalHeight) {
+      if (!qrImg.complete || !qrImg.naturalWidth || !qrImg.naturalHeight) {
         throw new Error('El QR de validación no se pudo cargar.');
       }
-      if (!previewShell.contains(qrImage)) {
+      if (!previewShell.contains(qrImg)) {
         throw new Error('El código QR no está dentro del carnet.');
       }
       if (typeof window.html2canvas !== 'function') {
