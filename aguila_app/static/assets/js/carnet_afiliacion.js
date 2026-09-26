@@ -11,7 +11,6 @@
   var printButton = document.getElementById('imprimirCarnet');
   var previewShell = canvas.closest('.carnet-preview-shell');
   var qrImage = document.getElementById('qrValidacion');
-  var qrLink = qrImage ? qrImage.closest('.qr-validacion-link') : null;
   var data = canvas.dataset;
   var scale = canvas.width / 856;
   var cardTextColor = window.getComputedStyle(canvas)
@@ -70,25 +69,21 @@
     });
   }
 
-  function validarQrDibujado(contexto, x, y, width, height) {
-    var muestra = contexto.getImageData(
-      Math.max(0, Math.floor(x)),
-      Math.max(0, Math.floor(y)),
-      Math.max(1, Math.floor(width)),
-      Math.max(1, Math.floor(height))
-    ).data;
-    var pixelesOscuros = 0;
-    var pixelesClaros = 0;
-    var salto = Math.max(4, Math.floor(muestra.length / 16000 / 4) * 4);
-
-    for (var index = 0; index < muestra.length; index += salto) {
-      var luminosidad = (muestra[index] * 299 + muestra[index + 1] * 587 + muestra[index + 2] * 114) / 1000;
-      if (luminosidad < 120) pixelesOscuros += 1;
-      if (luminosidad > 220) pixelesClaros += 1;
+  async function esperarQr(image) {
+    if (!image.complete) {
+      await new Promise(function (resolve, reject) {
+        image.addEventListener('load', resolve, { once: true });
+        image.addEventListener('error', function () {
+          reject(new Error('El QR de validación no se pudo cargar.'));
+        }, { once: true });
+      });
     }
-
-    if (!pixelesOscuros || !pixelesClaros) {
-      throw new Error('No fue posible verificar el QR en el carnet exportado.');
+    if (typeof image.decode === 'function') {
+      try {
+        await image.decode();
+      } catch (error) {
+        // naturalWidth/naturalHeight determinan abajo si la carga fue válida.
+      }
     }
   }
 
@@ -277,10 +272,17 @@
   downloadButton.addEventListener('click', async function () {
     try {
       await renderPromise;
+      if (!qrImage) {
+        throw new Error('No se encontró el QR de validación.');
+      }
+      if (!(qrImage instanceof HTMLImageElement)) {
+        throw new Error('El QR de validación no es una imagen válida.');
+      }
+      await esperarQr(qrImage);
       await esperarImagenes(previewShell);
       await esperarPintado();
-      if (!qrImage || !qrLink || !qrImage.complete || qrImage.naturalWidth === 0) {
-        throw new Error('No fue posible cargar el código QR del carnet.');
+      if (!qrImage.complete || !qrImage.naturalWidth || !qrImage.naturalHeight) {
+        throw new Error('El QR de validación no se pudo cargar.');
       }
       if (!previewShell.contains(qrImage)) {
         throw new Error('El código QR no está dentro del carnet.');
@@ -290,21 +292,20 @@
       }
 
       var carnetRect = previewShell.getBoundingClientRect();
-      var qrRect = qrLink.getBoundingClientRect();
-      var exportQrImage = await loadImage(qrImage.currentSrc || qrImage.src);
-      var previousVisibility = qrLink.style.visibility;
+      var qrRect = qrImage.getBoundingClientRect();
+      var previousVisibility = qrImage.style.visibility;
       var exportCanvas;
 
-      qrLink.style.visibility = 'hidden';
+      qrImage.style.visibility = 'hidden';
       try {
         exportCanvas = await window.html2canvas(previewShell, {
           scale: 2,
           useCORS: true,
-          backgroundColor: null,
+          backgroundColor: '#ffffff',
           logging: false
         });
       } finally {
-        qrLink.style.visibility = previousVisibility;
+        qrImage.style.visibility = previousVisibility;
       }
 
       var scaleX = exportCanvas.width / carnetRect.width;
@@ -315,13 +316,12 @@
       var qrHeight = qrRect.height * scaleY;
       var exportContext = exportCanvas.getContext('2d');
       exportContext.drawImage(
-        exportQrImage,
+        qrImage,
         qrX,
         qrY,
         qrWidth,
         qrHeight
       );
-      validarQrDibujado(exportContext, qrX, qrY, qrWidth, qrHeight);
 
       var link = document.createElement('a');
       link.download = 'carnet_afiliado_' + data.afiliadoId + '.jpg';
