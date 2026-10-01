@@ -22,7 +22,7 @@
     const zoom = root.querySelector('[data-photo-zoom]');
     const brightness = root.querySelector('[data-photo-brightness]');
     const contrast = root.querySelector('[data-photo-contrast]');
-    const cameraSelect = root.querySelector('[data-camera-select]');
+    const switchButton = root.querySelector('[data-camera-switch]');
     const captureButton = root.querySelector('[data-photo-capture]');
     const retakeButton = root.querySelector('[data-photo-retake]');
     const useButton = root.querySelector('[data-photo-use]');
@@ -37,6 +37,10 @@
     let drag = null;
     let facingMode = 'user';
     let cameraRequest = 0;
+    let cameras = [];
+    let activeCameraIndex = -1;
+    let activeDeviceId = '';
+    let switchingCamera = false;
 
     function stopCamera() {
       cameraRequest += 1;
@@ -64,24 +68,35 @@
       return 'No fue posible acceder a la cámara. Revise la conexión y los permisos, o use “Cargar fotografía”.';
     }
 
-    async function listCameras(selectedId) {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
-      const devices = (await navigator.mediaDevices.enumerateDevices()).filter((device) => device.kind === 'videoinput');
-      cameraSelect.innerHTML = '';
-      if (!devices.length) {
-        cameraSelect.appendChild(new Option('No se encontraron cámaras', ''));
-        cameraSelect.disabled = true;
-        return;
-      }
-      cameraSelect.disabled = false;
-      devices.forEach((device, index) => {
-        cameraSelect.appendChild(new Option(device.label || `Cámara ${index + 1}`, device.deviceId));
-      });
-      const activeId = selectedId || (stream && stream.getVideoTracks()[0] && stream.getVideoTracks()[0].getSettings().deviceId);
-      if (activeId && Array.from(cameraSelect.options).some((option) => option.value === activeId)) cameraSelect.value = activeId;
+    function videoIsReady() {
+      const ready = Boolean(stream && video.readyState >= HTMLMediaElement.HAVE_METADATA && video.videoWidth && video.videoHeight);
+      captureButton.disabled = !ready;
+      return ready;
     }
 
-    async function openCamera(deviceId) {
+    async function listCameras() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        cameras = [];
+        activeCameraIndex = -1;
+        switchButton.classList.remove('d-none');
+        return;
+      }
+      try {
+        cameras = (await navigator.mediaDevices.enumerateDevices()).filter((device) => device.kind === 'videoinput');
+      } catch (exception) {
+        cameras = [];
+        activeCameraIndex = -1;
+        switchButton.classList.remove('d-none');
+        return;
+      }
+      activeCameraIndex = cameras.findIndex((device) => device.deviceId === activeDeviceId);
+      // Algunos navegadores ocultan identificadores aunque concedan permiso; en ese caso
+      // conservamos el botón para poder recurrir a facingMode.
+      switchButton.classList.toggle('d-none', cameras.length === 1);
+    }
+
+    async function openCamera(options) {
+      const config = options || {};
       const requestId = cameraRequest + 1;
       stopCamera();
       cameraRequest = requestId;
@@ -91,28 +106,61 @@
       captureButton.classList.remove('d-none');
       retakeButton.classList.add('d-none');
       useButton.classList.add('d-none');
-      video.classList.toggle('is-mirrored', !deviceId && facingMode === 'user');
       try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw Object.assign(new Error('Unsupported'), { name: 'NotFoundError' });
         }
-        const videoConstraint = deviceId
-          ? { deviceId: { exact: deviceId } }
-          : { facingMode: { ideal: facingMode } };
+        const videoConstraint = config.deviceId
+          ? { deviceId: { exact: config.deviceId } }
+          : (config.facingMode ? { facingMode: { ideal: config.facingMode } } : true);
         const newStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraint, audio: false });
         if (cameraRequest !== requestId) {
           newStream.getTracks().forEach((track) => track.stop());
-          return;
+          return false;
         }
         stream = newStream;
+        const track = stream.getVideoTracks()[0];
+        const settings = track.getSettings ? track.getSettings() : {};
+        activeDeviceId = settings.deviceId || config.deviceId || '';
+        const detectedFacingMode = settings.facingMode || config.facingMode || '';
+        if (detectedFacingMode) facingMode = detectedFacingMode;
+        video.classList.toggle('is-mirrored', detectedFacingMode === 'user');
         video.srcObject = stream;
-        const settings = stream.getVideoTracks()[0].getSettings();
-        if (settings.facingMode) facingMode = settings.facingMode;
-        video.classList.toggle('is-mirrored', facingMode === 'user');
-        await listCameras(settings.deviceId);
+        try { await video.play(); } catch (playError) { /* autoplay puede resolverse al mostrarse el modal */ }
+        videoIsReady();
+        await listCameras();
+        return true;
       } catch (exception) {
-        if (cameraRequest === requestId) showMessage(cameraErrorMessage(exception));
+        if (cameraRequest === requestId && !config.silent) showMessage(cameraErrorMessage(exception));
+        return false;
       }
+    }
+
+    async function changeCamera() {
+      if (switchingCamera) return;
+      switchingCamera = true;
+      switchButton.disabled = true;
+      const previous = { deviceId: activeDeviceId, facingMode, index: activeCameraIndex };
+      let nextConfig;
+      if (cameras.length > 1 && cameras.every((camera) => camera.deviceId)) {
+        const current = activeCameraIndex >= 0 ? activeCameraIndex : -1;
+        nextConfig = { deviceId: cameras[(current + 1) % cameras.length].deviceId };
+      } else {
+        nextConfig = { facingMode: facingMode === 'user' ? 'environment' : 'user' };
+      }
+
+      const changed = await openCamera(nextConfig);
+      if (!changed) {
+        const recovered = await openCamera(previous.deviceId
+          ? { deviceId: previous.deviceId, silent: true }
+          : { facingMode: previous.facingMode, silent: true });
+        showMessage(recovered
+          ? 'No fue posible cambiar de cámara. Se restauró la cámara anterior.'
+          : 'No fue posible cambiar de cámara ni recuperar la cámara anterior. Cierre el modal e intente nuevamente.');
+        activeCameraIndex = previous.index;
+      }
+      switchingCamera = false;
+      switchButton.disabled = false;
     }
 
     function clampAndLayout() {
@@ -203,17 +251,12 @@
       root.querySelector('[data-photo-remove-input]').value = '1';
       preview.src = preview.dataset.placeholder;
     });
-    video.addEventListener('loadeddata', function () {
-      captureButton.disabled = !(video.videoWidth && stream);
+    ['loadedmetadata', 'loadeddata', 'canplay', 'playing'].forEach((eventName) => {
+      video.addEventListener(eventName, videoIsReady);
     });
-    cameraSelect.addEventListener('change', () => openCamera(cameraSelect.value));
-    root.querySelector('[data-camera-switch]').addEventListener('click', function () {
-      facingMode = facingMode === 'user' ? 'environment' : 'user';
-      cameraSelect.value = '';
-      openCamera();
-    });
+    switchButton.addEventListener('click', changeCamera);
     captureButton.addEventListener('click', function () {
-      if (!video.videoWidth || !stream) {
+      if (!videoIsReady()) {
         showMessage('La cámara todavía no está lista. Espere un momento e intente nuevamente.');
         return;
       }
@@ -225,7 +268,7 @@
       context.drawImage(video, 0, 0);
       edit(canvas.toDataURL('image/png'), false);
     });
-    retakeButton.addEventListener('click', () => openCamera(cameraSelect.value));
+    retakeButton.addEventListener('click', () => openCamera(activeDeviceId ? { deviceId: activeDeviceId } : { facingMode }));
     zoom.addEventListener('input', function () {
       const oldWidth = parseFloat(image.style.width || editor.clientWidth);
       const oldHeight = parseFloat(image.style.height || editor.clientWidth);
@@ -288,7 +331,13 @@
       }, 'image/jpeg', JPEG_QUALITY);
     });
 
-    modalEl.addEventListener('hidden.bs.modal', stopCamera);
+    modalEl.addEventListener('hidden.bs.modal', function () {
+      stopCamera();
+      drag = null;
+      image.onload = null;
+      switchingCamera = false;
+      switchButton.disabled = false;
+    });
     window.addEventListener('resize', clampAndLayout);
     window.addEventListener('pagehide', stopCamera);
   }

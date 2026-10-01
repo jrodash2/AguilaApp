@@ -25,16 +25,8 @@
         <div class="modal-body">
           <div class="alert alert-warning d-none" data-camera-error role="alert"></div>
           <section data-camera-step>
-            <div class="row g-2 align-items-end mb-3">
-              <div class="col-sm">
-                <label class="form-label mb-1" for="{{ component_id|default:'foto-persona' }}-camera">Seleccionar cámara</label>
-                <select class="form-select" id="{{ component_id|default:'foto-persona' }}-camera" data-camera-select aria-label="Cámaras disponibles">
-                  <option value="">Cámara predeterminada</option>
-                </select>
-              </div>
-              <div class="col-sm-auto">
-                <button type="button" class="btn btn-outline-primary w-100" data-camera-switch>Alternar frontal/trasera</button>
-              </div>
+            <div class="d-flex justify-content-end mb-3">
+              <button type="button" class="btn btn-outline-primary d-none" data-camera-switch>Cambiar cámara</button>
             </div>
             <div class="camera-frame">
               <video data-camera-video autoplay playsinline muted></video>
