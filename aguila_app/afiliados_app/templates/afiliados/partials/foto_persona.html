@@ -25,6 +25,9 @@
         <div class="modal-body">
           <div class="alert alert-warning d-none" data-camera-error role="alert"></div>
           <section data-camera-step>
+            <div class="d-flex justify-content-end mb-3">
+              <button type="button" class="btn btn-outline-primary d-none" data-camera-switch>Cambiar cámara</button>
+            </div>
             <div class="camera-frame">
               <video data-camera-video autoplay playsinline muted></video>
               <div class="camera-grid" aria-hidden="true"><span></span></div>
@@ -32,14 +35,30 @@
             <p class="small text-muted mt-2 mb-0">Centre el rostro dentro del óvalo. La cuadrícula es solo una guía y no se guardará.</p>
           </section>
           <section class="d-none" data-editor-step>
+            <h6>Ajustar fotografía</h6>
             <div class="photo-editor" data-photo-editor><img data-editor-image alt="Fotografía capturada para ajustar"></div>
             <label class="form-label mt-3" data-zoom-label>Zoom</label>
             <input class="form-range" type="range" min="1" max="3" step="0.01" value="1" data-photo-zoom aria-label="Zoom de la fotografía">
-            <p class="small text-muted mb-0">Arrastre la fotografía con el cursor o con un dedo para centrarla.</p>
+            <div class="d-flex flex-wrap gap-2 mb-3">
+              <button type="button" class="btn btn-outline-primary btn-sm" data-photo-center>Centrar</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-photo-reset>Restablecer</button>
+            </div>
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <label class="form-label" for="{{ component_id|default:'foto-persona' }}-brightness">Brillo / exposición</label>
+                <input class="form-range" id="{{ component_id|default:'foto-persona' }}-brightness" type="range" min="70" max="140" step="1" value="100" data-photo-brightness>
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="{{ component_id|default:'foto-persona' }}-contrast">Contraste</label>
+                <input class="form-range" id="{{ component_id|default:'foto-persona' }}-contrast" type="range" min="80" max="120" step="1" value="100" data-photo-contrast>
+              </div>
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm" data-photo-reset-adjustments>Restablecer ajustes</button>
+            <p class="small text-muted mb-0 mt-2">Arrastre la fotografía con el cursor o con un dedo para centrarla. El marco cuadrado corresponde al recorte final.</p>
           </section>
         </div>
         <div class="modal-footer flex-wrap">
-          <button type="button" class="btn btn-primary" data-photo-capture>Capturar</button>
+          <button type="button" class="btn btn-primary" data-photo-capture disabled>Capturar</button>
           <button type="button" class="btn btn-outline-secondary d-none" data-photo-retake>Volver a tomar</button>
           <button type="button" class="btn btn-success d-none" data-photo-use>Usar fotografía</button>
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
