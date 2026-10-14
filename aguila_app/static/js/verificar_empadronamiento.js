@@ -101,15 +101,15 @@
       }
 
       if (!response.ok) {
+        var serverMessage = parseado && (parseado.error || parseado.message || parseado.mensaje);
         if (response.status === 403) {
-          setResultado('CSRF o permiso denegado (403).', 'danger', outputId);
+          setResultado(serverMessage || 'No tiene permisos para realizar esta consulta.', 'danger', outputId);
         } else if (response.status === 404) {
-          setResultado('Endpoint no encontrado (404).', 'danger', outputId);
+          setResultado(serverMessage || 'Endpoint no encontrado (404).', 'danger', outputId);
         } else if (response.status >= 500) {
-          setResultado('Error del servidor (500).', 'danger', outputId);
+          setResultado(serverMessage || 'Error del servidor (500).', 'danger', outputId);
         } else {
-          var msg = (parseado && (parseado.error || parseado.message || parseado.mensaje)) || 'Error en verificación.';
-          setResultado(msg, 'danger', outputId);
+          setResultado(serverMessage || 'Error en verificación.', 'danger', outputId);
         }
 
         setDebug(debugLines.concat(extra, ['Body: ' + (responseText || '(vacío)')]));
