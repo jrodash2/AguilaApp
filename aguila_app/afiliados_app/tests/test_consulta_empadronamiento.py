@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import patch
 
 from django.contrib.auth.models import Group, User
@@ -38,6 +39,7 @@ class ConsultaEmpadronamientoTests(TestCase):
     def setUp(self):
         self.page_url = reverse('afiliados:consulta_empadronamiento')
         self.api_url = reverse('afiliados:consulta_empadronamiento_api')
+        self.verification_url = reverse('afiliados:verificar_empadronamiento')
 
     def test_anonymous_user_is_redirected_from_page_and_api(self):
         self.assertEqual(self.client.get(self.page_url).status_code, 302)
@@ -62,6 +64,29 @@ class ConsultaEmpadronamientoTests(TestCase):
                     200,
                 )
                 self.client.logout()
+
+    def test_gestor_can_use_verification_endpoint(self):
+        gestor = User.objects.create_user(username='gestor-padron')
+        gestor.groups.add(self.groups['Gestor'])
+        self.client.force_login(gestor)
+
+        response = self.client.get(self.verification_url, {'dpi': self.dpi_existente})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['found'])
+
+    def test_verification_frontend_uses_server_permission_message_and_restores_button(self):
+        script_path = (
+            Path(__file__).resolve().parents[2]
+            / 'static/js/verificar_empadronamiento.js'
+        )
+        script = script_path.read_text(encoding='utf-8')
+
+        self.assertIn("parseado.error || parseado.message || parseado.mensaje", script)
+        self.assertNotIn('CSRF o permiso denegado', script)
+        self.assertIn('finally {', script)
+        self.assertIn('btn.disabled = false;', script)
+        self.assertIn('btn.textContent = originalText;', script)
 
     def test_page_links_to_configured_tse_site_in_new_tab(self):
         self.client.force_login(self.user)

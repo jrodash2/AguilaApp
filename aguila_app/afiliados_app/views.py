@@ -686,6 +686,7 @@ def consultar_padron_local(request):
 
 GRUPOS_CONSULTA_PADRON = {
     'Administrador',
+    'Gestor',
     'Organizacion',
     'Jovenes',
     'Mujeres',
