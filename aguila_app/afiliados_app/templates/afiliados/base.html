@@ -648,9 +648,17 @@
                                 <a class="sidebar-link" href="{% url 'afiliados:pendientes_afiliacion_secretarias' %}">
                                     <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-gallery"></use></svg>
                                     <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg' %}#fill-gallery"></use></svg>
-                                    <span>Pendientes de afiliación</span>
+                                    <span>Pendiente afiliación</span>
                                 </a>
                             </li>
+                                                        <li class="sidebar-list {% if '/afiliados/afiliacion/pendientes-secretarias/' in request.path %}active{% endif %}">
+                                <a class="sidebar-link" href="{% url 'afiliados:user_create' %}">
+                                    <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-gallery"></use></svg>
+                                    <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg' %}#fill-gallery"></use></svg>
+                                    <span>Usuarios</span>
+                                </a>
+                            </li>
+                       
                         {% endif %}
                         {% endif %}
 
