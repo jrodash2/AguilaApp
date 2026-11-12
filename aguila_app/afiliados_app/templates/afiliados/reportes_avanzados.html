@@ -1,0 +1,61 @@
+{% extends 'afiliados/base.html' %}
+{% load static %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'assets/css/vendors/select2.css' %}">
+<style>
+#reportes-app, #reportes-app *, #reporte-columnas, #reporte-columnas * {box-sizing:border-box}
+.reportes-stat {font-size:1.8rem;font-weight:700}.reportes-tabla th button {border:0;background:none;color:inherit;text-align:left;font-weight:600}.reportes-filtros summary {cursor:pointer;font-weight:600;padding:.6rem 0}.reportes-filtros .select2-container {width:100%!important}.reportes-filtros .select2-selection--multiple {min-height:38px}.reportes-tabla {min-width:900px}.reportes-tabla td {min-width:120px;max-width:320px;white-space:normal;overflow-wrap:anywhere}#reporte-grafico {height:360px;width:100%}.reportes-toolbar {gap:.5rem}.reportes-columna {min-width:220px}.reportes-filtros input,.reportes-filtros select {max-width:100%}
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-body"><div class="container-fluid">
+<div id="reportes-app" data-datos="{% url 'afiliados:reportes_avanzados_datos' %}" data-opciones="{% url 'afiliados:reportes_avanzados_opciones' %}" data-excel="{% url 'afiliados:reportes_avanzados_excel' %}" data-pdf="{% url 'afiliados:reportes_avanzados_pdf' %}">
+  <div class="page-title"><div class="row"><div class="col-12"><h3>Reportes Avanzados de Afiliados</h3><p class="text-muted">Combine criterios, consulte resultados y descargue únicamente las columnas que necesita.</p></div></div></div>
+  <div class="row" aria-live="polite">
+    <div class="col-sm-6 col-xl-3"><div class="card"><div class="card-body"><span>Total de afiliados</span><div class="reportes-stat" data-stat="total">—</div></div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card"><div class="card-body"><span>Empadronados</span><div class="reportes-stat" data-stat="empadronados">—</div><small><span data-stat="porcentaje_empadronados">—</span>% del total</small></div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card"><div class="card-body"><span>No empadronados</span><div class="reportes-stat" data-stat="no_empadronados">—</div></div></div></div>
+    <div class="col-sm-6 col-xl-3"><div class="card"><div class="card-body"><span>Comunidades representadas</span><div class="reportes-stat" data-stat="comunidades">—</div></div></div></div>
+  </div>
+  <form id="reporte-filtros" class="card reportes-filtros">
+    <div class="card-header"><h5>Filtros avanzados</h5></div>
+    <div class="card-body">
+      {% for titulo, campos in bloques %}
+      <details {% if forloop.first %}open{% endif %} class="border-bottom mb-2"><summary>{{ titulo }}</summary><div class="row g-3 pb-3">
+        {% for campo in campos %}<div class="col-md-6 col-xl-4"><label for="{{ campo.id_for_label }}" class="form-label">{{ campo.label }}</label>{{ campo }}<div class="text-danger small" data-error="{{ campo.name }}"></div></div>{% endfor %}
+      </div></details>
+      {% endfor %}
+      <div class="alert alert-light mt-3 mb-0 small">Empadronamiento utiliza el indicador guardado en la afiliación; no consulta servicios externos. Departamento y municipio proceden del padrón local, no del domicilio. Secretarías indica pertenencia como integrante, no la oficina que creó la afiliación. Los filtros diferentes se combinan con AND y los valores de un selector con OR.</div>
+    </div>
+    <div class="card-footer">
+      <div class="row g-3 align-items-end"><div class="col-md-4"><label class="form-label" for="id_tipo">Tipo de reporte</label>{{ form.tipo }}</div><div class="col-md-8 d-flex flex-wrap reportes-toolbar">
+        <button type="submit" class="btn btn-primary"><i class="fa fa-filter" aria-hidden="true"></i> Aplicar filtros</button>
+        <button type="button" class="btn btn-light" id="reporte-limpiar">Limpiar filtros</button>
+        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#reporte-columnas">Configurar columnas</button>
+        <button type="button" class="btn btn-success" data-export="excel">Descargar Excel</button>
+        <button type="button" class="btn btn-danger" data-export="pdf">Descargar PDF</button>
+      </div></div>
+      <small class="d-block mt-3 text-muted">Excel: hasta {{ limite_excel }} afiliados. PDF: hasta {{ limite_pdf }} afiliados y 8 columnas. Los archivos incluyen todo el conjunto filtrado.</small>
+    </div>
+  </form>
+  <div id="reporte-error" role="alert" class="alert alert-danger" hidden></div>
+  <div id="reporte-estado" role="status" aria-live="polite" class="mb-2"></div>
+  <div class="card" id="reporte-resultados">
+    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-3"><div><h5>Resultados</h5><span id="reporte-total"></span></div><div><label for="reporte-cantidad" class="me-2">Filas por página</label><select id="reporte-cantidad" class="form-select d-inline-block w-auto"><option>10</option><option selected>25</option><option>50</option><option>100</option></select></div></div>
+    <div class="card-body"><p id="reporte-nota" class="small text-muted"></p><div class="table-responsive"><table id="reporte-tabla" class="table table-striped table-hover reportes-tabla"><caption class="visually-hidden">Afiliados y agrupaciones filtrados</caption><thead></thead><tbody></tbody></table></div><div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3"><button class="btn btn-light" id="reporte-anterior">Anterior</button><span id="reporte-pagina"></span><button class="btn btn-light" id="reporte-siguiente">Siguiente</button></div></div>
+  </div>
+  <div class="card" id="reporte-grafico-card" hidden><div class="card-header"><h5>Distribución de resultados</h5><small>Hasta 15 categorías principales; por fecha, los 15 días más recientes. El detalle completo está en la tabla y las descargas.</small></div><div class="card-body"><div id="reporte-grafico" role="img" aria-label="Gráfico de resultados filtrados"></div></div></div>
+</div>
+</div></div>
+<div class="modal fade" id="reporte-columnas" tabindex="-1" aria-labelledby="reporte-columnas-titulo" aria-hidden="true"><div class="modal-dialog modal-lg"><div class="modal-content">
+  <div class="modal-header"><h5 class="modal-title" id="reporte-columnas-titulo">Configurar columnas</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button></div>
+  <div class="modal-body"><p>Se aplican a la tabla detallada y a sus descargas. Los resúmenes utilizan agrupación, cantidad y porcentaje.</p><div class="d-flex flex-wrap gap-2 mb-3"><button type="button" class="btn btn-light" data-cols="todas">Seleccionar todas</button><button type="button" class="btn btn-light" data-cols="basicas">Selección básica</button><button type="button" class="btn btn-light" data-cols="ninguna">Limpiar selección</button></div><div class="d-flex flex-wrap gap-3">{% for clave, etiqueta in columnas_reporte.items %}<label class="form-check reportes-columna"><input type="checkbox" class="form-check-input" name="reporte-columna" value="{{ clave }}"> {{ etiqueta }}</label>{% endfor %}</div></div>
+  <div class="modal-footer"><button type="button" class="btn btn-primary" id="reporte-aplicar-columnas">Aplicar configuración</button></div>
+</div></div></div>
+{{ columnas_basicas|json_script:'reporte-columnas-basicas' }}
+{% endblock %}
+{% block extra_js %}
+<script src="{% static 'assets/js/select2/select2.full.min.js' %}"></script>
+<script src="{% static 'assets/js/dist/echarts.js' %}"></script>
+<script src="{% static 'js/reportes_avanzados.js' %}"></script>
+{% endblock %}

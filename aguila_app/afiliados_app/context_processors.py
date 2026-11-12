@@ -18,6 +18,7 @@ def frase_del_dia(request):
     }
 
 def grupo_usuario(request):
+    from .reportes.queries import puede_reportar
     is_authenticated = bool(getattr(request, 'user', None) and request.user.is_authenticated)
     grupos_padron = {
         'Administrador', 'Organizacion', 'Jovenes', 'Mujeres', 'Logistica',
@@ -29,6 +30,7 @@ def grupo_usuario(request):
     )
 
     return {
+        'puede_reportar_afiliados': puede_reportar(request.user) if is_authenticated else False,
         'es_gestor': request.user.groups.filter(name='Gestor').exists() if is_authenticated else False,
         'es_administrador': request.user.groups.filter(name='Administrador').exists() if is_authenticated else False,
         'es_departamento': request.user.groups.filter(name='Departamento').exists() if is_authenticated else False,

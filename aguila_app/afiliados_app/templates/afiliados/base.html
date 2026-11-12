@@ -222,11 +222,12 @@
                                 <a class="sidebar-link sidebar-title link-nav" href="javascript:void(0)">
                                     <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-gallery"></use></svg>
                                     <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg' %}#fill-gallery"></use></svg>
-                                    <span>Afiliación</span>
+                                    <span>Afiliados</span>
                                 </a>
                                 <ul class="sidebar-submenu">
                                     <li><a href="{% url 'afiliados:dahsboard' %}">Dashboard Afiliación</a></li>
                                     <li><a href="{% url 'afiliados:afiliado_lista' %}">Afiliados</a></li>
+                                    {% if puede_reportar_afiliados %}<li><a href="{% url 'afiliados:reportes_avanzados' %}">Reportes Avanzados</a></li>{% endif %}
                                     <li><a href="{% url 'afiliados:lideres_lista' %}">Líderes</a></li>
                                     <li><a href="{% url 'afiliados:comunidad_lista' %}">Comunidades</a></li>
                                     <li><a href="{% url 'afiliados:sector_lista' %}">Sectores</a></li>
@@ -601,11 +602,15 @@
                             </li>
                                
                         <li class="sidebar-list {% if '/afiliados/afiliado' in request.path %}active{% endif %}">
-                                <a class="sidebar-link" href="{% url 'afiliados:afiliado_lista' %}">
+                                <a class="sidebar-link sidebar-title link-nav" href="javascript:void(0)">
                                     <svg class="stroke-icon"><use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-gallery"></use></svg>
                                     <svg class="fill-icon"><use href="{% static 'assets/svg/icon-sprite.svg' %}#fill-gallery"></use></svg>
                                     <span>Afiliados</span>
                                 </a>
+                                <ul class="sidebar-submenu">
+                                    <li><a href="{% url 'afiliados:afiliado_lista' %}">Listado de afiliados</a></li>
+                                    {% if puede_reportar_afiliados %}<li><a href="{% url 'afiliados:reportes_avanzados' %}">Reportes Avanzados</a></li>{% endif %}
+                                </ul>
                             </li>
                           
 

@@ -1,11 +1,17 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
+from .reportes import views as reportes_views
 
 
 app_name = 'afiliados'
 
 urlpatterns = [
+    path('reportes-avanzados/', reportes_views.pantalla, name='reportes_avanzados'),
+    path('reportes-avanzados/datos/', reportes_views.datos, name='reportes_avanzados_datos'),
+    path('reportes-avanzados/opciones/', reportes_views.opciones, name='reportes_avanzados_opciones'),
+    path('reportes-avanzados/excel/', reportes_views.exportar, {'formato': 'xlsx'}, name='reportes_avanzados_excel'),
+    path('reportes-avanzados/pdf/', reportes_views.exportar, {'formato': 'pdf'}, name='reportes_avanzados_pdf'),
     path('', views.home, name='home'), 
     path('dahsboard/', views.dahsboard, name='dahsboard'),
     path('signin/', views.signin, name='signin'),
