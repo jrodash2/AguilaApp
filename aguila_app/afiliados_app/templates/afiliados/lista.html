@@ -54,6 +54,7 @@
                       <th>Centro de Votación</th>
                       <th>Empadronado</th>
                       <th>Fecha Creación</th>
+                      <th>Agregado por</th>
                       <th>Acciones</th>
                     </tr>
                   </thead>
@@ -66,6 +67,7 @@
                       <td>{{ a.centro_votacion_resuelto.nombre|default:"—" }}</td>
                       <td>{{ a.empadronado|yesno:"Sí,No" }}</td>
                       <td>{{ a.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                      <td>{{ a.usuario_registro.username|default:"Sin usuario registrado" }}</td>
                       <td>
                        <ul class="action d-flex">
     <li class="detail me-2"> 
@@ -102,7 +104,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                      <td colspan="7" class="text-center text-muted">No hay afiliados registrados.</td>
+                      <td colspan="8" class="text-center text-muted">No hay afiliados registrados.</td>
                     </tr>
                     {% endfor %}
                   </tbody>
@@ -114,6 +116,7 @@
                       <th>Centro de Votación</th>
                       <th>Empadronado</th>
                       <th>Fecha Creación</th>
+                      <th>Agregado por</th>
                       <th>Acciones</th>
                     </tr>
                   </tfoot>

@@ -1236,7 +1236,7 @@ def afiliado_lista(request):
 
     afiliados = (
         Afiliado.objects
-        .select_related('comunidad__sector', 'centro_votacion')
+        .select_related('comunidad__sector', 'centro_votacion', 'usuario_registro')
         .prefetch_related(
             Prefetch(
                 'comunidad__sector__centros',
@@ -1262,7 +1262,7 @@ def afiliado_lista(request):
     form = AfiliadoForm(initial=form_initial)
 
     if request.method == 'POST':
-        form = AfiliadoForm(request.POST, request.FILES or None)
+        form = AfiliadoForm(request.POST, request.FILES or None, usuario_registro=request.user)
         if form.is_valid():
             afiliado = form.save()
             guardar_foto_persona(afiliado, eliminar=request.POST.get('eliminar_foto') == '1')
@@ -1622,7 +1622,7 @@ def modal_afiliar_desde_secretaria_guardar(request):
             'detalle_url': reverse('afiliados:afiliado_detalle', args=[afiliado_existente.pk]),
         }, status=409)
 
-    form = AfiliadoForm(request.POST, request.FILES or None)
+    form = AfiliadoForm(request.POST, request.FILES or None, usuario_registro=request.user)
     if form.is_valid():
         afiliado = form.save()
         guardar_foto_persona(afiliado, eliminar=request.POST.get('eliminar_foto') == '1')
@@ -1702,7 +1702,7 @@ def afiliado_nuevo(request):
     
     if request.method == 'POST':
         # 1. Usar el AfiliadoForm actualizado
-        form = AfiliadoForm(request.POST, request.FILES or None)
+        form = AfiliadoForm(request.POST, request.FILES or None, usuario_registro=request.user)
         
         # Si la solicitud es AJAX (desde el modal)
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -1746,7 +1746,7 @@ def afiliado_nuevo(request):
                 afiliado = form.save()
                 guardar_foto_persona(afiliado, eliminar=request.POST.get('eliminar_foto') == '1')
                 messages.success(request, 'Afiliado guardado con éxito.')
-                return redirect('afiliados:afiliados_lista') # Asegúrate que el nombre de la URL sea correcto
+                return redirect('afiliados:afiliado_lista')
             else:
                 messages.error(request, 'Hubo un error al guardar el afiliado.')
                 # Si no es AJAX, podrías renderizar la página completa con el formulario con errores

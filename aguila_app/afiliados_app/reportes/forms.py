@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
 from ..models import Afiliado, CentroVotacion, Comision, Comunidad, Sector
@@ -23,6 +24,7 @@ COLUMNAS = {
     'es_lider': 'Es líder comunitario', 'comisiones': 'Comisiones',
     'cargo': 'Cargo en comisión', 'departamento': 'Departamento (padrón)',
     'municipio': 'Municipio (padrón)',
+    'usuario_registro': 'Agregado por',
 }
 BASICAS = ('dpi', 'nombre', 'comunidad', 'telefono', 'lider', 'creacion')
 
@@ -64,6 +66,8 @@ class FiltrosReporteForm(forms.Form):
     sectores = multiple(Sector, 'Sectores')
     centros = multiple(CentroVotacion, 'Centros de votación')
     lideres = multiple(Afiliado, 'Líderes responsables', es_lider_comunitario=True)
+    usuarios = multiple(User, 'Usuarios que agregaron afiliados')
+    autor_registrado = forms.ChoiceField(required=False, label='Usuario de registro identificado', choices=(('', 'Todos'), ('si', 'Con usuario registrado'), ('no', 'Sin usuario registrado')))
     secretarias = forms.MultipleChoiceField(required=False, choices=SECRETARIAS, label='Secretarías (pertenencia como integrante)')
     comisiones = multiple(Comision, 'Comisiones')
     es_lider = forms.ChoiceField(required=False, label='Es líder comunitario', choices=(('', 'Todos'), ('si', 'Sí'), ('no', 'No')))
@@ -90,7 +94,7 @@ class FiltrosReporteForm(forms.Form):
         super().__init__(*args, **kwargs)
         for name, field in self.fields.items():
             field.widget.attrs.setdefault('class', 'form-select' if isinstance(field.widget, forms.Select) else 'form-control')
-            if name in ('comunidades', 'sectores', 'centros', 'lideres', 'comisiones'):
+            if name in ('comunidades', 'sectores', 'centros', 'lideres', 'comisiones', 'usuarios'):
                 field.widget.attrs['data-catalogo'] = name
 
     def clean(self):
@@ -100,7 +104,7 @@ class FiltrosReporteForm(forms.Form):
             raise ValidationError('Se recibieron filtros no admitidos.')
         if len(self.data.urlencode()) > 12000:
             raise ValidationError('La selección de filtros es demasiado extensa.')
-        for field in ('comunidades', 'sectores', 'centros', 'lideres', 'comisiones', 'secretarias'):
+        for field in ('comunidades', 'sectores', 'centros', 'lideres', 'comisiones', 'secretarias', 'usuarios'):
             if len(self.data.getlist(field)) > 100:
                 self.add_error(field, 'Seleccione como máximo 100 valores por filtro.')
         if data.get('desde') and data.get('hasta') and data['desde'] > data['hasta']:

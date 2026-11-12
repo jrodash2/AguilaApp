@@ -27,6 +27,7 @@ ORDENES = {
     'empadronado': 'empadronado', 'creacion': 'fecha_creacion',
     'es_lider': 'es_lider_comunitario', 'cargo': 'cargo_en_comision',
     'departamento': 'reporte_departamento', 'municipio': 'reporte_municipio',
+    'usuario_registro': 'usuario_registro__username',
 }
 
 
@@ -113,6 +114,10 @@ def consulta(data, hoy=None):
             match |= Q(**{alias: True})
         qs = qs.filter(match if data['estructura'] == 'si' else ~match)
     desde, hasta = limites_fechas(data, hoy)
+    if data.get('usuarios'):
+        qs = qs.filter(usuario_registro__in=data['usuarios'])
+    if data.get('autor_registrado'):
+        qs = qs.filter(usuario_registro__isnull=data['autor_registrado'] == 'no')
     if desde:
         qs = qs.filter(fecha_creacion__gte=instante(desde))
     if hasta:
@@ -179,12 +184,13 @@ def detalle(qs, data):
     descendente = data.get('direccion') == 'desc'
     if key == 'edad':
         descendente = not descendente
-    return qs.select_related('comunidad__sector', 'lider_vinculado').prefetch_related('comisiones').order_by(('-' if descendente else '') + field, 'pk')
+    return qs.select_related('comunidad__sector', 'lider_vinculado', 'usuario_registro').prefetch_related('comisiones').order_by(('-' if descendente else '') + field, 'pk')
 
 
 def fila(afiliado, keys, numero, hoy):
     values = {
         'numero': numero, 'dpi': afiliado.dpi, 'nombre': afiliado.nombre_completo,
+        'usuario_registro': afiliado.usuario_registro.username if afiliado.usuario_registro else 'Sin usuario registrado',
         'edad': edad(afiliado.fecha_nacimiento, hoy), 'nacimiento': afiliado.fecha_nacimiento,
         'telefono': afiliado.telefono or '', 'comunidad': afiliado.comunidad.nombre if afiliado.comunidad else '',
         'sector': afiliado.comunidad.sector.nombre if afiliado.comunidad and afiliado.comunidad.sector else '',
@@ -240,7 +246,7 @@ def resumen_filtros(form):
         if name in ('pagina', 'cantidad', 'columnas', 'configuradas', 'orden', 'direccion') or value in (None, '', [], False):
             continue
         if hasattr(value, 'model'):
-            value = ', '.join(getattr(obj, 'nombre_completo', None) or getattr(obj, 'nombre', str(obj.pk)) for obj in value)
+            value = ', '.join(getattr(obj, 'nombre_completo', None) or getattr(obj, 'nombre', None) or getattr(obj, 'username', str(obj.pk)) for obj in value)
         elif isinstance(field, forms.ChoiceField):
             choices = dict(field.choices)
             value = ', '.join(str(choices.get(v, v)) for v in value) if isinstance(value, list) else choices.get(value, value)

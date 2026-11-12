@@ -166,6 +166,12 @@ class Afiliado(models.Model):
     # 📅 Nueva columna: Fecha y hora de creación automática
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
+    usuario_registro = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        editable=False, related_name='afiliados_registrados',
+        verbose_name='Usuario que agregó al afiliado',
+    )
+
     @property
     def sector(self):
         return self.comunidad.sector if self.comunidad else None

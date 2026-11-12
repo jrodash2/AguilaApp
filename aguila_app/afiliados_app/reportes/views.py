@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
@@ -34,7 +35,7 @@ def pantalla(request):
     blocks = [
         ('Fechas', ['periodo', 'desde', 'hasta']),
         ('Ubicación', ['departamentos', 'municipios', 'sectores', 'comunidades', 'centros']),
-        ('Organización', ['lideres', 'secretarias', 'comisiones', 'cargo', 'es_lider', 'participacion', 'estructura']),
+        ('Organización', ['usuarios', 'autor_registrado', 'lideres', 'secretarias', 'comisiones', 'cargo', 'es_lider', 'participacion', 'estructura']),
         ('Datos personales', ['nombre', 'dpi', 'telefono', 'rango_edad', 'edad_min', 'edad_max', 'nacimiento']),
         ('Empadronamiento', ['empadronamiento']),
     ]
@@ -102,7 +103,7 @@ def exportar(request, formato):
 def opciones(request):
     autorizar(request.user)
     catalogo = request.GET.get('catalogo')
-    if catalogo not in ('comunidades', 'sectores', 'centros', 'lideres', 'comisiones'):
+    if catalogo not in ('comunidades', 'sectores', 'centros', 'lideres', 'comisiones', 'usuarios'):
         return JsonResponse({'error': 'Catálogo inválido.'}, status=400)
     try:
         page = int(request.GET.get('pagina', 1))
@@ -112,8 +113,10 @@ def opciones(request):
     except ValueError:
         return JsonResponse({'error': 'Parámetros inválidos.'}, status=400)
     model, name = {'comunidades': (Comunidad, 'nombre'), 'sectores': (Sector, 'nombre'),
-                   'centros': (CentroVotacion, 'nombre'), 'lideres': (Afiliado, 'nombre_completo'), 'comisiones': (Comision, 'nombre')}[catalogo]
+                   'centros': (CentroVotacion, 'nombre'), 'lideres': (Afiliado, 'nombre_completo'), 'comisiones': (Comision, 'nombre'), 'usuarios': (User, 'username')}[catalogo]
     qs = model.objects.all()
+    if catalogo == 'usuarios':
+        qs = qs.filter(afiliados_registrados__isnull=False).distinct()
     if catalogo == 'lideres':
         qs = qs.filter(es_lider_comunitario=True)
     if catalogo == 'comunidades' and ids:

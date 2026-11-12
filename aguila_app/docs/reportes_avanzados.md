@@ -1,10 +1,10 @@
 # Reportes Avanzados de Afiliados
 
-Se accede desde **Afiliados → Reportes Avanzados**. No se sustituyen los filtros ni exportadores anteriores y no hay migraciones ni dependencias nuevas.
+Se accede desde **Afiliados → Reportes Avanzados**. No se sustituyen los filtros ni exportadores anteriores. No hay dependencias nuevas. La ampliación de autoría requiere la migración `0003_afiliado_usuario_registro`.
 
 ## Esquema y acceso real
 
-- `Afiliado`: `nombre_completo`, `dpi`, `fecha_nacimiento`, `telefono`, `direccion`, `comunidad`, `centro_votacion`, `lider_vinculado`, `es_lider_comunitario`, `empadronado`, `comisiones`, `cargo_en_comision`, `fecha_creacion`.
+- `Afiliado`: `nombre_completo`, `dpi`, `fecha_nacimiento`, `telefono`, `direccion`, `comunidad`, `centro_votacion`, `lider_vinculado`, `es_lider_comunitario`, `empadronado`, `comisiones`, `cargo_en_comision`, `fecha_creacion`, `usuario_registro` (FK nullable de solo lectura, registrada desde la sesión al crear).
 - Sector: `afiliado.comunidad.sector`. Centro efectivo: primer centro del sector por nombre e ID, con respaldo en `afiliado.centro_votacion`, siguiendo el criterio del listado existente. Filtros, columnas y resúmenes utilizan ese mismo centro.
 - Secretarías: pertenencia mediante las FK `afiliado` de `OrganizacionIntegrante`, `JuventudIntegrante`, `MujeresIntegrante`, `LogisticaIntegrante`, `ComunicacionIntegrante` y `PlanHormigaIntegrante`. No significa que esa secretaría haya creado la afiliación. Una persona puede aparecer en varias; los porcentajes se calculan respecto del total de afiliados únicos y pueden sumar más del 100%. Se incluye «Sin secretaría».
 - Participación en estructuras: `EstructuraIntegrante` y sus variantes de Juventud, Mujeres, Logística, Comunicación y Plan Hormiga, mediante DPI original, normalizado o formato `#### ##### ####`. Es una coincidencia de identidad ya utilizada en el proyecto, no una FK nueva. No se equipara con la pertenencia como integrante de secretaría.
@@ -13,11 +13,11 @@ Se accede desde **Afiliados → Reportes Avanzados**. No se sustituyen los filtr
 - Acceso a pantalla, AJAX, catálogos y descargas: se reutiliza `_es_usuario_afiliacion` (grupos `Administrador`, `Gestor`, `afiliados`). Incluso un superusuario necesita pertenecer a uno de esos grupos, siguiendo ese control existente. Los decoradores legacy de `permissions.py`, `utils.py` y `access.py` no restringen grupos y no se usan para autorizar este módulo.
 - Estos roles ya acceden a datos personales de afiliación; se aplica el mismo acceso a DPI, teléfono y nacimiento en pantalla y descargas. El esquema actual no tiene asignaciones territoriales de usuarios ni un alcance por secretaría para esos roles. No se introducen ni se presumen restricciones inexistentes. Para añadirlas en el futuro, se debe restringir la consulta base y los catálogos antes de aplicar filtros.
 
-**Datos que no existen en Afiliado:** sexo; nombres y apellidos separados; estado activo/inactivo; usuario creador de la afiliación; responsable de afiliación; oficina que originó la afiliación; coordinador responsable directo. Los usuarios de registro de integrantes pertenecen a registros de secretarías, y los coordinadores a estructuras distintas: no se presentan como creador o coordinador del afiliado. No se ofrecen filtros, tarjetas ni columnas ficticias para estos datos. Se busca tanto nombres como apellidos a través de `nombre_completo`.
+**Datos que no existen en Afiliado:** sexo; nombres y apellidos separados; estado activo/inactivo; responsable de afiliación; oficina que originó la afiliación; coordinador responsable directo. Los usuarios de registro de integrantes pertenecen a registros de secretarías y no sustituyen a `Afiliado.usuario_registro`. Los coordinadores pertenecen a estructuras distintas y no se presentan como coordinador directo del afiliado. No se ofrecen filtros, tarjetas ni columnas ficticias para estos datos. Se busca tanto nombres como apellidos a través de `nombre_completo`.
 
 ## Funciones disponibles
 
-Filtros combinables: período de registro (hoy, últimos 7/30 días naturales, mes actual/anterior, año actual o rango abierto/cerrado personalizado); departamento/municipio del padrón; comunidades, sectores y centros múltiples; líderes múltiples; secretarías múltiples; comisiones múltiples; cargo en comisión; es líder; pertenencia a secretaría; participación en estructura; nombre completo; DPI; teléfono; edad mínima/máxima o rangos predefinidos; nacimiento; empadronamiento.
+Filtros combinables: usuarios que agregaron afiliados (selección múltiple), con/sin usuario identificado; período de registro (hoy, últimos 7/30 días naturales, mes actual/anterior, año actual o rango abierto/cerrado personalizado); departamento/municipio del padrón; comunidades, sectores y centros múltiples; líderes múltiples; secretarías múltiples; comisiones múltiples; cargo en comisión; es líder; pertenencia a secretaría; participación en estructura; nombre completo; DPI; teléfono; edad mínima/máxima o rangos predefinidos; nacimiento; empadronamiento.
 
 Se aplica AND entre filtros y OR dentro de una selección múltiple. Las comisiones y pertenencias se filtran con `Exists`, evitando duplicados. La edad se calcula por cumpleaños (el 29 de febrero cumple el 1 de marzo en años no bisiestos). Las fechas finales incluyen hasta el último microsegundo local; las agrupaciones diarias respetan `TIME_ZONE`. El territorio elegido filtra el centro efectivo, no un centro directo desplazado por el sector.
 
@@ -74,13 +74,13 @@ Iniciar sesión con una cuenta de uno de los grupos autorizados y navegar al nue
 
 Pruebas automatizadas: sin filtros; final de día en Guatemala; períodos y fechas inválidas; multicomunidades; líder; empadronamiento; edad y cumpleaños bisiesto; combinación de más de cinco filtros; DPI con/sin espacios; territorio del padrón; centro efectivo compartido; secretarías/comisiones sin duplicar; participación en estructuras; todos los grupos; vacíos; orden/paginación; columnas inválidas y seleccionadas; formato Excel; inyección de fórmulas; auditoría depurada; PDF y agrupaciones exportadas; límites; acceso anónimo/no autorizado y grupos autorizados; catálogos dependientes; consulta acotada y exportación de 2,101 filas a Excel y PDF con todas las páginas.
 
-Validación local: las 21 pruebas nuevas pasan. La suite completa ejecutó 91 pruebas: 84 aprobadas, 6 fallos y 1 error, todos los problemas restantes coinciden con la línea base anterior. Chromium verificó paginación, Select2, validaciones, gráficos, configuración de columnas y descargas Excel/PDF; no hubo errores JavaScript y se comprobó el diseño a 1440 y 390 píxeles. `manage.py check` y `makemigrations --check --dry-run` no reportaron problemas ni cambios.
+Validación local: las 28 pruebas de reportes y autoría pasan. La suite completa ejecutó 98 pruebas: 91 aprobadas, 6 fallos y 1 error, todos los problemas restantes coinciden con la línea base anterior. Chromium verificó paginación, Select2, validaciones, gráficos, configuración de columnas y descargas Excel/PDF; no hubo errores JavaScript y se comprobó el diseño a 1440 y 390 píxeles. `manage.py check` y `makemigrations --check --dry-run` no reportaron problemas ni cambios.
 
 La suite anterior tenía 6 fallos y 1 error en carnet, mensajes de creación de estructuras, modal de afiliación pendiente y un caso que pasa `dpi=None` al cliente de Django. Se mantienen diferenciados de las pruebas nuevas.
 
 ## Desplegar en cPanel / MariaDB
 
-1. Respaldar y desplegar los archivos modificados/nuevos sin reemplazar configuración ni base de producción. Este módulo no necesita migraciones nuevas. No cambiar el motor de una base existente para instalarlo: el `settings.py` de este checkout usa PostgreSQL, aunque el destino descrito sea MariaDB/MySQL.
+1. Respaldar y desplegar los archivos modificados/nuevos sin reemplazar configuración ni base de producción. Antes de arrancar esta versión, ejecutar `python manage.py migrate --noinput` para aplicar `0003_afiliado_usuario_registro`. Los afiliados anteriores conservan usuario NULL; no se atribuyen a otra persona. No cambiar el motor de una base existente para instalarlo: el `settings.py` de este checkout usa PostgreSQL, aunque el destino descrito sea MariaDB/MySQL.
 2. Activar el entorno virtual de la aplicación Passenger, usar una versión Python compatible con Django 5.1.4 y las dependencias fijadas existentes. Se reutilizan `openpyxl==3.1.5`, `reportlab==4.4.1`, Select2 y ECharts locales; no hay paquetes nuevos para el módulo.
 3. Mantener el backend y credenciales de producción en configuración privada. Si el despliegue ya usa MySQL/MariaDB, conservar su adaptador y `DATABASES`; no copiar el override SQLite de la nube. Django 5.1 requiere MySQL 8+ o MariaDB 10.5+ y su adaptador compatible. No se suministran credenciales.
 4. Con `USE_TZ=True`, MySQL/MariaDB necesita tablas de zona horaria cargadas para `TruncDate` en `America/Guatemala`. Pedir al proveedor que las configure si no están disponibles. No desactivar la zona horaria para forzar un resultado.
@@ -94,4 +94,20 @@ La suite anterior tenía 6 fallos y 1 error en carnet, mensajes de creación de 
 
 Nuevos: `afiliados_app/reportes/{__init__,forms,queries,exports,views}.py`, `afiliados_app/templates/afiliados/reportes_avanzados.html`, `static/js/reportes_avanzados.js`, `afiliados_app/tests/test_reportes_avanzados.py`, este documento.
 
-Modificados: `afiliados_app/urls.py` (rutas), `afiliados_app/context_processors.py` (visibilidad por permiso), `afiliados_app/templates/afiliados/base.html` (menú). Modelos, migraciones, dependencias y exportadores anteriores permanecen sin cambios.
+Modificados: `afiliados_app/urls.py` (rutas), `afiliados_app/context_processors.py` (visibilidad por permiso), `afiliados_app/templates/afiliados/base.html` (menú). La ampliación de autoría también modifica `models.py`, `form.py`, `views.py`, `admin.py` y `templates/afiliados/lista.html`, y agrega la migración `0003_afiliado_usuario_registro.py` y `tests/test_usuario_registro.py`. Las dependencias y exportadores anteriores permanecen sin cambios.
+
+## Usuario que agregó al afiliado
+
+El listado muestra «Agregado por». El filtro avanzado «Usuarios que agregaron afiliados» permite varias cuentas (incluidas inactivas con registros), con AND respecto de otros criterios. «Usuario de registro identificado» permite ver los registros históricos sin autor. La columna «Agregado por» está disponible en la configuración de columnas, ordenamiento, Excel y PDF. El catálogo AJAX `usuarios` pagina las cuentas con afiliaciones registradas y no revela correo ni otros datos de la cuenta.
+
+El autor se asigna en el servidor desde `request.user` en altas del listado, modal AJAX, alta normal, confirmación desde secretarías y Django Admin. No es editable ni se acepta desde parámetros POST; editar registros no reasigna el autor ni rellena retrospectivamente los antiguos. Si se elimina la cuenta, la FK queda NULL y se muestra «Sin usuario registrado». Altas por scripts sin sesión quedan NULL salvo que el script asigne un usuario verificable explícitamente.
+
+En cPanel, subir todos los archivos modificados y la nueva migración, activar el entorno virtual, ejecutar desde la carpeta de `manage.py`:
+
+```bash
+python manage.py migrate --noinput
+python manage.py check
+python manage.py collectstatic --noinput
+```
+
+Después reiniciar la aplicación Python de cPanel y recargar el navegador. No ejecutar `git pull` en carpetas desplegadas sin `.git`; usar el método de despliegue existente. No se requiere inferir ni modificar autores de datos antiguos.

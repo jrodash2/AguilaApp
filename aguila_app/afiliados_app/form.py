@@ -250,6 +250,7 @@ class AfiliadoForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        self.usuario_registro = kwargs.pop("usuario_registro", None)
         super().__init__(*args, **kwargs)
         # ✅ Forzar formato correcto de fecha al cargar el formulario (modo edición)
         if self.instance and self.instance.fecha_nacimiento:
@@ -300,6 +301,8 @@ class AfiliadoForm(forms.ModelForm):
         return foto
 
     def save(self, commit=True):
+        if self.instance._state.adding and self.usuario_registro is not None:
+            self.instance.usuario_registro = self.usuario_registro
         afiliado = super().save(commit=commit)
 
         if commit:

@@ -75,10 +75,17 @@ admin.site.register(Comision, ComisionAdmin)
 # Admin para Afiliado
 # -------------------------------
 class AfiliadoAdmin(admin.ModelAdmin):
-    list_display = ('nombre_completo', 'dpi', 'comunidad','centro_votacion', 'empadronado', 'comisiones_list')
+    list_display = ('nombre_completo', 'dpi', 'comunidad','centro_votacion', 'empadronado', 'comisiones_list', 'usuario_registro')
     search_fields = ('nombre_completo', 'dpi', 'comunidad__nombre', 'centro_votacion__nombre')
     list_filter = ('empadronado', 'comunidad','centro_votacion')
     filter_horizontal = ('comisiones',)
+    readonly_fields = ('usuario_registro',)
+    list_select_related = ('comunidad', 'centro_votacion', 'usuario_registro')
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.usuario_registro = request.user
+        super().save_model(request, obj, form, change)
 
     def comisiones_list(self, obj):
         return ", ".join([c.nombre for c in obj.comisiones.all()])
